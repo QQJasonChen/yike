@@ -3,6 +3,7 @@ import TaskRow from './TaskRow'
 import Timeline from './Timeline'
 import { TimerState } from './FocusTimer'
 import { quoteForDate } from './quotes'
+import { dayToMarkdown } from './exportMd'
 import { addDays, loadDay, saveDay, toDateKey } from './storage'
 import { DayEntry, Settings, Task } from './types'
 
@@ -30,7 +31,18 @@ export default function DayView({
   registerSessionSink,
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
+  const [copied, setCopied] = useState(false)
   const todayKey = toDateKey(new Date())
+
+  const copyMarkdown = async () => {
+    try {
+      await navigator.clipboard.writeText(dayToMarkdown(dateKey, entry))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      alert('複製失敗，請改用「回顧」頁的匯出 JSON')
+    }
+  }
   const isToday = dateKey === todayKey
   const dropRef = useRef<((x: number, y: number, text: string, taskIndex: number) => boolean) | null>(null)
 
@@ -105,6 +117,13 @@ export default function DayView({
             </span>
           </div>
           <div className="day-nav">
+            <button
+              className="today-btn"
+              onClick={copyMarkdown}
+              title="複製這一天的 Markdown，可直接貼到 Heptabase / Notion"
+            >
+              {copied ? '✓ 已複製' : '⧉ MD'}
+            </button>
             <button onClick={() => onDateChange(addDays(dateKey, -1))} title="前一天">
               ‹
             </button>

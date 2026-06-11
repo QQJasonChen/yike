@@ -57,14 +57,18 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
     }
   }
 
-  const { keys, days, streak, avgScore, totalSessions } = useMemo(() => {
+  const { keys, days, streak, avgScore, totalSessions, doneRate, moodCounts } = useMemo(() => {
     const keys = allDayKeys()
     const days = new Map(keys.map((k) => [k, loadDay(k)]))
-    const scores = [...days.values()].map((d) => d.score).filter((s): s is number => s !== null)
-    const totalSessions = [...days.values()].reduce(
-      (sum, d) => sum + d.tasks.reduce((s, t) => s + t.done, 0),
-      0
-    )
+    const all = [...days.values()]
+    const scores = all.map((d) => d.score).filter((s): s is number => s !== null)
+    const totalSessions = all.reduce((sum, d) => sum + d.tasks.reduce((s, t) => s + t.done, 0), 0)
+    const written = all.flatMap((d) => d.tasks.filter((t) => t.text.trim()))
+    const doneRate = written.length
+      ? Math.round((written.filter((t) => t.completed).length / written.length) * 100)
+      : null
+    const moodCounts = [0, 0, 0, 0, 0]
+    all.forEach((d) => d.mood && moodCounts[d.mood - 1]++)
     return {
       keys,
       days,
@@ -73,6 +77,8 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
         ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
         : '–',
       totalSessions,
+      doneRate,
+      moodCounts,
     }
   }, [todayKey])
 
@@ -123,7 +129,30 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
             <div className="num">{totalSessions}</div>
             <div className="cap">累計 FOCUS 時段</div>
           </div>
+          <div className="hist-stat">
+            <div className="num">
+              {Math.round((totalSessions * settings.focusMinutes) / 6) / 10}
+            </div>
+            <div className="cap">累計專注小時</div>
+          </div>
+          <div className="hist-stat">
+            <div className="num">{doneRate !== null ? `${doneRate}%` : '–'}</div>
+            <div className="cap">任務完成率</div>
+          </div>
         </div>
+
+        {moodCounts.some((c) => c > 0) && (
+          <div className="mood-stats">
+            {MOODS.map((m, i) =>
+              moodCounts[i] > 0 ? (
+                <span key={i} className="mood-stat">
+                  {m}
+                  <em>×{moodCounts[i]}</em>
+                </span>
+              ) : null
+            )}
+          </div>
+        )}
 
         <div className="label">近 14 天生產力評分</div>
         <div className="chart">

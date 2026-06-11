@@ -1330,6 +1330,25 @@ button.wk-head:hover {
   color: var(--ink-soft);
 }
 
+.mood-stats {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: -6px 0 18px;
+}
+
+.mood-stat {
+  font-size: 19px;
+}
+
+.mood-stat em {
+  font-family: var(--eng);
+  font-style: normal;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-left: 3px;
+}
+
 .chart {
   display: flex;
   align-items: flex-end;
