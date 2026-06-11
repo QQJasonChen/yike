@@ -1,7 +1,9 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { startAutoSync } from './cloud'
 import DayView from './DayView'
 import WeekView from './WeekView'
 import MonthView from './MonthView'
+import YearView from './YearView'
 import HistoryView from './HistoryView'
 import FocusTimer, { TimerState } from './FocusTimer'
 import {
@@ -14,7 +16,7 @@ import {
 } from './storage'
 import { Settings } from './types'
 
-type Tab = 'day' | 'week' | 'month' | 'history'
+type Tab = 'day' | 'week' | 'month' | 'year' | 'history'
 
 export default function App() {
   const todayKey = toDateKey(new Date())
@@ -22,6 +24,7 @@ export default function App() {
   const [dateKey, setDateKey] = useState(todayKey)
   const [mondayKey, setMondayKey] = useState(() => mondayOf(todayKey))
   const [monthKey, setMonthKey] = useState(() => monthOf(todayKey))
+  const [yearNum, setYearNum] = useState(() => Number(todayKey.slice(0, 4)))
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [timer, setTimer] = useState<TimerState | null>(null)
   const sessionSink = useRef<((taskIndex: number) => void) | null>(null)
@@ -49,6 +52,11 @@ export default function App() {
     sessionSink.current = fn
   }, [])
 
+  // 已登入雲端帳號時：開站自動同步＋寫入自動推送
+  useEffect(() => {
+    startAutoSync()
+  }, [])
+
   const streak = currentStreak(todayKey)
 
   return (
@@ -64,6 +72,9 @@ export default function App() {
           </button>
           <button className={tab === 'month' ? 'active' : ''} onClick={() => setTab('month')}>
             本月
+          </button>
+          <button className={tab === 'year' ? 'active' : ''} onClick={() => setTab('year')}>
+            年
           </button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
             回顧
@@ -105,6 +116,16 @@ export default function App() {
         <MonthView
           monthKey={monthKey}
           onMonthChange={setMonthKey}
+          onOpenDay={(k) => {
+            setDateKey(k)
+            setTab('day')
+          }}
+        />
+      )}
+      {tab === 'year' && (
+        <YearView
+          year={yearNum}
+          onYearChange={setYearNum}
           onOpenDay={(k) => {
             setDateKey(k)
             setTab('day')

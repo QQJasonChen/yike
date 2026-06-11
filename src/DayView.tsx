@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import TaskRow from './TaskRow'
 import Timeline from './Timeline'
 import { TimerState } from './FocusTimer'
@@ -32,16 +32,45 @@ export default function DayView({
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
   const [copied, setCopied] = useState(false)
+  const [rolloverDone, setRolloverDone] = useState(false)
   const todayKey = toDateKey(new Date())
 
   const copyMarkdown = async () => {
     try {
-      await navigator.clipboard.writeText(dayToMarkdown(dateKey, entry))
+      await navigator.clipboard.writeText(
+        dayToMarkdown(dateKey, entry, settings.morningQs, settings.eveningQs)
+      )
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
       alert('複製失敗，請改用「回顧」頁的匯出 JSON')
     }
+  }
+
+  // 昨日未完成任務 → 一鍵帶入今天
+  const yesterdayUnfinished = useMemo(() => {
+    if (dateKey !== todayKey) return []
+    const prev = loadDay(addDays(dateKey, -1))
+    const todayTexts = new Set(entry.tasks.map((t) => t.text.trim()).filter(Boolean))
+    return prev.tasks.filter((t) => t.text.trim() && !t.completed && !todayTexts.has(t.text.trim()))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateKey, todayKey, rolloverDone])
+
+  const rollover = () => {
+    setEntry((prev) => {
+      const tasks = prev.tasks.slice()
+      let qi = 0
+      for (let i = 0; i < tasks.length && qi < yesterdayUnfinished.length; i++) {
+        if (!tasks[i].text.trim()) {
+          const src = yesterdayUnfinished[qi++]
+          tasks[i] = { text: src.text, target: src.target, done: 0, actual: null, completed: false }
+        }
+      }
+      const next = { ...prev, tasks }
+      saveDay(dateKey, next)
+      return next
+    })
+    setRolloverDone(true)
   }
   const isToday = dateKey === todayKey
   const dropRef = useRef<((x: number, y: number, text: string, taskIndex: number) => boolean) | null>(null)
@@ -64,6 +93,14 @@ export default function DayView({
     const tasks = entry.tasks.slice()
     tasks[i] = t
     update({ tasks })
+  }
+
+  const setAnswer = (id: string, v: string) =>
+    update({ answers: { ...entry.answers, [id]: v } })
+
+  const MORNING_PLACEHOLDERS: Record<number, string> = {
+    0: '今天想感謝的人事物⋯',
+    1: '例：我是一個平靜而專注的人',
   }
 
   // Focus Timer 完成時段 → 塗下一個圈（只對今天有效）
@@ -144,25 +181,37 @@ export default function DayView({
 
         <div className="day-grid">
           <div>
-            <div className="label" style={{ marginTop: 0 }}>
-              我感謝
-            </div>
-            <div className="line-input">
-              <input
-                value={entry.gratitude}
-                onChange={(e) => update({ gratitude: e.target.value })}
-                placeholder="今天想感謝的人事物⋯"
-              />
-            </div>
+            {settings.morningQs.map((q, i) => (
+              <span key={`m${i}`}>
+                <div className="label" style={i === 0 ? { marginTop: 0 } : undefined}>
+                  {q}
+                </div>
+                <div className="line-input">
+                  <input
+                    value={entry.answers[`m${i}`] ?? ''}
+                    onChange={(e) => setAnswer(`m${i}`, e.target.value)}
+                    placeholder={MORNING_PLACEHOLDERS[i] ?? ''}
+                  />
+                </div>
+              </span>
+            ))}
 
-            <div className="label">今日意圖</div>
-            <div className="line-input">
-              <input
-                value={entry.intention}
-                onChange={(e) => update({ intention: e.target.value })}
-                placeholder="今天想以什麼狀態度過？例：平靜地高效"
-              />
-            </div>
+            {yesterdayUnfinished.length > 0 && (
+              <div className="rollover">
+                <span>
+                  昨天有 <b>{yesterdayUnfinished.length}</b> 件未完成：
+                  {yesterdayUnfinished.map((t) => t.text).join('、').slice(0, 40)}
+                </span>
+                <span>
+                  <button className="rollover-btn" onClick={rollover}>
+                    帶入今天 →
+                  </button>
+                  <button className="rollover-dismiss" onClick={() => setRolloverDone(true)} title="忽略">
+                    ✕
+                  </button>
+                </span>
+              </div>
+            )}
 
             {entry.tasks.map((t, i) => (
               <span key={i}>
@@ -180,30 +229,18 @@ export default function DayView({
               </span>
             ))}
 
-            <div className="label">今日亮點</div>
-            <div className="line-input">
-              <input
-                value={entry.highlight}
-                onChange={(e) => update({ highlight: e.target.value })}
-                placeholder="今天最棒的時刻⋯"
-              />
-            </div>
-
-            <div className="label">我今天學到了什麼？</div>
-            <div className="line-input">
-              <input
-                value={entry.learned}
-                onChange={(e) => update({ learned: e.target.value })}
-              />
-            </div>
-
-            <div className="label">我想記住今天的什麼？</div>
-            <div className="line-input">
-              <input
-                value={entry.remember}
-                onChange={(e) => update({ remember: e.target.value })}
-              />
-            </div>
+            {settings.eveningQs.map((q, i) => (
+              <span key={`e${i}`}>
+                <div className="label">{q}</div>
+                <div className="line-input">
+                  <input
+                    value={entry.answers[`e${i}`] ?? ''}
+                    onChange={(e) => setAnswer(`e${i}`, e.target.value)}
+                    placeholder={i === 0 ? '今天最棒的時刻⋯' : ''}
+                  />
+                </div>
+              </span>
+            ))}
 
             <div className="eval-bar">
               <div className="eval-group" title="今日習慣">

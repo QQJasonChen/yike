@@ -923,6 +923,145 @@ button.wk-head:hover {
   color: var(--gold-deep);
 }
 
+/* ---------- 昨日帶入 ---------- */
+
+.rollover {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(184, 146, 62, 0.1);
+  border: 1px dashed var(--gold);
+  border-radius: 8px;
+  padding: 9px 14px;
+  margin-top: 18px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  font-family: var(--hand);
+}
+
+.rollover-btn {
+  font-family: var(--serif);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--gold-deep);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 4px 14px;
+  transition: all 0.2s;
+}
+
+.rollover-btn:hover {
+  background: var(--gold);
+  color: #fff;
+}
+
+.rollover-dismiss {
+  color: var(--ink-faint);
+  margin-left: 8px;
+  font-size: 13px;
+}
+
+/* ---------- Year at a Glance ---------- */
+
+.yr-scroll {
+  overflow-x: auto;
+  margin: 8px -6px 0;
+  padding: 0 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.yr-grid {
+  display: flex;
+  min-width: 760px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: rgba(255, 253, 248, 0.5);
+}
+
+.yr-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--rule);
+}
+
+.yr-col:first-child {
+  border-left: none;
+}
+
+.yr-mhead {
+  text-align: center;
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule);
+  background: rgba(184, 146, 62, 0.06);
+}
+
+.yr-cell {
+  height: 19px;
+  font-family: var(--eng);
+  font-size: 9.5px;
+  color: var(--ink-faint);
+  border-bottom: 1px dotted var(--rule);
+  text-align: left;
+  padding-left: 5px;
+  transition: background 0.15s;
+}
+
+.yr-cell.void {
+  background: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(154,143,125,.12) 3px, rgba(154,143,125,.12) 4px);
+}
+
+.yr-cell:not(.void):hover {
+  outline: 1.5px solid var(--gold);
+  outline-offset: -1.5px;
+}
+
+.yr-cell.today {
+  outline: 2px solid var(--terra);
+  outline-offset: -2px;
+}
+
+/* 評分熱力：lv-1 無記錄, lv0 有記錄未評分, lv1-5 */
+.yr-cell.lv0, .yr-swatch.lv0 { background: rgba(184, 146, 62, 0.1); }
+.yr-cell.lv1, .yr-swatch.lv1 { background: rgba(184, 146, 62, 0.2); }
+.yr-cell.lv2, .yr-swatch.lv2 { background: rgba(184, 146, 62, 0.34); }
+.yr-cell.lv3, .yr-swatch.lv3 { background: rgba(184, 146, 62, 0.5); color: var(--ink); }
+.yr-cell.lv4, .yr-swatch.lv4 { background: rgba(150, 115, 43, 0.66); color: #fff; }
+.yr-cell.lv5, .yr-swatch.lv5 { background: var(--gold-deep); color: #fff; }
+
+.yr-focus {
+  font-size: 11px;
+  font-family: var(--hand);
+  border-top: 1px solid var(--rule);
+  padding: 5px 5px;
+  background: rgba(184, 146, 62, 0.05);
+}
+
+.yr-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 12px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.yr-swatch {
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+  border: 1px solid var(--rule);
+}
+
+.yr-swatch.lv-1 { background: transparent; }
+
 /* ---------- 月曆 ---------- */
 
 .mo-grid {

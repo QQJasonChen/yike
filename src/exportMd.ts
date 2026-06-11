@@ -7,13 +7,20 @@ const fmtMin = (min: number) =>
   `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
 
 /** 把一天的手帳轉成 Markdown（貼 Heptabase / Notion 用） */
-export const dayToMarkdown = (dateKey: string, e: DayEntry): string => {
+export const dayToMarkdown = (
+  dateKey: string,
+  e: DayEntry,
+  morningQs: string[],
+  eveningQs: string[]
+): string => {
   const d = new Date(`${dateKey}T12:00:00`)
   const lines: string[] = [`## 📒 日刻手帳 ${dateKey}（${WD[d.getDay()]}）`, '']
 
-  if (e.gratitude) lines.push(`**我感謝**：${e.gratitude}`)
-  if (e.intention) lines.push(`**今日意圖**：${e.intention}`)
-  if (e.gratitude || e.intention) lines.push('')
+  const morning = morningQs
+    .map((q, i) => ({ q, a: e.answers[`m${i}`] ?? '' }))
+    .filter((x) => x.a)
+  morning.forEach((x) => lines.push(`**${x.q}**：${x.a}`))
+  if (morning.length) lines.push('')
 
   const tasks = e.tasks.filter((t) => t.text.trim())
   if (tasks.length) {
@@ -34,12 +41,13 @@ export const dayToMarkdown = (dateKey: string, e: DayEntry): string => {
     lines.push('')
   }
 
-  const refl: string[] = []
-  if (e.highlight) refl.push(`- **今日亮點**：${e.highlight}`)
-  if (e.learned) refl.push(`- **學到了**：${e.learned}`)
-  if (e.remember) refl.push(`- **想記住**：${e.remember}`)
-  if (refl.length) {
-    lines.push('### 反思', ...refl, '')
+  const evening = eveningQs
+    .map((q, i) => ({ q, a: e.answers[`e${i}`] ?? '' }))
+    .filter((x) => x.a)
+  if (evening.length) {
+    lines.push('### 反思')
+    evening.forEach((x) => lines.push(`- **${x.q}**：${x.a}`))
+    lines.push('')
   }
 
   const meta: string[] = []

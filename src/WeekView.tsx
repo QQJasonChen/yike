@@ -33,7 +33,7 @@ const searchAll = (query: string): SearchHit[] => {
       if (b.text.toLowerCase().includes(q))
         hits.push({ dateKey: k, kind: '時間塊', text: b.text, time: `${fmtMin(b.start)}–${fmtMin(b.end)}` })
     })
-    for (const field of [d.gratitude, d.intention, d.highlight, d.learned, d.remember]) {
+    for (const field of Object.values(d.answers)) {
       if (field && field.toLowerCase().includes(q))
         hits.push({ dateKey: k, kind: '反思', text: field })
     }

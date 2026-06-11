@@ -1,12 +1,15 @@
 import {
   DayEntry,
+  LegacyDayFields,
   MonthEntry,
   Settings,
   WeekEntry,
+  YearEntry,
   defaultSettings,
   emptyDay,
   emptyMonth,
   emptyWeek,
+  emptyYear,
 } from './types'
 
 const DAY_PREFIX = 'pp:day:'
@@ -54,14 +57,52 @@ const read = <T>(key: string): T | null => {
   }
 }
 
+const META_KEY = 'pp:meta' // 每個 key 的最後修改時間（雲端同步用）
+
+/** 寫入後通知（雲端同步 debounce push 用） */
+export let onDataWrite: ((key: string) => void) | null = null
+export const setOnDataWrite = (fn: ((key: string) => void) | null) => {
+  onDataWrite = fn
+}
+
+export const loadMeta = (): Record<string, number> => read<Record<string, number>>(META_KEY) ?? {}
+
+const touchMeta = (key: string) => {
+  const m = loadMeta()
+  m[key] = Date.now()
+  localStorage.setItem(META_KEY, JSON.stringify(m))
+}
+
 const write = (key: string, value: unknown) => {
   localStorage.setItem(key, JSON.stringify(value))
+  if (key !== SYNC_KEY && key !== META_KEY) {
+    touchMeta(key)
+    onDataWrite?.(key)
+  }
+}
+
+/** 雲端拉下來的資料直接落地（不觸發 push 迴圈），並記下伺服器時間戳 */
+export const writeFromCloud = (key: string, value: unknown, serverTs: number) => {
+  localStorage.setItem(key, JSON.stringify(value))
+  const m = loadMeta()
+  m[key] = serverTs
+  localStorage.setItem(META_KEY, JSON.stringify(m))
 }
 
 export const loadDay = (dateKey: string): DayEntry => {
-  const stored = read<Partial<DayEntry>>(DAY_PREFIX + dateKey)
-  // 與 emptyDay 合併，舊資料缺新欄位（如 blocks）時自動補上
-  return stored ? { ...emptyDay(), ...stored } : emptyDay()
+  const stored = read<Partial<DayEntry> & LegacyDayFields>(DAY_PREFIX + dateKey)
+  if (!stored) return emptyDay()
+  const entry = { ...emptyDay(), ...stored }
+  // v1 固定欄位 → v2 自訂問題 answers 遷移
+  if (!stored.answers) {
+    entry.answers = {}
+    if (stored.gratitude) entry.answers.m0 = stored.gratitude
+    if (stored.intention) entry.answers.m1 = stored.intention
+    if (stored.highlight) entry.answers.e0 = stored.highlight
+    if (stored.learned) entry.answers.e1 = stored.learned
+    if (stored.remember) entry.answers.e2 = stored.remember
+  }
+  return entry
 }
 
 export const saveDay = (dateKey: string, entry: DayEntry) =>
@@ -86,6 +127,16 @@ export const loadMonth = (monthKey: string): MonthEntry =>
 
 export const saveMonth = (monthKey: string, entry: MonthEntry) =>
   write(MONTH_PREFIX + monthKey, entry)
+
+const YEAR_PREFIX = 'pp:year:'
+
+export const loadYear = (yearKey: string): YearEntry => {
+  const stored = read<Partial<YearEntry>>(YEAR_PREFIX + yearKey)
+  return stored ? { ...emptyYear(), ...stored } : emptyYear()
+}
+
+export const saveYear = (yearKey: string, entry: YearEntry) =>
+  write(YEAR_PREFIX + yearKey, entry)
 
 export const loadSettings = (): Settings => ({
   ...defaultSettings(),
@@ -118,12 +169,19 @@ export const currentStreak = (todayKey: string): number => {
 
 // ---- 匯出 / 匯入 ----
 
-export const exportAll = (): string => {
-  const data: Record<string, unknown> = {}
+/** 所有要同步/備份的資料 key（排除裝置本地的 sync 設定與 meta） */
+export const allDataKeys = (): string[] => {
+  const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)
-    if (k?.startsWith('pp:') && k !== SYNC_KEY) data[k] = JSON.parse(localStorage.getItem(k)!)
+    if (k?.startsWith('pp:') && k !== SYNC_KEY && k !== META_KEY) keys.push(k)
   }
+  return keys
+}
+
+export const exportAll = (): string => {
+  const data: Record<string, unknown> = {}
+  for (const k of allDataKeys()) data[k] = JSON.parse(localStorage.getItem(k)!)
   return JSON.stringify(
     { app: 'inkday-planner', version: 1, exportedAt: new Date().toISOString(), data },
     null,
@@ -136,7 +194,7 @@ export const importAll = (json: string): number => {
   if (!parsed.data) throw new Error('格式不正確')
   let count = 0
   for (const [k, v] of Object.entries(parsed.data)) {
-    if (k.startsWith('pp:') && k !== SYNC_KEY) {
+    if (k.startsWith('pp:') && k !== SYNC_KEY && k !== META_KEY) {
       write(k, v)
       count++
     }
