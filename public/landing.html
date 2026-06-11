@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InkDay 日刻手帳 — 一天，刻下一件最重要的事</title>
+<meta name="description" content="紙本手帳質感的每日專注手帳：最重要任務 × 30 分鐘專注塗圈 × 拖拉時間軸 × 每日反思。免費使用，資料完全屬於你。" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700;900&family=LXGW+WenKai+TC&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --paper:#f5f0e6; --paper-deep:#ede6d6; --card:#faf7ef;
+  --ink:#2b2620; --ink-soft:#5c5347; --ink-faint:#9a8f7d;
+  --rule:#d8cfba; --gold:#b8923e; --gold-deep:#96732b;
+  --terra:#b65c38; --sage:#6e7d5c;
+  --serif:'Noto Serif TC',serif; --hand:'LXGW WenKai TC',serif; --eng:'EB Garamond',Georgia,serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--serif);color:var(--ink);background:var(--paper-deep);line-height:1.75;
+  background-image:radial-gradient(ellipse at 20% 0%,rgba(255,252,244,.7),transparent 60%),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0 0.26 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a{color:var(--gold-deep)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 24px}
+/* nav */
+nav{display:flex;justify-content:space-between;align-items:center;padding:22px 0}
+.brand{font-family:var(--eng);font-style:italic;font-size:17px;letter-spacing:.08em;color:var(--gold-deep)}
+nav .links a{font-size:14px;letter-spacing:.12em;color:var(--ink-soft);text-decoration:none;margin-left:22px}
+nav .links a:hover{color:var(--gold-deep)}
+/* hero */
+.hero{text-align:center;padding:64px 0 36px;position:relative}
+.hero .kicker{font-family:var(--eng);font-style:italic;font-size:15px;letter-spacing:.2em;color:var(--gold-deep)}
+.hero h1{font-size:clamp(40px,7vw,76px);font-weight:900;letter-spacing:.06em;line-height:1.2;margin:14px 0 6px}
+.hero h1 .ink{position:relative}
+.hero h1 .ink::after{content:'';position:absolute;left:0;right:0;bottom:8px;height:14px;background:rgba(184,146,62,.3);z-index:-1;transform:rotate(-1deg)}
+.hero .sub{font-family:var(--hand);font-size:clamp(17px,2.4vw,21px);color:var(--ink-soft);max-width:560px;margin:14px auto 0}
+.cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:34px 0 10px}
+.btn{display:inline-block;text-decoration:none;border-radius:999px;padding:15px 34px;font-size:16px;letter-spacing:.14em;transition:all .25s}
+.btn-primary{background:var(--ink);color:var(--paper);box-shadow:0 8px 24px rgba(43,38,32,.3)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(43,38,32,.36)}
+.btn-ghost{border:1.5px solid var(--gold);color:var(--gold-deep)}
+.btn-ghost:hover{background:rgba(184,146,62,.1)}
+.hero .note{font-size:12.5px;color:var(--ink-faint);letter-spacing:.08em}
+/* hero shot */
+.hero-shot{margin:48px auto 0;max-width:920px;position:relative}
+.hero-shot img{width:100%;border-radius:8px;box-shadow:0 30px 80px rgba(50,40,24,.35);border:1px solid var(--rule)}
+.hero-shot .float{position:absolute;right:-8px;bottom:-34px;width:150px;border-radius:18px;box-shadow:0 18px 50px rgba(50,40,24,.4);border:1px solid var(--rule);transform:rotate(3deg)}
+/* sections */
+section{padding:84px 0 0}
+.sec-kicker{font-family:var(--eng);font-style:italic;text-align:center;font-size:14px;letter-spacing:.22em;color:var(--gold-deep);text-transform:uppercase}
+h2{font-size:clamp(26px,4vw,38px);font-weight:700;text-align:center;letter-spacing:.08em;margin:8px 0 8px}
+.sec-sub{text-align:center;font-family:var(--hand);color:var(--ink-soft);max-width:600px;margin:0 auto 44px;font-size:16.5px}
+/* method steps */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
+.step{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:28px 24px;position:relative;box-shadow:0 2px 12px rgba(60,48,30,.07)}
+.step .n{font-family:var(--eng);font-style:italic;font-size:42px;color:rgba(184,146,62,.4);line-height:1;position:absolute;top:16px;right:20px}
+.step h3{font-size:17.5px;letter-spacing:.1em;margin-bottom:8px}
+.step p{font-size:14.5px;color:var(--ink-soft)}
+.step .circles{margin-top:14px;display:flex;gap:5px;align-items:center}
+.step .c{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--ink-soft)}
+.step .c.f{background:var(--ink)}
+/* features alternating */
+.feature{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;margin-bottom:64px}
+.feature:nth-child(even) .f-img{order:2}
+.feature .f-img img{width:100%;border-radius:8px;border:1px solid var(--rule);box-shadow:0 18px 48px rgba(50,40,24,.22)}
+.feature h3{font-size:24px;letter-spacing:.08em;margin-bottom:12px}
+.feature h3 em{font-family:var(--eng);font-style:italic;color:var(--gold-deep);display:block;font-size:14px;letter-spacing:.2em;margin-bottom:6px;font-weight:400}
+.feature p{color:var(--ink-soft);font-size:15.5px}
+.feature ul{margin-top:12px;list-style:none}
+.feature li{font-size:14.5px;color:var(--ink-soft);padding-left:22px;position:relative;margin-bottom:6px}
+.feature li::before{content:'✦';position:absolute;left:0;color:var(--gold)}
+@media(max-width:760px){.feature{grid-template-columns:1fr;gap:20px}.feature:nth-child(even) .f-img{order:0}}
+/* data ownership strip */
+.strip{background:var(--ink);color:var(--paper);border-radius:10px;padding:44px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:28px;margin-top:10px}
+.strip h4{font-size:16px;letter-spacing:.14em;color:var(--paper);margin-bottom:6px}
+.strip h4 span{color:#e6d4a8;margin-right:8px}
+.strip p{font-size:13.5px;color:rgba(245,240,230,.7)}
+/* pricing */
+.prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:22px;max-width:780px;margin:0 auto}
+.price{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:36px 30px;text-align:center;position:relative;box-shadow:0 2px 12px rgba(60,48,30,.07)}
+.price.hot{border:1.5px solid var(--gold);box-shadow:0 14px 44px rgba(150,115,43,.2)}
+.price .tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--gold);color:#fff;font-size:11.5px;letter-spacing:.2em;border-radius:999px;padding:4px 16px}
+.price h3{font-size:18px;letter-spacing:.14em}
+.price .amount{font-family:var(--eng);font-size:46px;font-style:italic;color:var(--gold-deep);margin:10px 0 2px}
+.price .per{font-size:12px;color:var(--ink-faint);letter-spacing:.1em;margin-bottom:18px}
+.price ul{list-style:none;text-align:left;margin:0 auto 24px;max-width:240px}
+.price li{font-size:14px;color:var(--ink-soft);padding-left:20px;position:relative;margin-bottom:8px}
+.price li::before{content:'✓';position:absolute;left:0;color:var(--sage)}
+/* faq */
+.faq{max-width:680px;margin:0 auto}
+.faq details{border-bottom:1px solid var(--rule);padding:18px 4px}
+.faq summary{cursor:pointer;font-size:16.5px;letter-spacing:.06em;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.faq summary::after{content:'＋';color:var(--gold-deep);font-size:18px}
+.faq details[open] summary::after{content:'−'}
+.faq p{font-size:14.5px;color:var(--ink-soft);padding-top:10px;font-family:var(--hand)}
+/* final cta + footer */
+.final{text-align:center;padding:90px 0 30px}
+.final .quote{font-family:var(--hand);font-size:19px;color:var(--ink-soft);max-width:520px;margin:0 auto 8px}
+.final .author{font-family:var(--eng);font-style:italic;font-size:13px;color:var(--gold-deep);letter-spacing:.1em}
+.final h2{margin-top:28px}
+footer{text-align:center;padding:44px 0 36px;color:var(--ink-faint);font-size:12.5px;letter-spacing:.08em}
+footer a{color:var(--ink-faint)}
+.reveal{opacity:0;transform:translateY(22px);transition:all .7s cubic-bezier(.2,.7,.3,1)}
+.reveal.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <span class="brand">InkDay 日刻手帳</span>
+    <span class="links">
+      <a href="#method">方法</a><a href="#features">功能</a><a href="#price">取得</a><a href="manual.html">使用手冊</a>
+    </span>
+  </nav>
+
+  <header class="hero">
+    <div class="kicker">A DAILY FOCUS JOURNAL</div>
+    <h1>一天，<span class="ink">刻下一件</span><br/>最重要的事。</h1>
+    <p class="sub">待辦清單永遠做不完，是因為什麼都「重要」。日刻手帳把紙本手帳的儀式感搬進螢幕：每天先選一件事，專注、塗圈、反思——其他的，等它做完再說。</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="./">免費開始使用 →</a>
+      <a class="btn btn-ghost" href="manual.html">看使用手冊</a>
+    </div>
+    <p class="note">免註冊・免下載・手機加入主畫面即是 App・資料 100% 存在你的裝置</p>
+    <div class="hero-shot reveal">
+      <img src="img/shot-day.png" alt="日刻手帳每日頁面" />
+      <img class="float" src="img/shot-mobile.png" alt="手機版畫面" />
+    </div>
+  </header>
+
+  <section id="method">
+    <div class="sec-kicker">The Method</div>
+    <h2>方法很老派，因為老派有效</h2>
+    <p class="sec-sub">源自紙本生產力手帳百年不變的循環——只是現在它會自己計時、自己塗圈、自己統計。</p>
+    <div class="steps">
+      <div class="step reveal"><span class="n">1</span><h3>★ 最重要任務</h3><p>每天先回答一題：「今天就算只做成這一件，也值得了」——通常是最不舒服、最常拖延的那件。最多五項任務，少即是多。</p></div>
+      <div class="step reveal"><span class="n">2</span><h3>30 分鐘專注塗圈</h3><p>先預估要幾段 30 分鐘，按 ▶ 開始倒數。每完成一段，塗掉一圈。墨點落下的瞬間，比任何打勾都療癒。</p>
+        <div class="circles"><span style="font-family:var(--hand);font-size:13px;color:var(--ink-faint)">4</span><span class="c f"></span><span class="c f"></span><span class="c f"></span><span class="c"></span><span class="c"></span></div></div>
+      <div class="step reveal"><span class="n">3</span><h3>拖出今天的形狀</h3><p>像 Google 日曆一樣把任務拖進時間軸，看見一天真實的樣子。紅線走到哪，你就在哪。</p></div>
+      <div class="step reveal"><span class="n">4</span><h3>晚間三問</h3><p>今日亮點？學到什麼？想記住什麼？加上心情與 1–5 評分。一個月後回頭看，你會謝謝有記錄的自己。</p></div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="sec-kicker">Four Views</div>
+    <h2>日・週・月・回顧</h2>
+    <p class="sec-sub">一個節奏，四種視角。</p>
+
+    <div class="feature reveal">
+      <div class="f-img"><img src="img/shot-week.png" alt="週檢視" /></div>
+      <div>
+        <h3><em>WEEKLY</em>無印手帳式的一週直式時間格</h3>
+        <p>七天並排的垂直時間軸，點任何空格快速排程。上方的搜尋框能搜遍所有歷史記錄——任務、時間塊、反思，命中的會在格子裡亮起來。</p>
+        <ul><li>點空格 1 秒新增時間塊</li><li>全域搜尋＋高亮</li><li>週意圖、本週五大任務、週回顧四問</li></ul>
+      </div>
+    </div>
+
+    <div class="feature reveal">
+      <div class="f-img"><img src="img/shot-month.png" alt="月檢視" /></div>
+      <div>
+        <h3><em>MONTHLY</em>一眼看完整個月</h3>
+        <p>每一天的最重要任務、心情、評分都濃縮在月曆格子裡。配上「本月優先事項」與「本月亮點」，月底回顧不用翻三十頁。</p>
+        <ul><li>每日 MIT／心情／評分總覽</li><li>本月優先事項六格</li><li>點任一天直接跳入</li></ul>
+      </div>
+    </div>
+
+    <div class="feature reveal">
+      <div class="f-img"><img src="img/shot-review.png" alt="回顧統計" /></div>
+      <div>
+        <h3><em>REVIEW</em>看見自己的模式</h3>
+        <p>連續記錄天數、平均生產力、累計專注小時、任務完成率、心情分布、近 14 天圖表。誠實是最好的策略——尤其是對自己。</p>
+        <ul><li>連續天數 streak 養成習慣</li><li>一鍵匯出 Markdown 到 Heptabase / Notion</li><li>JSON 完整備份／匯入</li></ul>
+      </div>
+    </div>
+
+    <div class="strip reveal">
+      <div><h4><span>◆</span>資料完全屬於你</h4><p>所有記錄存在你的裝置上，沒有伺服器、沒有帳號、沒有人看得到你的日記。</p></div>
+      <div><h4><span>◆</span>跨裝置同步</h4><p>用你自己的 GitHub 私人 Gist 當免費雲端，手機電腦一個 token 搞定。</p></div>
+      <div><h4><span>◆</span>離線可用</h4><p>PWA 加入主畫面後，飛機上也能寫。打開就是今天，零載入焦慮。</p></div>
+    </div>
+  </section>
+
+  <section id="price">
+    <div class="sec-kicker">Get InkDay</div>
+    <h2>免費使用，自由支持</h2>
+    <p class="sec-sub">工具不該擋在習慣前面。日刻手帳完整功能免費，如果它讓你的每一天更清楚，再用一杯咖啡支持它繼續進化。</p>
+    <div class="prices">
+      <div class="price reveal">
+        <h3>免費・完整版</h3>
+        <div class="amount">NT$0</div>
+        <div class="per">永久免費・無功能閹割</div>
+        <ul>
+          <li>日／週／月／回顧 全部視圖</li>
+          <li>Focus 計時器＋塗圈追蹤</li>
+          <li>拖拉時間軸＋全域搜尋</li>
+          <li>Gist 跨裝置同步</li>
+          <li>Markdown／JSON 匯出</li>
+        </ul>
+        <a class="btn btn-primary" href="./">立即開始 →</a>
+      </div>
+      <div class="price hot reveal">
+        <span class="tag">支持開發</span>
+        <h3>請開發者一杯咖啡</h3>
+        <div class="amount">自由定價</div>
+        <div class="per">NT$150 / 300 / 隨意</div>
+        <ul>
+          <li>支持持續開發與新功能</li>
+          <li>優先收到更新通知</li>
+          <li>功能許願優先權</li>
+          <li>一份真誠的感謝</li>
+        </ul>
+        <a class="btn btn-ghost" href="https://qqleveragelearning.gumroad.com/l/inkday" target="_blank" rel="noreferrer">支持這個專案 ♥</a>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-kicker">FAQ</div>
+    <h2>常見問題</h2>
+    <p class="sec-sub"></p>
+    <div class="faq">
+      <details class="reveal"><summary>需要註冊帳號嗎？</summary><p>不用。打開就能寫，所有資料存在你的瀏覽器裡。建議手機用 Safari／Chrome 開啟後選「加入主畫面」，就跟原生 App 一樣。</p></details>
+      <details class="reveal"><summary>換手機或電腦，資料怎麼帶走？</summary><p>兩個方法：①「回顧」頁一鍵匯出 JSON 備份、再匯入新裝置；②設定 GitHub Gist 同步——貼一個 token，上傳／下載即可雙向同步，資料存在你自己的 GitHub 私人空間。</p></details>
+      <details class="reveal"><summary>可以接到 Heptabase 或 Notion 嗎？</summary><p>可以。每日頁右上角的「⧉ MD」按鈕會把整天的記錄（任務、塗圈數、時間軸、反思）複製成乾淨的 Markdown，直接貼上即可，格式完美呈現。</p></details>
+      <details class="reveal"><summary>清除瀏覽器資料會不會把記錄洗掉？</summary><p>會，這是「資料存在本機」的代價。所以請養成習慣：開啟 Gist 同步或定期匯出 JSON。你的日記值得一份備份。</p></details>
+      <details class="reveal"><summary>跟紙本手帳有什麼不同？</summary><p>方法一樣老派，但它會自己倒數計時、自動塗圈、自動算統計、可以搜尋三個月前的任何一句話——而且永遠不會寫到最後一頁。</p></details>
+    </div>
+  </section>
+
+  <div class="final">
+    <p class="quote">「我們如何度過每一天，就是我們如何度過一生。」</p>
+    <p class="author">— Annie Dillard</p>
+    <h2>今天的那一件事，是什麼？</h2>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="./">打開日刻手帳 →</a>
+    </div>
+  </div>
+
+  <footer>
+    InkDay 日刻手帳 ・ <a href="manual.html">使用手冊</a> ・ <a href="https://github.com/QQJasonChen/productivity-planner" target="_blank" rel="noreferrer">GitHub</a><br/>
+    方法論受紙本生產力手帳傳統啟發；本專案為獨立實作，與任何手帳品牌無關聯。
+  </footer>
+</div>
+<script>
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

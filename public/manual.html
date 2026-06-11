@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>使用手冊 — InkDay 日刻手帳</title>
+<meta name="description" content="InkDay 日刻手帳完整使用手冊：每日流程、Focus 計時、時間軸拖拉、週月檢視、跨裝置同步、匯出備份。" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700;900&family=LXGW+WenKai+TC&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --paper:#f5f0e6; --paper-deep:#ede6d6; --card:#faf7ef;
+  --ink:#2b2620; --ink-soft:#5c5347; --ink-faint:#9a8f7d;
+  --rule:#d8cfba; --gold:#b8923e; --gold-deep:#96732b; --terra:#b65c38; --sage:#6e7d5c;
+  --serif:'Noto Serif TC',serif; --hand:'LXGW WenKai TC',serif; --eng:'EB Garamond',Georgia,serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--serif);color:var(--ink);background:var(--paper-deep);line-height:1.85;
+  background-image:radial-gradient(ellipse at 20% 0%,rgba(255,252,244,.7),transparent 60%),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0 0.26 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");}
+a{color:var(--gold-deep)}
+.layout{max-width:1100px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:230px 1fr;gap:48px}
+@media(max-width:860px){.layout{grid-template-columns:1fr;gap:0}}
+/* topbar */
+.top{max-width:1100px;margin:0 auto;padding:22px 24px;display:flex;justify-content:space-between;align-items:center}
+.brand{font-family:var(--eng);font-style:italic;font-size:16px;color:var(--gold-deep);text-decoration:none;letter-spacing:.08em}
+.top a.open{font-size:13px;letter-spacing:.14em;text-decoration:none;border:1px solid var(--gold);border-radius:999px;padding:8px 18px;color:var(--gold-deep)}
+/* toc */
+.toc{position:sticky;top:24px;align-self:start;background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:22px 20px;font-size:14px}
+.toc .t{font-size:11.5px;letter-spacing:.25em;color:var(--gold-deep);font-weight:600;margin-bottom:10px}
+.toc a{display:block;color:var(--ink-soft);text-decoration:none;padding:4px 0;border-left:2px solid transparent;padding-left:10px;margin-left:-10px}
+.toc a:hover{color:var(--gold-deep);border-left-color:var(--gold)}
+@media(max-width:860px){.toc{position:static;margin-bottom:30px}}
+/* content */
+.doc{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:clamp(26px,5vw,56px);box-shadow:0 8px 32px rgba(60,48,30,.1);margin-bottom:60px;position:relative}
+.doc::before{content:'';position:absolute;inset:10px;border:1px solid rgba(184,146,62,.3);border-radius:4px;pointer-events:none}
+.doc>*{position:relative}
+h1{font-size:clamp(30px,5vw,42px);font-weight:900;letter-spacing:.08em;text-align:center}
+.sub{text-align:center;font-family:var(--eng);font-style:italic;color:var(--ink-faint);margin-bottom:8px;letter-spacing:.15em}
+.intro{font-family:var(--hand);text-align:center;color:var(--ink-soft);max-width:520px;margin:10px auto 30px}
+h2{font-size:23px;letter-spacing:.1em;margin:56px 0 14px;padding-bottom:8px;border-bottom:1.5px solid var(--ink)}
+h2 .no{font-family:var(--eng);font-style:italic;color:var(--gold);margin-right:10px}
+h3{font-size:17px;letter-spacing:.08em;margin:26px 0 8px;color:var(--gold-deep)}
+p{font-size:15.5px;color:var(--ink-soft);margin-bottom:10px}
+ol,ul{margin:8px 0 14px 24px;color:var(--ink-soft);font-size:15px}
+li{margin-bottom:6px}
+img.shot{width:100%;border:1px solid var(--rule);border-radius:6px;box-shadow:0 10px 30px rgba(50,40,24,.18);margin:16px 0 8px}
+.cap{font-size:12.5px;color:var(--ink-faint);text-align:center;font-family:var(--eng);font-style:italic;margin-bottom:10px}
+kbd{font-family:var(--hand);background:rgba(184,146,62,.14);border:1px solid var(--gold-soft,#e6d4a8);border-radius:5px;padding:1px 8px;font-size:14px;white-space:nowrap}
+.tip{border-left:3px solid var(--gold);background:rgba(184,146,62,.08);border-radius:0 6px 6px 0;padding:12px 18px;margin:16px 0;font-size:14.5px;color:var(--ink-soft)}
+.tip b{color:var(--gold-deep)}
+.warn{border-left:3px solid var(--terra);background:rgba(182,92,56,.07);border-radius:0 6px 6px 0;padding:12px 18px;margin:16px 0;font-size:14.5px;color:var(--ink-soft)}
+table{width:100%;border-collapse:collapse;font-size:14.5px;margin:14px 0}
+th,td{border:1px solid var(--rule);padding:9px 12px;text-align:left;color:var(--ink-soft)}
+th{background:rgba(184,146,62,.08);color:var(--ink);letter-spacing:.08em;font-size:13px}
+footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:40px;letter-spacing:.08em}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="brand" href="landing.html">InkDay 日刻手帳</a>
+  <a class="open" href="./">打開 App →</a>
+</div>
+
+<div class="layout">
+  <nav class="toc">
+    <div class="t">目錄</div>
+    <a href="#start">1. 快速開始</a>
+    <a href="#daily">2. 每日流程</a>
+    <a href="#focus">3. Focus 計時器</a>
+    <a href="#timeline">4. 時間軸拖拉</a>
+    <a href="#week">5. 本週與搜尋</a>
+    <a href="#month">6. 本月</a>
+    <a href="#review">7. 回顧與統計</a>
+    <a href="#sync">8. 跨裝置同步</a>
+    <a href="#export">9. 匯出與備份</a>
+    <a href="#faq">10. 疑難排解</a>
+  </nav>
+
+  <main class="doc">
+    <p class="sub">USER MANUAL</p>
+    <h1>使用手冊</h1>
+    <p class="intro">這本手冊 10 分鐘讀完。但其實你只需要記得一件事：打開它，寫下今天最重要的那一件。</p>
+
+    <h2 id="start"><span class="no">1</span>快速開始</h2>
+    <h3>手機（建議，像原生 App 一樣用）</h3>
+    <ol>
+      <li>用 Safari（iPhone）或 Chrome（Android）開啟 <a href="https://qqjasonchen.github.io/productivity-planner/">app 網址</a></li>
+      <li>iPhone：點分享鈕 <kbd>⬆️</kbd> → 「加入主畫面」；Android：選單 <kbd>⋮</kbd> → 「加到主畫面」</li>
+      <li>之後從主畫面 icon 開啟——全螢幕、離線可用、打開就是今天</li>
+    </ol>
+    <h3>電腦</h3>
+    <p>直接開網址加入書籤即可。Chrome 網址列右側的「安裝」圖示可以把它變成獨立視窗 App。</p>
+    <div class="tip"><b>第一次打開：</b>什麼都不用設定。直接在「★ 最重要任務」那一行打字，就開始了。</div>
+
+    <h2 id="daily"><span class="no">2</span>每日流程（每天 1 分鐘晨間 + 1 分鐘晚間）</h2>
+    <img class="shot" src="img/shot-day.png" alt="每日頁面" />
+    <p class="cap">「今天」頁：左邊是手帳，右邊是時間軸</p>
+    <h3>☀️ 晨間（30–60 秒）</h3>
+    <ol>
+      <li><b>我感謝</b>：寫一件感謝的人事物，定調心情</li>
+      <li><b>今日意圖</b>：今天想用什麼狀態度過？例：「平靜地高效」</li>
+      <li><b>★ 最重要任務</b>：問自己「今天就算只做成這一件，也值得了」——通常是最不舒服、最常拖延的那件</li>
+      <li>視情況補上 2 個次要任務、2 個額外任務（最多五項，<b>少即是多</b>）</li>
+      <li>點任務右邊的 <kbd>▢</kbd> 方框預估需要幾段 30 分鐘（Target）</li>
+    </ol>
+    <h3>🌙 晚間（60 秒）</h3>
+    <ol>
+      <li>填「今日亮點」「我學到了什麼」「我想記住什麼」</li>
+      <li>點心情表情 😖🙁😐🙂😄</li>
+      <li>給今天的生產力打 1–5 分。<b>誠實，但善待自己</b>——這是學習，不是考核</li>
+      <li>順手寫下明天的最重要任務，明早醒來就知道要做什麼</li>
+    </ol>
+    <div class="tip"><b>所有輸入即時自動儲存</b>，沒有儲存按鈕。寫完直接關掉就行。</div>
+
+    <h2 id="focus"><span class="no">3</span>Focus 計時器與塗圈</h2>
+    <p>每個任務右側是一組追蹤格：<kbd>▢ Target</kbd> → <kbd>○○○○○</kbd> → <kbd>▢ Actual</kbd></p>
+    <table>
+      <tr><th>操作</th><th>怎麼做</th></tr>
+      <tr><td>預估時段數</td><td>點 Target 方框，每點一下 +1（1→6→清空循環）</td></tr>
+      <tr><td>開始專注</td><td>點任務旁 <kbd>▶</kbd>，底部浮出計時器倒數 30 分鐘</td></tr>
+      <tr><td>完成一段</td><td>倒數結束自動「塗掉一圈」＋鐘聲＋自動進入 5 分鐘休息</td></tr>
+      <tr><td>提前完成</td><td>計時器上的 <kbd>✓</kbd>：立刻記一圈、進休息</td></tr>
+      <tr><td>暫停／繼續</td><td><kbd>⏸</kbd>／<kbd>▶</kbd>——被打斷不用重來，處理完回來繼續</td></tr>
+      <tr><td>手動塗圈</td><td>沒開計時器也可以直接點圈圈：點第 N 顆＝塗到 N，再點一下退回</td></tr>
+      <tr><td>完成任務</td><td>點最右邊的 <kbd>✓</kbd> 圓鈕，整行劃掉</td></tr>
+    </table>
+    <div class="tip"><b>30 分鐘不合手感？</b>到「回顧」頁最下面可改 25–50 分鐘，休息 5–15 分鐘。</div>
+
+    <h2 id="timeline"><span class="no">4</span>時間軸（Google 日曆式拖拉）</h2>
+    <p>「今天」頁右側是 06:00–22:00 的時間軸，紅線是現在時刻。</p>
+    <ul>
+      <li><b>新增</b>：點任何空格，長出 30 分鐘時間塊，直接命名</li>
+      <li><b>拖拉新增</b>（滑鼠）：在空白處按住往下拉，畫出任意長度</li>
+      <li><b>移動</b>：按住時間塊上下拖</li>
+      <li><b>調長度</b>：拖時間塊底部的小把手</li>
+      <li><b>任務排程</b>：按住任務列的 <kbd>⠿</kbd> 把手，直接拖進時間軸——任務變成綠色時間塊</li>
+      <li><b>編輯／刪除</b>：點時間塊開啟小視窗</li>
+    </ul>
+
+    <h2 id="week"><span class="no">5</span>本週：七天時間格＋全域搜尋</h2>
+    <img class="shot" src="img/shot-week.png" alt="週檢視" />
+    <p class="cap">無印手帳式的週間直式時間格</p>
+    <ul>
+      <li><b>點任何空格</b>快速新增該天的時間塊；小視窗裡 <kbd>＋</kbd><kbd>−</kbd> 調整長度</li>
+      <li><b>點日期頭</b>跳進那一天的完整手帳頁</li>
+      <li><b>搜尋框</b>：輸入任何關鍵字，搜遍所有歷史記錄（任務／時間塊／反思）。本週格子裡命中的塊會亮紅框、其餘變淡；點搜尋結果直接跳到那天</li>
+      <li>往下捲是<b>週計劃</b>（本週意圖＋五大任務）和<b>週回顧四問</b>，建議週日花 10 分鐘填</li>
+    </ul>
+
+    <h2 id="month"><span class="no">6</span>本月</h2>
+    <img class="shot" src="img/shot-month.png" alt="月檢視" />
+    <p class="cap">每天的最重要任務、心情、評分濃縮成一格</p>
+    <ul>
+      <li>月曆格子顯示當天的 MIT、心情表情、評分；點格子跳入那天</li>
+      <li><b>本月優先事項</b>（6 格）：這個月真正要推進的事</li>
+      <li><b>本月亮點</b>：月底回顧時，這裡就是你的高光集</li>
+      <li><kbd>‹</kbd><kbd>›</kbd> 可以跨月、跨年翻頁</li>
+    </ul>
+
+    <h2 id="review"><span class="no">7</span>回顧與統計</h2>
+    <img class="shot" src="img/shot-review.png" alt="回顧統計" />
+    <p class="cap">看見自己的模式，就是進步的開始</p>
+    <p>「回顧」頁自動統計：<b>連續記錄天數</b>（streak）、累計天數、平均生產力評分、累計 FOCUS 時段與專注小時、任務完成率、心情分布、近 14 天評分圖表，以及所有記錄列表（點任一筆跳回那天）。</p>
+
+    <h2 id="sync"><span class="no">8</span>跨裝置同步（手機 ⇄ 電腦）</h2>
+    <p>資料預設只存在單一裝置。要多裝置同步，用你自己的 GitHub 帳號當免費私人雲端：</p>
+    <ol>
+      <li>到「回顧」頁底部「跨裝置同步」，點 token 連結（或到 <a href="https://github.com/settings/tokens/new?scopes=gist&description=InkDay+Sync" target="_blank" rel="noreferrer">github.com/settings/tokens</a>）</li>
+      <li>建立一個<b>只勾 gist 權限</b>的 token，複製</li>
+      <li>貼到輸入框 → 點「⬆ 上傳到雲端」</li>
+      <li>在另一台裝置：貼<b>同一個 token</b> → 點「⬇ 從雲端下載」</li>
+      <li>之後養成習慣：寫完上傳、換裝置先下載</li>
+    </ol>
+    <div class="tip"><b>資料去哪了？</b>存在你 GitHub 帳號的「私人 Gist」，只有你看得到。token 只留在裝置上，不會跟著備份檔外流。</div>
+
+    <h2 id="export"><span class="no">9</span>匯出與備份</h2>
+    <table>
+      <tr><th>功能</th><th>位置</th><th>用途</th></tr>
+      <tr><td><kbd>⧉ MD</kbd> 複製當日 Markdown</td><td>「今天」頁右上角</td><td>貼到 Heptabase journal、Notion、任何筆記軟體，格式完美</td></tr>
+      <tr><td>匯出備份 JSON</td><td>「回顧」頁</td><td>完整備份所有資料成一個檔案</td></tr>
+      <tr><td>匯入備份</td><td>「回顧」頁</td><td>把 JSON 備份還原到新裝置</td></tr>
+    </table>
+    <div class="warn"><b>重要：</b>清除瀏覽器資料（清快取／無痕模式）會洗掉本機記錄。請開啟 Gist 同步，或每週匯出一次 JSON。你的日記值得一份備份。</div>
+
+    <h2 id="faq"><span class="no">10</span>疑難排解</h2>
+    <h3>計時器的聲音沒響？</h3>
+    <p>手機請確認沒開靜音／勿擾；瀏覽器分頁須是有互動過的狀態（點過任意按鈕即可）。切到其他分頁時，倒數會顯示在分頁標題上。</p>
+    <h3>加入主畫面後畫面沒更新？</h3>
+    <p>PWA 會快取舊版。完全關閉 App 再重開，或下拉重新整理兩次即可拿到新版。</p>
+    <h3>同步顯示「上傳失敗（401）」？</h3>
+    <p>Token 過期或權限不對。重新建立一個只勾 <kbd>gist</kbd> 的 token 再貼一次。</p>
+    <h3>手機上拖拉時間塊會捲動頁面？</h3>
+    <p>直接按住時間塊拖即可（塊本身不會觸發捲動）；新增請用「點空格」，比拖拉更快。</p>
+    <h3>想從某一天開始補寫過去的記錄？</h3>
+    <p>「今天」頁用 <kbd>‹</kbd> 往回翻到任何一天都可以寫，統計會自動更新。</p>
+
+    <p style="text-align:center;margin-top:48px;font-family:var(--hand);color:var(--ink-soft)">就這樣。現在去寫下今天最重要的那一件事吧。<br/><a href="./">→ 打開日刻手帳</a></p>
+  </main>
+</div>
+
+<footer>InkDay 日刻手帳 ・ <a href="landing.html">產品介紹</a> ・ <a href="https://github.com/QQJasonChen/productivity-planner" target="_blank" rel="noreferrer">GitHub</a></footer>
+</body>
+</html>
