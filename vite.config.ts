@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// GitHub Pages serves the site from /productivity-planner/
+// GitHub Pages serves from /productivity-planner/；Capacitor (iOS) 需要相對路徑
 export default defineConfig({
-  base: '/productivity-planner/',
+  base: process.env.CAP_BUILD ? './' : '/productivity-planner/',
   plugins: [react()],
 })

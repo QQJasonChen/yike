@@ -5,3 +5,6 @@ dist
 npm-debug.log*
 *.tsbuildinfo
 .gstack/
+ios/App/Pods
+ios/App/App/public
+ios/App/output
