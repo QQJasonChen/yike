@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   addDays,
   allDayKeys,
@@ -6,6 +6,10 @@ import {
   exportAll,
   importAll,
   loadDay,
+  loadSync,
+  saveSync,
+  syncDownload,
+  syncUpload,
   toDateKey,
 } from './storage'
 import { Settings } from './types'
@@ -22,6 +26,36 @@ interface Props {
 export default function HistoryView({ onOpenDay, settings, onSettingsChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const todayKey = toDateKey(new Date())
+  const [sync, setSync] = useState(loadSync)
+  const [syncMsg, setSyncMsg] = useState('')
+  const [syncing, setSyncing] = useState(false)
+
+  const updateSyncToken = (token: string) => {
+    const next = { ...sync, token }
+    setSync(next)
+    saveSync(next)
+  }
+
+  const doSync = async (dir: 'up' | 'down') => {
+    setSyncing(true)
+    setSyncMsg(dir === 'up' ? '上傳中⋯' : '下載中⋯')
+    try {
+      if (dir === 'up') {
+        const cfg = await syncUpload()
+        setSync(cfg)
+        setSyncMsg('✓ 已上傳到你的私人 Gist')
+      } else {
+        const n = await syncDownload()
+        setSync(loadSync())
+        setSyncMsg(`✓ 已合併 ${n} 筆雲端資料，重新整理生效`)
+        setTimeout(() => location.reload(), 1200)
+      }
+    } catch (e) {
+      setSyncMsg(`✗ ${e instanceof Error ? e.message : '同步失敗'}`)
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const { keys, days, streak, avgScore, totalSessions } = useMemo(() => {
     const keys = allDayKeys()
@@ -144,6 +178,42 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
               onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0])}
             />
           </label>
+        </div>
+
+        <div className="label" style={{ justifyContent: 'center', marginTop: 30 }}>
+          跨裝置同步
+        </div>
+        <div className="sync-box">
+          <p className="sync-help">
+            用你自己的 GitHub 帳號當免費雲端：到{' '}
+            <a href="https://github.com/settings/tokens/new?scopes=gist&description=InkDay+Sync" target="_blank" rel="noreferrer">
+              github.com/settings/tokens
+            </a>{' '}
+            建一個只勾 <code>gist</code> 權限的 token，貼到下面。每台裝置貼同一個 token，
+            就能「上傳」→ 換裝置「下載」。資料存在你帳號的私人 Gist，別人看不到。
+          </p>
+          <div className="line-input sync-token">
+            <input
+              type="password"
+              placeholder="ghp_xxxx⋯（GitHub token，只存在這台裝置）"
+              value={sync.token}
+              onChange={(e) => updateSyncToken(e.target.value.trim())}
+            />
+          </div>
+          <div className="data-actions" style={{ marginTop: 12 }}>
+            <button disabled={syncing || !sync.token} onClick={() => doSync('up')}>
+              ⬆ 上傳到雲端
+            </button>
+            <button disabled={syncing || !sync.token} onClick={() => doSync('down')}>
+              ⬇ 從雲端下載
+            </button>
+          </div>
+          {(syncMsg || sync.lastSync) && (
+            <p className="sync-status">
+              {syncMsg}
+              {!syncMsg && sync.lastSync && `上次同步：${new Date(sync.lastSync).toLocaleString()}`}
+            </p>
+          )}
         </div>
 
         <div className="settings-row">

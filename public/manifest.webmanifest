@@ -1,6 +1,6 @@
 {
-  "name": "每日生產力手帳",
-  "short_name": "生產力手帳",
+  "name": "InkDay 日刻手帳",
+  "short_name": "日刻手帳",
   "description": "每日最重要任務、Focus Time 與反思手帳",
   "start_url": "./",
   "scope": "./",

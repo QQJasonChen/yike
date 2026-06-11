@@ -1,24 +1,27 @@
 import { useCallback, useRef, useState } from 'react'
 import DayView from './DayView'
 import WeekView from './WeekView'
+import MonthView from './MonthView'
 import HistoryView from './HistoryView'
 import FocusTimer, { TimerState } from './FocusTimer'
 import {
   currentStreak,
   loadSettings,
   mondayOf,
+  monthOf,
   saveSettings,
   toDateKey,
 } from './storage'
 import { Settings } from './types'
 
-type Tab = 'day' | 'week' | 'history'
+type Tab = 'day' | 'week' | 'month' | 'history'
 
 export default function App() {
   const todayKey = toDateKey(new Date())
   const [tab, setTab] = useState<Tab>('day')
   const [dateKey, setDateKey] = useState(todayKey)
   const [mondayKey, setMondayKey] = useState(() => mondayOf(todayKey))
+  const [monthKey, setMonthKey] = useState(() => monthOf(todayKey))
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [timer, setTimer] = useState<TimerState | null>(null)
   const sessionSink = useRef<((taskIndex: number) => void) | null>(null)
@@ -51,13 +54,16 @@ export default function App() {
   return (
     <>
       <div className="topbar">
-        <span className="brand">The Productivity Planner</span>
+        <span className="brand">InkDay 日刻手帳</span>
         <nav className="tabs">
           <button className={tab === 'day' ? 'active' : ''} onClick={() => setTab('day')}>
             今天
           </button>
           <button className={tab === 'week' ? 'active' : ''} onClick={() => setTab('week')}>
             本週
+          </button>
+          <button className={tab === 'month' ? 'active' : ''} onClick={() => setTab('month')}>
+            本月
           </button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
             回顧
@@ -89,6 +95,16 @@ export default function App() {
         <WeekView
           mondayKey={mondayKey}
           onWeekChange={setMondayKey}
+          onOpenDay={(k) => {
+            setDateKey(k)
+            setTab('day')
+          }}
+        />
+      )}
+      {tab === 'month' && (
+        <MonthView
+          monthKey={monthKey}
+          onMonthChange={setMonthKey}
           onOpenDay={(k) => {
             setDateKey(k)
             setTab('day')

@@ -1,5 +1,5 @@
 /* ============================================================
-   每日生產力手帳 — 紙本手帳數位化
+   InkDay 日刻手帳 — 紙本手帳數位化
    奶油紙 × 墨黑 × 燙金 | Noto Serif TC + LXGW WenKai TC + EB Garamond
    ============================================================ */
 
@@ -921,6 +921,144 @@ button.wk-head:hover {
 .dur-btn:hover {
   border-color: var(--gold);
   color: var(--gold-deep);
+}
+
+/* ---------- 月曆 ---------- */
+
+.mo-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255, 253, 248, 0.5);
+  margin-top: 8px;
+}
+
+.mo-wd {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+  text-align: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+  background: rgba(184, 146, 62, 0.06);
+}
+
+.mo-cell {
+  min-height: 76px;
+  border-bottom: 1px solid var(--rule);
+  border-right: 1px dotted var(--rule);
+  padding: 4px 6px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  transition: background 0.2s;
+  overflow: hidden;
+}
+
+.mo-cell:not(.blank):hover {
+  background: rgba(184, 146, 62, 0.08);
+}
+
+.mo-cell.today {
+  background: rgba(184, 146, 62, 0.14);
+}
+
+.mo-daynum {
+  font-family: var(--eng);
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.mo-cell.today .mo-daynum {
+  color: var(--gold-deep);
+  font-weight: 600;
+}
+
+.mo-meta {
+  font-size: 11px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.mo-meta em {
+  font-family: var(--eng);
+  font-style: normal;
+  color: var(--terra);
+  font-size: 11.5px;
+}
+
+.mo-mit {
+  font-family: var(--hand);
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 560px) {
+  .mo-cell {
+    min-height: 56px;
+  }
+  .mo-mit {
+    display: none;
+  }
+}
+
+/* ---------- 跨裝置同步 ---------- */
+
+.sync-box {
+  max-width: 520px;
+  margin: 0 auto;
+  border: 1px dashed var(--rule);
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+.sync-help {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.sync-help a {
+  color: var(--gold-deep);
+}
+
+.sync-help code {
+  font-family: var(--eng);
+  background: rgba(184, 146, 62, 0.12);
+  padding: 0 5px;
+  border-radius: 4px;
+}
+
+.sync-token {
+  margin-top: 10px;
+}
+
+.sync-token input {
+  font-family: var(--eng);
+  font-size: 14px;
+}
+
+.sync-status {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 10px;
+  font-family: var(--hand);
+}
+
+.data-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ---------- 晚間反思 / 評分列 ---------- */

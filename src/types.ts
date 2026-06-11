@@ -38,6 +38,11 @@ export interface WeekEntry {
   }
 }
 
+export interface MonthEntry {
+  priorities: { text: string; done: boolean }[] // 本月優先事項（6 格）
+  highlights: string // 本月亮點
+}
+
 export interface Settings {
   focusMinutes: number // Focus Time 長度（預設 30）
   breakMinutes: number // 休息長度（預設 5）
@@ -69,6 +74,11 @@ export const emptyWeek = (): WeekEntry => ({
   intention: '',
   tasks: Array.from({ length: 15 }, () => ({ text: '', done: false })),
   review: { wins: '', notCompleted: '', learned: '', nextWeek: '' },
+})
+
+export const emptyMonth = (): MonthEntry => ({
+  priorities: Array.from({ length: 6 }, () => ({ text: '', done: false })),
+  highlights: '',
 })
 
 export const defaultSettings = (): Settings => ({

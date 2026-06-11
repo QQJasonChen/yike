@@ -30,11 +30,11 @@ export const QUOTES: Quote[] = [
   { text: '每天進步 1%，一年後你會強大 37 倍。', author: 'James Clear' },
   { text: '紀律就是自由。', author: 'Jocko Willink' },
   { text: '最深的疲憊，來自未完成的事。', author: 'David Allen' },
-  { text: '時間是你最寶貴的資產。錢會來來去去，時間一旦失去就永遠失去。', author: 'Productivity Planner' },
+  { text: '時間是你最寶貴的資產。錢會來來去去，時間一旦失去就永遠失去。', author: '日刻原則' },
   { text: '先吃掉那隻青蛙。', author: 'Brian Tracy' },
-  { text: '最重要的任務，通常是最不舒服、最容易被拖延的那一件。', author: 'Productivity Planner' },
-  { text: '少即是多。每天最多五件事。', author: 'Productivity Planner' },
-  { text: '誠實是最好的策略——尤其是對自己。', author: 'Productivity Planner' },
+  { text: '最重要的任務，通常是最不舒服、最容易被拖延的那一件。', author: '日刻原則' },
+  { text: '少即是多。每天最多五件事。', author: '日刻原則' },
+  { text: '誠實是最好的策略——尤其是對自己。', author: '日刻原則' },
   { text: '一次只做一件事，是最快的做事方式。', author: 'Gary Keller' },
 ]
 

@@ -1,15 +1,19 @@
 import {
   DayEntry,
+  MonthEntry,
   Settings,
   WeekEntry,
   defaultSettings,
   emptyDay,
+  emptyMonth,
   emptyWeek,
 } from './types'
 
 const DAY_PREFIX = 'pp:day:'
 const WEEK_PREFIX = 'pp:week:'
+const MONTH_PREFIX = 'pp:month:'
 const SETTINGS_KEY = 'pp:settings'
+const SYNC_KEY = 'pp:sync' // 同步設定（含 token）——絕不進匯出檔
 
 // ---- 日期工具（一律使用本地時區） ----
 
@@ -69,6 +73,20 @@ export const loadWeek = (mondayKey: string): WeekEntry =>
 export const saveWeek = (mondayKey: string, entry: WeekEntry) =>
   write(WEEK_PREFIX + mondayKey, entry)
 
+export const monthOf = (dateKey: string): string => dateKey.slice(0, 7) // YYYY-MM
+
+export const addMonths = (monthKey: string, n: number): string => {
+  const [y, m] = monthKey.split('-').map(Number)
+  const d = new Date(y, m - 1 + n, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+export const loadMonth = (monthKey: string): MonthEntry =>
+  read<MonthEntry>(MONTH_PREFIX + monthKey) ?? emptyMonth()
+
+export const saveMonth = (monthKey: string, entry: MonthEntry) =>
+  write(MONTH_PREFIX + monthKey, entry)
+
 export const loadSettings = (): Settings => ({
   ...defaultSettings(),
   ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}),
@@ -104,9 +122,13 @@ export const exportAll = (): string => {
   const data: Record<string, unknown> = {}
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)
-    if (k?.startsWith('pp:')) data[k] = JSON.parse(localStorage.getItem(k)!)
+    if (k?.startsWith('pp:') && k !== SYNC_KEY) data[k] = JSON.parse(localStorage.getItem(k)!)
   }
-  return JSON.stringify({ app: 'productivity-planner', version: 1, data }, null, 2)
+  return JSON.stringify(
+    { app: 'inkday-planner', version: 1, exportedAt: new Date().toISOString(), data },
+    null,
+    2
+  )
 }
 
 export const importAll = (json: string): number => {
@@ -114,10 +136,85 @@ export const importAll = (json: string): number => {
   if (!parsed.data) throw new Error('格式不正確')
   let count = 0
   for (const [k, v] of Object.entries(parsed.data)) {
-    if (k.startsWith('pp:')) {
+    if (k.startsWith('pp:') && k !== SYNC_KEY) {
       write(k, v)
       count++
     }
   }
+  return count
+}
+
+// ---- 跨裝置同步（GitHub 私人 Gist 當免費雲端） ----
+
+export interface SyncConfig {
+  token: string
+  gistId: string
+  lastSync: string // ISO 時間
+}
+
+export const loadSync = (): SyncConfig =>
+  read<SyncConfig>(SYNC_KEY) ?? { token: '', gistId: '', lastSync: '' }
+
+export const saveSync = (c: SyncConfig) => write(SYNC_KEY, c)
+
+const GIST_FILE = 'inkday-planner-backup.json'
+
+const gistHeaders = (token: string) => ({
+  Authorization: `Bearer ${token}`,
+  Accept: 'application/vnd.github+json',
+  'Content-Type': 'application/json',
+})
+
+/** 上傳：第一次自動建立私人 gist，之後更新同一個 */
+export const syncUpload = async (): Promise<SyncConfig> => {
+  const cfg = loadSync()
+  if (!cfg.token) throw new Error('請先貼上 GitHub token')
+  const body = JSON.stringify({
+    description: 'InkDay 手帳備份（自動同步）',
+    public: false,
+    files: { [GIST_FILE]: { content: exportAll() } },
+  })
+  const url = cfg.gistId ? `https://api.github.com/gists/${cfg.gistId}` : 'https://api.github.com/gists'
+  const res = await fetch(url, {
+    method: cfg.gistId ? 'PATCH' : 'POST',
+    headers: gistHeaders(cfg.token),
+    body,
+  })
+  if (!res.ok) throw new Error(`上傳失敗（${res.status}）：請確認 token 有 gist 權限`)
+  const json = (await res.json()) as { id: string }
+  const next = { ...cfg, gistId: json.id, lastSync: new Date().toISOString() }
+  saveSync(next)
+  return next
+}
+
+/** 在新裝置上只憑 token 找回備份 gist */
+const findBackupGist = async (token: string): Promise<string | null> => {
+  const res = await fetch('https://api.github.com/gists?per_page=100', {
+    headers: gistHeaders(token),
+  })
+  if (!res.ok) return null
+  const list = (await res.json()) as { id: string; files: Record<string, unknown> }[]
+  return list.find((g) => GIST_FILE in g.files)?.id ?? null
+}
+
+/** 下載：把雲端資料合併進本機（同 key 以雲端覆蓋） */
+export const syncDownload = async (): Promise<number> => {
+  const cfg = loadSync()
+  if (!cfg.token) throw new Error('請先貼上 GitHub token')
+  if (!cfg.gistId) {
+    const found = await findBackupGist(cfg.token)
+    if (!found) throw new Error('還沒有雲端備份，請先在另一台裝置上傳一次')
+    cfg.gistId = found
+    saveSync(cfg)
+  }
+  const res = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+    headers: gistHeaders(cfg.token),
+  })
+  if (!res.ok) throw new Error(`下載失敗（${res.status}）`)
+  const json = (await res.json()) as { files: Record<string, { content: string }> }
+  const file = json.files[GIST_FILE]
+  if (!file) throw new Error('雲端備份檔不存在')
+  const count = importAll(file.content)
+  saveSync({ ...cfg, lastSync: new Date().toISOString() })
   return count
 }
