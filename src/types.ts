@@ -21,7 +21,8 @@ export interface DayEntry {
   answers: Record<string, string>
   mood: number | null // 1-5
   score: number | null // 生產力評分 1-5
-  habit: boolean // 今日習慣是否完成
+  habit: boolean // (legacy v1) 單一習慣
+  habitsDone: Record<string, boolean> // 習慣名 → 今天是否完成
 }
 
 /** 舊版欄位（v1 固定問題）— 僅供載入時遷移 */
@@ -52,7 +53,8 @@ export interface MonthEntry {
 export interface Settings {
   focusMinutes: number // Focus Time 長度（預設 30）
   breakMinutes: number // 休息長度（預設 5）
-  habitName: string // 追蹤的每日習慣名稱
+  habitName: string // (legacy v1) 單一習慣名
+  habits: string[] // 習慣清單（一週檢視）
   morningQs: string[] // 晨間自訂問題（id 依序為 m0,m1,…）
   eveningQs: string[] // 晚間自訂問題（id 依序為 e0,e1,…）
 }
@@ -80,6 +82,7 @@ export const emptyDay = (): DayEntry => ({
   mood: null,
   score: null,
   habit: false,
+  habitsDone: {},
 })
 
 // 一刻預設問題（可在「回顧」頁自訂）
@@ -107,6 +110,7 @@ export const defaultSettings = (): Settings => ({
   focusMinutes: 30,
   breakMinutes: 5,
   habitName: '',
+  habits: [],
   morningQs: [...DEFAULT_MORNING_QS],
   eveningQs: [...DEFAULT_EVENING_QS],
 })

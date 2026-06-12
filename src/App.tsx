@@ -119,7 +119,6 @@ export default function App() {
           timer={timer}
           onStartFocus={startFocus}
           settings={settings}
-          onSettingsChange={updateSettings}
           registerSessionSink={registerSessionSink}
         />
       )}
@@ -127,6 +126,8 @@ export default function App() {
         <WeekView
           mondayKey={mondayKey}
           onWeekChange={setMondayKey}
+          settings={settings}
+          onSettingsChange={updateSettings}
           onOpenDay={(k) => {
             setDateKey(k)
             setTab('day')

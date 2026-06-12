@@ -1762,3 +1762,130 @@ button.wk-head:hover {
   0%, 100% { box-shadow: 0 0 0 0 rgba(184, 146, 62, 0.3); }
   50% { box-shadow: 0 0 0 6px rgba(184, 146, 62, 0); }
 }
+
+/* ---------- 一週檢視（多習慣） ---------- */
+
+.habit-chip {
+  font-family: var(--hand);
+  font-size: 13px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 4px 12px;
+  color: var(--ink-soft);
+  transition: all 0.2s;
+}
+
+.habit-chip.on {
+  background: var(--gold);
+  border-color: var(--gold-deep);
+  color: #fff;
+}
+
+.hw-scroll { overflow-x: auto; }
+
+.hw-table {
+  width: 100%;
+  min-width: 540px;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+
+.hw-table th {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  padding: 7px 4px;
+  border-bottom: 1.5px solid var(--ink);
+  text-align: center;
+}
+
+.hw-date {
+  display: block;
+  font-family: var(--eng);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+
+.hw-table td {
+  text-align: center;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.hw-table .today {
+  background: rgba(184, 146, 62, 0.1);
+}
+
+.hw-name-col {
+  text-align: left !important;
+  font-family: var(--hand);
+  font-size: 15px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.hw-del {
+  color: var(--ink-faint);
+  font-size: 11px;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.hw-table tr:hover .hw-del { opacity: 1; }
+
+.hw-check {
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid var(--rule);
+  border-radius: 6px;
+  color: transparent;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.hw-check.on {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: #fff;
+}
+
+.hw-add {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  margin-top: 12px;
+  max-width: 420px;
+}
+
+.hw-add .rollover-btn:disabled { opacity: 0.4; }
+
+.hw-heat-scroll { overflow-x: auto; padding: 4px 0; }
+
+.hw-heat {
+  display: flex;
+  gap: 3px;
+  min-width: 560px;
+}
+
+.hw-heat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hw-heat-cell {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  background: rgba(154, 143, 125, 0.15);
+}
+
+.hw-heat-cell.none { background: rgba(154, 143, 125, 0.12); }
+.hw-heat-cell.h0 { background: rgba(184, 146, 62, 0.12); }
+.hw-heat-cell.h1 { background: rgba(184, 146, 62, 0.3); }
+.hw-heat-cell.h2 { background: rgba(184, 146, 62, 0.5); }
+.hw-heat-cell.h3 { background: rgba(150, 115, 43, 0.7); }
+.hw-heat-cell.h4 { background: var(--gold-deep); }
+.hw-heat-cell.today { outline: 1.5px solid var(--terra); }

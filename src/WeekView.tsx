@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
+import HabitWeek from './HabitWeek'
 import WeekGrid from './WeekGrid'
 import { addDays, allDayKeys, fromDateKey, loadDay, loadWeek, saveWeek } from './storage'
 import { WeekEntry } from './types'
+
+import { Settings } from './types'
 
 interface Props {
   mondayKey: string
   onWeekChange: (mondayKey: string) => void
   onOpenDay: (dateKey: string) => void
+  settings: Settings
+  onSettingsChange: (s: Settings) => void
 }
 
 interface SearchHit {
@@ -59,7 +64,7 @@ const weekNumber = (mondayKey: string): number => {
   return Math.floor(diff / 7) + 1
 }
 
-export default function WeekView({ mondayKey, onWeekChange, onOpenDay }: Props) {
+export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings, onSettingsChange }: Props) {
   const [week, setWeek] = useState<WeekEntry>(() => loadWeek(mondayKey))
   const [query, setQuery] = useState('')
   const hits = useMemo(() => searchAll(query), [query])
@@ -147,6 +152,8 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay }: Props) 
         )}
 
         <WeekGrid mondayKey={mondayKey} query={query} onOpenDay={onOpenDay} />
+
+        <HabitWeek mondayKey={mondayKey} settings={settings} onSettingsChange={onSettingsChange} />
 
         <h2 className="section-title" style={{ marginTop: 46 }}>
           Weekly Planning

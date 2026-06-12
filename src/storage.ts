@@ -94,6 +94,7 @@ export const loadDay = (dateKey: string): DayEntry => {
   if (!stored) return emptyDay()
   const entry = { ...emptyDay(), ...stored }
   // v1 固定欄位 → v2 自訂問題 answers 遷移
+  if (!entry.habitsDone) entry.habitsDone = {}
   if (!stored.answers) {
     entry.answers = {}
     if (stored.gratitude) entry.answers.m0 = stored.gratitude
@@ -138,10 +139,12 @@ export const loadYear = (yearKey: string): YearEntry => {
 export const saveYear = (yearKey: string, entry: YearEntry) =>
   write(YEAR_PREFIX + yearKey, entry)
 
-export const loadSettings = (): Settings => ({
-  ...defaultSettings(),
-  ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}),
-})
+export const loadSettings = (): Settings => {
+  const s = { ...defaultSettings(), ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}) }
+  // v1 單一習慣 → v2 習慣清單
+  if (s.habits.length === 0 && s.habitName) s.habits = [s.habitName]
+  return s
+}
 
 export const saveSettings = (s: Settings) => write(SETTINGS_KEY, s)
 

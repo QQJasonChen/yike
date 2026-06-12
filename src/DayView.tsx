@@ -16,7 +16,6 @@ interface Props {
   timer: TimerState | null
   onStartFocus: (taskIndex: number, taskText: string) => void
   settings: Settings
-  onSettingsChange: (s: Settings) => void
   /** 計時器完成一個時段時，由 App 呼叫塗圈 */
   registerSessionSink: (fn: (taskIndex: number) => void) => void
 }
@@ -27,7 +26,6 @@ export default function DayView({
   timer,
   onStartFocus,
   settings,
-  onSettingsChange,
   registerSessionSink,
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
@@ -100,7 +98,8 @@ export default function DayView({
 
   const MORNING_PLACEHOLDERS: Record<number, string> = {
     0: '今天想感謝的人事物⋯',
-    1: '例：我是一個平靜而專注的人',
+    1: '用現在式宣告：例「我是一個說到做到的人」「我是冷靜出手的創作者」',
+    2: '一個小實驗：例「最難的事排第一段專注」「先錄影再回訊息」',
   }
 
   // Focus Timer 完成時段 → 塗下一個圈（只對今天有效）
@@ -243,19 +242,23 @@ export default function DayView({
             ))}
 
             <div className="eval-bar">
-              <div className="eval-group" title="今日習慣">
-                <span className="eval-label">習慣</span>
-                <button
-                  className={`habit-dot ${entry.habit ? 'on' : ''}`}
-                  onClick={() => update({ habit: !entry.habit })}
-                />
-                <input
-                  className="habit-name-input"
-                  value={settings.habitName}
-                  onChange={(e) => onSettingsChange({ ...settings, habitName: e.target.value })}
-                  placeholder="習慣名稱"
-                />
-              </div>
+              {settings.habits.length > 0 && (
+                <div className="eval-group" title="今日習慣（到「本週」管理清單）">
+                  <span className="eval-label">習慣</span>
+                  {settings.habits.map((h) => (
+                    <button
+                      key={h}
+                      className={`habit-chip ${entry.habitsDone[h] ? 'on' : ''}`}
+                      onClick={() =>
+                        update({ habitsDone: { ...entry.habitsDone, [h]: !entry.habitsDone[h] } })
+                      }
+                    >
+                      {entry.habitsDone[h] ? '✓ ' : ''}
+                      {h}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="eval-group" title="今日心情">
                 <span className="eval-label">心情</span>
