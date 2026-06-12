@@ -221,7 +221,9 @@ export default function Timeline({ blocks, isToday, onChange, dropRef }: Props) 
             return (
               <div
                 key={b.id}
-                className={`tl-block ${b.taskIndex !== null ? 'linked' : ''} ${isDragging ? 'dragging' : ''}`}
+                className={`tl-block ${b.taskIndex !== null ? 'linked' : ''} ${isDragging ? 'dragging' : ''} ${
+                  end - start <= SLOT ? 'slim' : ''
+                }`}
                 style={{ top: minToY(start), height: minToY(end) - minToY(start) - 2 }}
                 onPointerDown={(e) => startBlockDrag(e, b, 'move')}
                 onPointerMove={onPointerMove}
