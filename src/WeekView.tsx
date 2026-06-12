@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import HabitWeek from './HabitWeek'
+import MiniCal from './MiniCal'
 import WeekGrid from './WeekGrid'
 import { addDays, allDayKeys, fromDateKey, loadDay, loadWeek, saveWeek } from './storage'
 import { WeekEntry } from './types'
@@ -129,6 +130,22 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
         </div>
         <h2 className="section-title">Week {weekNumber(mondayKey)}</h2>
         <p className="section-sub">{fmtRange(mondayKey)}</p>
+
+        <div className="mc-strip">
+          {[-1, 0, 1].map((off) => {
+            const base = fromDateKey(mondayKey)
+            const m = new Date(base.getFullYear(), base.getMonth() + off, 1)
+            return (
+              <MiniCal
+                key={off}
+                year={m.getFullYear()}
+                month={m.getMonth() + 1}
+                weekOf={mondayKey}
+                onPick={onOpenDay}
+              />
+            )
+          })}
+        </div>
 
         <div className="wk-search">
           <input

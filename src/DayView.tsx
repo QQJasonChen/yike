@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import MiniCal from './MiniCal'
 import TaskRow from './TaskRow'
 import Timeline from './Timeline'
 import { TimerState } from './FocusTimer'
@@ -364,12 +365,20 @@ export default function DayView({
             </div>
           </div>
 
-          <Timeline
-            blocks={entry.blocks}
-            isToday={isToday}
-            onChange={(blocks) => update({ blocks })}
-            dropRef={dropRef}
-          />
+          <div className="day-side">
+            <MiniCal
+              year={d.getFullYear()}
+              month={d.getMonth() + 1}
+              selectedDay={dateKey}
+              onPick={onDateChange}
+            />
+            <Timeline
+              blocks={entry.blocks}
+              isToday={isToday}
+              onChange={(blocks) => update({ blocks })}
+              dropRef={dropRef}
+            />
+          </div>
         </div>
       </div>
     </div>

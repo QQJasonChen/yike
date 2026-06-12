@@ -2341,3 +2341,59 @@ button.wk-head:hover {
 .sq-adj button:hover { border-color: var(--gold); color: var(--gold-deep); }
 
 .week-no { color: var(--gold-deep); font-style: italic; }
+
+/* ---------- 迷你月曆（無印式） ---------- */
+
+.mc { display: inline-block; }
+
+.mc-month {
+  font-family: var(--eng);
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.mc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 19px);
+  gap: 1px 0;
+}
+
+.mc-dow {
+  font-family: var(--eng);
+  font-size: 9px;
+  color: var(--ink-faint);
+  text-align: center;
+  padding-bottom: 2px;
+}
+
+.mc-day {
+  font-family: var(--eng);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  height: 17px;
+  text-align: center;
+  border-radius: 3px;
+  padding: 0;
+  transition: background 0.15s;
+}
+
+.mc-day:not(.blank):hover { background: rgba(184, 146, 62, 0.15); }
+.mc-day.blank { pointer-events: none; }
+.mc-day.in-week { background: rgba(184, 146, 62, 0.16); border-radius: 0; }
+.mc-day.in-week:first-of-type { border-radius: 3px 0 0 3px; }
+.mc-day.today { color: var(--terra); font-weight: 700; }
+.mc-day.sel { background: var(--ink); color: var(--paper); border-radius: 50%; }
+
+.mc-strip {
+  display: flex;
+  gap: clamp(18px, 4vw, 44px);
+  justify-content: center;
+  margin: 4px 0 20px;
+  flex-wrap: wrap;
+}
+
+.day-side { display: flex; flex-direction: column; gap: 18px; }
+.day-side .mc { align-self: center; }
