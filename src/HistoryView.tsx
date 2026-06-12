@@ -13,7 +13,7 @@ import {
   toDateKey,
 } from './storage'
 import { useEffect } from 'react'
-import { cloudEnabled, currentEmail, sendCode, signOut, startAutoSync, stopAutoSync, syncNow, verifyCode } from './cloud'
+import { cloudEnabled, currentEmail, signInOrUp, signOut, startAutoSync, stopAutoSync, syncNow } from './cloud'
 import { dayToMarkdown } from './exportMd'
 import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, Settings } from './types'
 
@@ -59,8 +59,8 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
 
   // ---- 帳號制雲端同步（Supabase）----
   const [cloudEmail, setCloudEmail] = useState('')
-  const [cloudCode, setCloudCode] = useState('')
-  const [cloudStage, setCloudStage] = useState<'out' | 'code' | 'in'>('out')
+  const [cloudPw, setCloudPw] = useState('')
+  const [cloudStage, setCloudStage] = useState<'out' | 'in'>('out')
   const [cloudUser, setCloudUser] = useState<string | null>(null)
   const [cloudMsg, setCloudMsg] = useState('')
 
@@ -347,7 +347,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
               {cloudStage === 'out' && (
                 <>
                   <p className="sync-help">
-                    輸入 Email 取得 6 位數驗證碼，登入後所有裝置<b>自動同步</b>——寫完即上雲，換裝置打開就有。
+                    Email＋密碼，<b>第一次輸入自動註冊</b>。登入後所有裝置自動同步——寫完即上雲，換裝置打開就有。
                   </p>
                   <div className="line-input sync-token">
                     <input
@@ -357,49 +357,32 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
                       onChange={(e) => setCloudEmail(e.target.value.trim())}
                     />
                   </div>
-                  <div className="data-actions" style={{ marginTop: 12 }}>
-                    <button
-                      disabled={!cloudEmail.includes('@')}
-                      onClick={() =>
-                        cloudAct(async () => {
-                          await sendCode(cloudEmail)
-                          setCloudStage('code')
-                          setCloudMsg('驗證碼已寄出，請查收信箱')
-                        })
-                      }
-                    >
-                      寄送驗證碼
-                    </button>
-                  </div>
-                </>
-              )}
-              {cloudStage === 'code' && (
-                <>
-                  <p className="sync-help">輸入寄到 {cloudEmail} 的 6 位數驗證碼：</p>
                   <div className="line-input sync-token">
                     <input
-                      inputMode="numeric"
-                      placeholder="123456"
-                      value={cloudCode}
-                      onChange={(e) => setCloudCode(e.target.value.trim())}
+                      type="password"
+                      placeholder="密碼（至少 8 碼，請記好）"
+                      value={cloudPw}
+                      onChange={(e) => setCloudPw(e.target.value)}
                     />
                   </div>
                   <div className="data-actions" style={{ marginTop: 12 }}>
                     <button
-                      disabled={cloudCode.length < 6}
+                      disabled={!cloudEmail.includes('@') || cloudPw.length < 8}
                       onClick={() =>
                         cloudAct(async () => {
-                          await verifyCode(cloudEmail, cloudCode)
+                          const mode = await signInOrUp(cloudEmail, cloudPw)
                           setCloudUser(cloudEmail)
                           setCloudStage('in')
                           const r = await syncNow()
-                          await startAutoSync() // 登入即啟用自動推送，不用重新整理
-                          setCloudMsg(`✓ 登入成功，已同步（↓${r.pulled} ↑${r.pushed}）`)
+                          await startAutoSync() // 登入即啟用自動推送
+                          setCloudMsg(
+                            `✓ ${mode === 'up' ? '註冊成功' : '登入成功'}，已同步（↓${r.pulled} ↑${r.pushed}）`
+                          )
                           if (r.pulled > 0) setTimeout(() => location.reload(), 1000)
                         })
                       }
                     >
-                      登入
+                      登入／註冊
                     </button>
                   </div>
                 </>

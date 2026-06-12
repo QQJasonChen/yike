@@ -19,14 +19,17 @@ export const supa = async (): Promise<SupabaseClient> => {
 
 export { cloudEnabled }
 
-export const sendCode = async (email: string) => {
-  const { error } = await (await supa()).auth.signInWithOtp({ email })
-  if (error) throw new Error(error.message)
-}
-
-export const verifyCode = async (email: string, code: string) => {
-  const { error } = await (await supa()).auth.verifyOtp({ email, token: code, type: 'email' })
-  if (error) throw new Error('驗證碼不正確或已過期')
+/** 登入；帳號不存在時自動註冊（autoconfirm 已開，註冊即用） */
+export const signInOrUp = async (email: string, password: string): Promise<'in' | 'up'> => {
+  const db = await supa()
+  const { error } = await db.auth.signInWithPassword({ email, password })
+  if (!error) return 'in'
+  if (!/invalid login credentials/i.test(error.message)) throw new Error(error.message)
+  // 帳號不存在 → 註冊
+  const { data, error: upErr } = await db.auth.signUp({ email, password })
+  if (upErr) throw new Error(upErr.message)
+  if (!data.session) throw new Error('密碼錯誤，或此信箱已註冊')
+  return 'up'
 }
 
 export const currentEmail = async (): Promise<string | null> => {
