@@ -2442,16 +2442,16 @@ button.wk-head:hover {
 /* ---------- 微型年曆列（月頁頂部） ---------- */
 
 .yr-strip {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding: 2px 4px 10px;
+  display: grid;
+  grid-template-columns: repeat(6, max-content);
+  justify-content: center;
+  gap: 14px 26px;
+  padding: 2px 4px 12px;
   margin-bottom: 8px;
-  -webkit-overflow-scrolling: touch;
-  justify-content: flex-start;
 }
 
-@media (min-width: 1080px) { .yr-strip { justify-content: center; } }
+@media (max-width: 1024px) { .yr-strip { grid-template-columns: repeat(4, max-content); } }
+@media (max-width: 700px) { .yr-strip { grid-template-columns: repeat(3, max-content); } }
 
 .mc-month { /* 預設大版維持原樣式 */ }
 
@@ -2473,16 +2473,97 @@ button.mc-month:disabled { cursor: default; }
 
 .mc-micro .mc-month:hover { color: var(--gold-deep); }
 
-.mc-micro .mc-grid { grid-template-columns: 13px repeat(7, 14.5px); gap: 0; }
-.mc-micro .mc-wk { font-size: 7px; line-height: 12.5px; padding-right: 3px; }
+.mc-micro .mc-grid { grid-template-columns: 15px repeat(7, 17px); gap: 1px 0; }
+.mc-micro .mc-wk { font-size: 8px; line-height: 14.5px; padding-right: 3px; }
 .mc-micro .mc-dow { display: none; }
 
 .mc-micro .mc-day {
-  font-size: 8.8px;
-  height: 12.5px;
-  line-height: 12.5px;
-  border-radius: 2px;
+  font-size: 10px;
+  height: 14.5px;
+  line-height: 14.5px;
+  border-radius: 2.5px;
   color: var(--ink-soft);
 }
 
 .mc-micro .mc-day.today { color: var(--terra); font-weight: 700; }
+
+/* ---------- 本週甘特 ---------- */
+
+.gantt {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: rgba(255, 253, 248, 0.5);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+  overflow: hidden;
+}
+
+.g-row {
+  display: grid;
+  grid-template-columns: 150px repeat(7, 1fr);
+  position: relative;
+  border-bottom: 1px solid var(--rule);
+  min-height: 34px;
+}
+
+.g-row:last-child { border-bottom: none; }
+
+.g-head { min-height: 30px; background: rgba(184, 146, 62, 0.06); cursor: default; }
+
+.g-day {
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  text-align: center;
+  align-self: center;
+}
+
+.g-day span { font-family: var(--eng); font-size: 10px; color: var(--ink-faint); margin-left: 3px; }
+.g-day.today { color: var(--gold-deep); font-weight: 700; }
+
+.g-label {
+  font-family: var(--hand);
+  font-size: 13.5px;
+  color: var(--ink-write);
+  padding: 7px 10px;
+  border-right: 1px solid var(--rule);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  align-self: center;
+}
+
+.g-label.done { text-decoration: line-through; color: var(--ink-faint); }
+
+.g-cell { border-right: 1px dotted var(--rule); cursor: crosshair; }
+.g-cell:last-child { border-right: none; }
+.g-cell.today { background: rgba(184, 146, 62, 0.08); }
+
+.g-bar {
+  grid-row: 1;
+  align-self: center;
+  margin: 0 4px;
+  height: 20px;
+  line-height: 20px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #33415e, #1e2a40);
+  color: #f5f0e6;
+  font-family: var(--hand);
+  font-size: 11.5px;
+  padding: 0 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(30, 42, 64, 0.3);
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.g-bar.done { background: linear-gradient(135deg, #76905f, #5e7a4e); }
+.g-bar.dragging { opacity: 0.85; box-shadow: 0 6px 16px rgba(30, 42, 64, 0.4); }
+
+@media (max-width: 640px) {
+  .g-row { grid-template-columns: 96px repeat(7, 1fr); }
+  .g-label { font-size: 12px; padding: 6px 6px; }
+}

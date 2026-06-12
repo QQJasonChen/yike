@@ -36,7 +36,8 @@ export interface LegacyDayFields {
 
 export interface WeekEntry {
   intention: string
-  tasks: { text: string; done: boolean }[] // 15 格：5 最重要 + 5 次要 + 5 額外
+  /** 15 格：5 最重要 + 5 次要 + 5 額外；span = 甘特橫條的起訖日（週一=0 … 週日=6） */
+  tasks: { text: string; done: boolean; span?: [number, number] | null }[]
   review: {
     wins: string
     notCompleted: string

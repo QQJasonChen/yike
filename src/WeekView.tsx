@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import GanttWeek from './GanttWeek'
 import HabitWeek from './HabitWeek'
 import MiniCal from './MiniCal'
 import PeriodSummary from './PeriodSummary'
@@ -190,6 +191,16 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
         {section('本週五大最重要任務', '如果這週只完成這五件事，你會滿意', 0, 5)}
         {section('次要任務', '完成上面的才做這些', 5, 10)}
         {section('額外任務', '行有餘力再做', 10, 15)}
+
+        <GanttWeek
+          mondayKey={mondayKey}
+          week={week}
+          onSpan={(i, span) => {
+            const tasks = week.tasks.slice()
+            tasks[i] = { ...tasks[i], span }
+            update({ tasks })
+          }}
+        />
 
         <PeriodSummary
           title="本週總結"
