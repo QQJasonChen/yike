@@ -2463,7 +2463,7 @@ button.mc-month:disabled { cursor: default; }
 
 .mc-micro .mc-month {
   font-family: var(--eng);
-  font-size: 12.5px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--ink-soft);
   line-height: 1;
@@ -2473,16 +2473,16 @@ button.mc-month:disabled { cursor: default; }
 
 .mc-micro .mc-month:hover { color: var(--gold-deep); }
 
-.mc-micro .mc-grid { grid-template-columns: 9px repeat(7, 10.5px); gap: 0; }
-.mc-micro .mc-wk { font-size: 5.2px; line-height: 9px; padding-right: 2px; }
+.mc-micro .mc-grid { grid-template-columns: 13px repeat(7, 14.5px); gap: 0; }
+.mc-micro .mc-wk { font-size: 7px; line-height: 12.5px; padding-right: 3px; }
 .mc-micro .mc-dow { display: none; }
 
 .mc-micro .mc-day {
-  font-size: 6.6px;
-  height: 9px;
-  line-height: 9px;
-  border-radius: 1.5px;
-  color: var(--ink-faint);
+  font-size: 8.8px;
+  height: 12.5px;
+  line-height: 12.5px;
+  border-radius: 2px;
+  color: var(--ink-soft);
 }
 
 .mc-micro .mc-day.today { color: var(--terra); font-weight: 700; }

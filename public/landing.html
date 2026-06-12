@@ -63,6 +63,9 @@ h2{font-size:clamp(26px,4vw,38px);font-weight:700;text-align:center;letter-spaci
 .step .circles{margin-top:14px;display:flex;gap:5px;align-items:center}
 .step .c{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--ink-soft)}
 .step .c.f{background:var(--ink)}
+.step .sqd{width:15px;height:15px;border-radius:3px;border:1.5px solid #a4977f}
+.step .sqd.f{background:#1e2a40;border-color:#1e2a40}
+.step .sqd.g{background:var(--gold);border-color:var(--gold-deep)}
 /* features alternating */
 .feature{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;margin-bottom:64px}
 .feature:nth-child(even) .f-img{order:2}
@@ -138,8 +141,8 @@ footer a{color:var(--ink-faint)}
     <p class="sec-sub">源自紙本生產力手帳百年不變的循環——只是現在它會自己計時、自己塗圈、自己統計。</p>
     <div class="steps">
       <div class="step reveal"><span class="n">1</span><h3>★ 最重要任務</h3><p>每天先回答一題：「今天就算只做成這一件，也值得了」——通常是最不舒服、最常拖延的那件。最多五項任務，少即是多。</p></div>
-      <div class="step reveal"><span class="n">2</span><h3>30 分鐘專注塗圈</h3><p>先預估要幾段 30 分鐘，按 ▶ 開始倒數。每完成一段，塗掉一圈。墨點落下的瞬間，比任何打勾都療癒。</p>
-        <div class="circles"><span style="font-family:var(--hand);font-size:13px;color:var(--ink-faint)">4</span><span class="c f"></span><span class="c f"></span><span class="c f"></span><span class="c"></span><span class="c"></span></div></div>
+      <div class="step reveal"><span class="n">2</span><h3>一格一段，塗墨前進</h3><p>像稿紙一樣：要做幾段 30 分鐘就排幾格，每完成一段塗滿一格，超出目標的格子是金色。按 ▶ 倒數結束自動塗格。</p>
+        <div class="circles"><span class="sqd f"></span><span class="sqd f"></span><span class="sqd f"></span><span class="sqd"></span><span class="sqd g"></span></div></div>
       <div class="step reveal"><span class="n">3</span><h3>拖出今天的形狀</h3><p>像 Google 日曆一樣把任務拖進時間軸，看見一天真實的樣子。紅線走到哪，你就在哪。</p></div>
       <div class="step reveal"><span class="n">4</span><h3>晚間三問</h3><p>今日亮點？學到什麼？想記住什麼？加上心情與 1–5 評分。晨晚問題<b>完全可自訂</b>——把它變成你自己的方法。</p></div>
     </div>
@@ -155,7 +158,7 @@ footer a{color:var(--ink-faint)}
       <div>
         <h3><em>WEEKLY</em>無印手帳式的一週直式時間格</h3>
         <p>七天並排的垂直時間軸，點任何空格快速排程。上方的搜尋框能搜遍所有歷史記錄——任務、時間塊、反思，命中的會在格子裡亮起來。</p>
-        <ul><li>點空格 1 秒新增時間塊</li><li>全域搜尋＋高亮</li><li>週意圖、本週五大任務、週回顧四問</li></ul>
+        <ul><li>點空格 1 秒新增時間塊・全域搜尋＋高亮</li><li>三個月迷你月曆（含 wk 週數）＋多習慣一週檢視＋半年熱力圖</li><li>本週總結自動生成：活動時數排行，一鍵交給 AI 寫週報</li></ul>
       </div>
     </div>
 
@@ -164,7 +167,7 @@ footer a{color:var(--ink-faint)}
       <div>
         <h3><em>MONTHLY</em>一眼看完整個月</h3>
         <p>每一天的最重要任務、心情、評分都濃縮在月曆格子裡。配上「本月優先事項」與「本月亮點」，月底回顧不用翻三十頁。</p>
-        <ul><li>每日 MIT／心情／評分總覽</li><li>本月優先事項六格</li><li>「年」分頁：One Year at a Glance 整年評分熱力格＋年度三大目標</li></ul>
+        <ul><li>頂部微型年曆列：12 個月一排、點月即跳</li><li>每日 MIT／心情／評分總覽＋本月總結自動統計</li><li>「年」分頁：One Year at a Glance 整年熱力格＋年度三大目標＋每日一句話</li></ul>
       </div>
     </div>
 
@@ -173,7 +176,16 @@ footer a{color:var(--ink-faint)}
       <div>
         <h3><em>REVIEW</em>看見自己的模式</h3>
         <p>連續記錄天數、平均生產力、累計專注小時、任務完成率、心情分布、近 14 天圖表。誠實是最好的策略——尤其是對自己。</p>
-        <ul><li>連續天數 streak＋昨日未完成一鍵帶入今天</li><li>🤖 AI 教練：一鍵複製近 7 天記錄＋分析指令</li><li>Markdown 匯出到 Heptabase / Notion・JSON 備份</li></ul>
+        <ul><li>活動統計：「讀荷蘭文」這個月到底花了幾小時，一查便知</li><li>🤖 AI 教練＋週/月總結：數據自動算，AI 幫你寫成誠實的回顧</li><li>Markdown 匯出到 Heptabase / Notion・JSON 備份・昨日未完成一鍵帶入</li></ul>
+      </div>
+    </div>
+
+    <div class="feature reveal">
+      <div class="f-img"><img src="img/shot-zen.png" alt="禪模式全螢幕專注" /></div>
+      <div>
+        <h3><em>FOCUS</em>禪模式：墨圈親手畫完的 30 分鐘</h3>
+        <p>按下專注，整個畫面變成一張紙。品牌的那一筆墨圈，隨著倒數慢慢畫滿——畫滿的瞬間，金點落下、鐘聲響起、進度自動記錄到時間軸。</p>
+        <ul><li>倒數結束自動塗格＋寫進時間軸（計畫 vs 實際自動對照）</li><li>休息模式金圈緩慢呼吸</li><li>預設小列不打擾，想沉浸再展開</li></ul>
       </div>
     </div>
 
