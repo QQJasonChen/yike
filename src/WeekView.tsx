@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
-import Gantt from './Gantt'
+import Gantt, { tierTone } from './Gantt'
 import HabitWeek from './HabitWeek'
 import MiniCal from './MiniCal'
 import PeriodSummary from './PeriodSummary'
 import WeekGrid from './WeekGrid'
-import { addDays, allDayKeys, fromDateKey, loadDay, loadWeek, saveWeek, toDateKey } from './storage'
-import { WeekEntry } from './types'
+import {
+  addDays,
+  allDayKeys,
+  fromDateKey,
+  loadDay,
+  loadMonth,
+  loadWeek,
+  monthOf,
+  saveMonth,
+  saveWeek,
+  toDateKey,
+} from './storage'
+import { MonthEntry, WeekEntry } from './types'
 
 import { Settings } from './types'
 
@@ -72,8 +83,13 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
   const [query, setQuery] = useState('')
   const hits = useMemo(() => searchAll(query), [query])
 
+  // 本月進度（向上對齊：這週的工作是否推進本月優先事項）
+  const monthKey = monthOf(mondayKey)
+  const [month, setMonth] = useState<MonthEntry>(() => loadMonth(monthKey))
+
   useEffect(() => {
     setWeek(loadWeek(mondayKey))
+    setMonth(loadMonth(monthOf(mondayKey)))
   }, [mondayKey])
 
   const update = (patch: Partial<WeekEntry>) => {
@@ -196,6 +212,11 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
           title="本週甘特"
           hint="在任務的列上拖出起訖・雙擊橫條清除"
           emptyHint="先在下方「本週五大任務」寫下任務，這裡就會出現可拖拉的時程列"
+          legend={[
+            { tone: 'ink', label: '五大' },
+            { tone: 'gold', label: '次要' },
+            { tone: 'sage', label: '額外' },
+          ]}
           cols={Array.from({ length: 7 }, (_, d) => {
             const k = addDays(mondayKey, d)
             return {
@@ -204,11 +225,39 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
               today: k === toDateKey(new Date()),
             }
           })}
-          rows={week.tasks.map((t, i) => ({ ...t, i })).filter((t) => t.text.trim()).slice(0, 10)}
+          rows={week.tasks
+            .map((t, i) => ({ ...t, i, tone: tierTone(i) }))
+            .filter((t) => t.text.trim())}
           onSpan={(i, span) => {
             const tasks = week.tasks.slice()
             tasks[i] = { ...tasks[i], span }
             update({ tasks })
+          }}
+        />
+
+        <Gantt
+          title="本月進度"
+          hint="這週的工作在推進本月哪件事？金色帶＝本週"
+          emptyHint="到「本月」頁寫下優先事項並拖出時程，這裡就能對照本週與月目標"
+          labelWidth={130}
+          cols={Array.from(
+            { length: new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)), 0).getDate() },
+            (_, d) => {
+              const k = `${monthKey}-${String(d + 1).padStart(2, '0')}`
+              return {
+                label: String(d + 1),
+                today: k === toDateKey(new Date()),
+                active: k >= mondayKey && k <= addDays(mondayKey, 6),
+              }
+            }
+          )}
+          rows={month.priorities.map((p, i) => ({ ...p, i })).filter((p) => p.text.trim())}
+          onSpan={(i, span) => {
+            const priorities = month.priorities.slice()
+            priorities[i] = { ...priorities[i], span }
+            const next = { ...month, priorities }
+            saveMonth(monthKey, next)
+            setMonth(next)
           }}
         />
 

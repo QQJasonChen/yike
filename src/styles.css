@@ -2538,7 +2538,9 @@ button.mc-month:disabled { cursor: default; }
 
 .g-cell { border-right: 1px dotted var(--rule); cursor: crosshair; }
 .g-cell:last-child { border-right: none; }
-.g-cell.today { background: rgba(184, 146, 62, 0.08); }
+.g-cell.active { background: rgba(184, 146, 62, 0.05); }
+.g-cell.today { background: rgba(184, 146, 62, 0.1); }
+.g-day.active { color: var(--gold-deep); }
 
 .g-bar {
   grid-row: 1;
@@ -2560,8 +2562,17 @@ button.mc-month:disabled { cursor: default; }
   z-index: 2;
 }
 
-.g-bar.done { background: linear-gradient(135deg, #76905f, #5e7a4e); }
+.g-bar.tone-gold { background: linear-gradient(135deg, #c49a45, #a07d2e); box-shadow: 0 2px 8px rgba(160, 125, 46, 0.3); }
+.g-bar.tone-sage { background: linear-gradient(135deg, #76905f, #5e7a4e); box-shadow: 0 2px 8px rgba(94, 122, 78, 0.3); }
+.g-bar.done { opacity: 0.45; text-decoration: line-through; }
 .g-bar.dragging { opacity: 0.85; box-shadow: 0 6px 16px rgba(30, 42, 64, 0.4); }
+
+.g-legend { float: right; font-size: 11px; color: var(--ink-soft); display: inline-flex; gap: 10px; font-weight: 400; letter-spacing: 0.05em; }
+.g-legend > span { display: inline-flex; align-items: center; gap: 4px; }
+.g-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; }
+.g-dot.tone-ink { background: #1e2a40; }
+.g-dot.tone-gold { background: #a07d2e; }
+.g-dot.tone-sage { background: #5e7a4e; }
 
 @media (max-width: 640px) {
   .g-row { grid-template-columns: 96px repeat(7, 1fr); }

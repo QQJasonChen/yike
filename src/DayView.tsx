@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Gantt, { tierTone } from './Gantt'
 import MiniCal from './MiniCal'
 import TaskRow from './TaskRow'
 import Timeline from './Timeline'
 import { TimerState } from './FocusTimer'
 import { quoteForDate } from './quotes'
 import { dayToMarkdown } from './exportMd'
-import { addDays, loadDay, saveDay, toDateKey } from './storage'
-import { DayEntry, Settings, Task } from './types'
+import { addDays, loadDay, loadWeek, mondayOf, saveDay, saveWeek, toDateKey } from './storage'
+import { DayEntry, Settings, Task, WeekEntry } from './types'
 
 const WEEKDAYS_EN = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
 
@@ -46,6 +47,8 @@ export default function DayView({
   registerSessionSink,
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
+  // 本週甘特（聚焦：今天對到本週計畫的哪件事）
+  const [weekEntry, setWeekEntry] = useState<WeekEntry>(() => loadWeek(mondayOf(dateKey)))
   const [copied, setCopied] = useState(false)
   const [rolloverDone, setRolloverDone] = useState(false)
   const [addingHabit, setAddingHabit] = useState(false)
@@ -103,6 +106,7 @@ export default function DayView({
   // 換日期時重新載入
   useEffect(() => {
     setEntry(loadDay(dateKey))
+    setWeekEntry(loadWeek(mondayOf(dateKey)))
   }, [dateKey])
 
   // 任何修改即時存檔（零儲存按鈕）
@@ -313,6 +317,38 @@ export default function DayView({
                 )}
               </span>
             ))}
+
+            {weekEntry.tasks.some((t) => t.text.trim()) && (
+              <Gantt
+                title="本週甘特"
+                hint="今天該推進哪件事？金色欄＝今天・可直接拖拉調整"
+                emptyHint=""
+                legend={[
+                  { tone: 'ink', label: '五大' },
+                  { tone: 'gold', label: '次要' },
+                  { tone: 'sage', label: '額外' },
+                ]}
+                cols={Array.from({ length: 7 }, (_, wd) => {
+                  const k = addDays(mondayOf(dateKey), wd)
+                  return {
+                    label: ['一', '二', '三', '四', '五', '六', '日'][wd],
+                    sub: String(Number(k.slice(8, 10))),
+                    today: k === todayKey,
+                    active: k === dateKey,
+                  }
+                })}
+                rows={weekEntry.tasks
+                  .map((t, i) => ({ ...t, i, tone: tierTone(i) }))
+                  .filter((t) => t.text.trim())}
+                onSpan={(i, span) => {
+                  const tasks = weekEntry.tasks.slice()
+                  tasks[i] = { ...tasks[i], span }
+                  const next = { ...weekEntry, tasks }
+                  saveWeek(mondayOf(dateKey), next)
+                  setWeekEntry(next)
+                }}
+              />
+            )}
 
             {settings.eveningQs.map((q, i) => (
               <span key={`e${i}`}>
