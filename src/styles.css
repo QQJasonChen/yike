@@ -15,6 +15,7 @@
   --gold-deep: #96732b;
   --gold-soft: #e6d4a8;
   --terra: #b65c38; /* 赤陶色：強調/計時器 */
+  --ink-write: #26354f; /* 藍黑墨水：用戶手寫的字（對比印刷的墨黑） */
   --sage: #6e7d5c; /* 鼠尾草綠：完成 */
   --serif: 'Noto Serif TC', 'Songti TC', serif;
   --hand: 'LXGW WenKai TC', 'Noto Serif TC', serif;
@@ -62,7 +63,7 @@ input,
 textarea {
   font-family: var(--hand);
   font-size: 17px;
-  color: var(--ink);
+  color: var(--ink-write);
   background: transparent;
   border: none;
   outline: none;
