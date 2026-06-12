@@ -28,10 +28,33 @@ Deno.serve(async (req) => {
   } catch {
     return json(400, { error: '格式錯誤' })
   }
-  if (!licenseKey || !email.includes('@') || password.length < 8)
-    return json(400, { error: '請填寫序號、Email 與至少 8 碼的密碼' })
+  if (!email.includes('@') || password.length < 8)
+    return json(400, { error: '請填寫 Email 與至少 8 碼的密碼' })
 
-  // 1) 向 Gumroad 驗證序號（會累計啟用次數）
+  const url = Deno.env.get('SUPABASE_URL')!
+  const srk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+  // 路徑 A：沒帶序號 → 查付費白名單（Portaly / 手動邀請）
+  if (!licenseKey) {
+    const q = await fetch(
+      `${url}/rest/v1/entitlements?email=eq.${encodeURIComponent(email)}&select=email`,
+      { headers: { apikey: srk, Authorization: `Bearer ${srk}` } }
+    )
+    const rows = (await q.json().catch(() => [])) as unknown[]
+    if (!Array.isArray(rows) || rows.length === 0)
+      return json(403, { error: 'not-entitled' })
+    const user = await createUser(url, srk, email, password)
+    if (user.ok) {
+      await fetch(`${url}/rest/v1/entitlements?email=eq.${encodeURIComponent(email)}`, {
+        method: 'PATCH',
+        headers: { apikey: srk, Authorization: `Bearer ${srk}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redeemed_at: new Date().toISOString() }),
+      })
+    }
+    return user.response
+  }
+
+  // 路徑 B：帶序號 → 向 Gumroad 驗證（會累計啟用次數）
   const permalink = Deno.env.get('GUMROAD_PERMALINK') ?? 'yike'
   const gumRes = await fetch('https://api.gumroad.com/v2/licenses/verify', {
     method: 'POST',
@@ -51,18 +74,24 @@ Deno.serve(async (req) => {
     return json(403, { error: '此序號啟用次數已達上限，請聯繫站方' })
 
   // 2) 建立帳號（service role）
-  const url = Deno.env.get('SUPABASE_URL')!
-  const srk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  return (await createUser(url, srk, email, password)).response
+})
+
+async function createUser(
+  url: string,
+  srk: string,
+  email: string,
+  password: string
+): Promise<{ ok: boolean; response: Response }> {
   const createRes = await fetch(`${url}/auth/v1/admin/users`, {
     method: 'POST',
     headers: { apikey: srk, Authorization: `Bearer ${srk}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password, email_confirm: true }),
   })
   const created = await createRes.json().catch(() => ({}))
-
-  if (createRes.ok && created.id) return json(200, { ok: true })
+  if (createRes.ok && created.id) return { ok: true, response: json(200, { ok: true }) }
   const msg = String(created.msg ?? created.message ?? '')
   if (/already.*(registered|exists)/i.test(msg) || createRes.status === 422)
-    return json(409, { error: '這個 Email 已經開通過——直接用它登入即可' })
-  return json(500, { error: `開通失敗：${msg || createRes.status}` })
-})
+    return { ok: false, response: json(409, { error: '這個 Email 已經開通過——直接用它登入即可' }) }
+  return { ok: false, response: json(500, { error: `開通失敗：${msg || createRes.status}` }) }
+}

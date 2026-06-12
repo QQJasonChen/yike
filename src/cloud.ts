@@ -46,8 +46,19 @@ export const signInOrUp = async (email: string, password: string): Promise<'in' 
   // 帳號不存在 → 嘗試註冊（邀請制關閉公開註冊時會被擋下）
   const { data, error: upErr } = await db.auth.signUp({ email, password })
   if (upErr) {
-    if (/signup.*(disabled|not allowed)/i.test(upErr.message))
-      throw new Error('一刻手帳採邀請制——尚未開通的帳號無法登入。已購買／已索取邀請的話，請聯繫站方開通。')
+    if (/signup.*(disabled|not allowed)/i.test(upErr.message)) {
+      // 公開註冊已關 → 試付費白名單（Portaly 買家用購買 Email 自動開通）
+      try {
+        await activateLicense('', email, password)
+        return 'up'
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : ''
+        if (msg !== 'not-entitled') throw e
+        throw new Error(
+          '此 Email 尚未開通。雲端同步採付費邀請制——購買後：Portaly 訂單用購買時的 Email 直接登入即可；Gumroad 訂單請點「我有購買序號」。'
+        )
+      }
+    }
     if (/already registered/i.test(upErr.message))
       throw new Error('這個 Email 已經開通過——請確認密碼是否輸入正確')
     throw new Error(upErr.message)
