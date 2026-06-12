@@ -313,7 +313,8 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
               {cloudStage === 'out' && (
                 <>
                   <p className="sync-help">
-                    Email＋密碼，<b>第一次輸入自動註冊</b>。登入後所有裝置自動同步——寫完即上雲，換裝置打開就有。
+                    輸入已開通的 Email＋密碼，登入後所有裝置<b>自動同步</b>——寫完即上雲，換裝置打開就有。
+                    雲端同步採<b>邀請制</b>；本機記錄與全部功能不需帳號、永久免費。
                   </p>
                   <div className="line-input sync-token">
                     <input
@@ -348,7 +349,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
                         })
                       }
                     >
-                      登入／註冊
+                      登入
                     </button>
                   </div>
                 </>

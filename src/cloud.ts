@@ -25,14 +25,17 @@ export const signInOrUp = async (email: string, password: string): Promise<'in' 
   const { error } = await db.auth.signInWithPassword({ email, password })
   if (!error) return 'in'
   if (!/invalid login credentials/i.test(error.message)) throw new Error(error.message)
-  // 帳號不存在 → 註冊
+  // 帳號不存在 → 嘗試註冊（邀請制關閉公開註冊時會被擋下）
   const { data, error: upErr } = await db.auth.signUp({ email, password })
   if (upErr) {
+    if (/signup.*(disabled|not allowed)/i.test(upErr.message))
+      throw new Error('一刻手帳採邀請制——尚未開通的帳號無法登入。已購買／已索取邀請的話，請聯繫站方開通。')
     if (/already registered/i.test(upErr.message))
-      throw new Error('這個 Email 已經註冊過——請確認密碼是否輸入正確')
+      throw new Error('這個 Email 已經開通過——請確認密碼是否輸入正確')
     throw new Error(upErr.message)
   }
-  if (!data.session) throw new Error('這個 Email 已經註冊過——請確認密碼是否輸入正確')
+  if (!data.session)
+    throw new Error('一刻手帳採邀請制——請聯繫站方開通帳號，或確認密碼是否輸入正確')
   return 'up'
 }
 
