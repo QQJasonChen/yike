@@ -19,6 +19,24 @@ export const supa = async (): Promise<SupabaseClient> => {
 
 export { cloudEnabled }
 
+/** 用 Gumroad 序號自動開通帳號（付費自動開通），成功後直接登入 */
+export const activateLicense = async (
+  licenseKey: string,
+  email: string,
+  password: string
+): Promise<void> => {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/activate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+    body: JSON.stringify({ licenseKey, email, password }),
+  })
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+  if (!res.ok || !body.ok) throw new Error(body.error ?? `開通失敗（${res.status}）`)
+  const db = await supa()
+  const { error } = await db.auth.signInWithPassword({ email, password })
+  if (error) throw new Error('帳號已開通，但自動登入失敗——請直接用帳密登入')
+}
+
 /** 登入；帳號不存在時自動註冊（autoconfirm 已開，註冊即用） */
 export const signInOrUp = async (email: string, password: string): Promise<'in' | 'up'> => {
   const db = await supa()

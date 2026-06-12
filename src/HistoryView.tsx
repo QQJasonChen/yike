@@ -9,7 +9,7 @@ import {
   toDateKey,
 } from './storage'
 import { useEffect } from 'react'
-import { cloudEnabled, currentEmail, signInOrUp, signOut, startAutoSync, stopAutoSync, syncNow } from './cloud'
+import { activateLicense, cloudEnabled, currentEmail, signInOrUp, signOut, startAutoSync, stopAutoSync, syncNow } from './cloud'
 import { dayToMarkdown } from './exportMd'
 import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, Settings } from './types'
 
@@ -53,6 +53,8 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
   // ---- 帳號制雲端同步（Supabase）----
   const [cloudEmail, setCloudEmail] = useState('')
   const [cloudPw, setCloudPw] = useState('')
+  const [license, setLicense] = useState('')
+  const [showLicense, setShowLicense] = useState(false)
   const [cloudStage, setCloudStage] = useState<'out' | 'in'>('out')
   const [cloudUser, setCloudUser] = useState<string | null>(null)
   const [cloudMsg, setCloudMsg] = useState('')
@@ -332,25 +334,58 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
                       onChange={(e) => setCloudPw(e.target.value)}
                     />
                   </div>
+                  {showLicense && (
+                    <div className="line-input sync-token">
+                      <input
+                        placeholder="購買序號（Gumroad License Key）"
+                        value={license}
+                        onChange={(e) => setLicense(e.target.value.trim())}
+                      />
+                    </div>
+                  )}
                   <div className="data-actions" style={{ marginTop: 12 }}>
-                    <button
-                      disabled={!cloudEmail.includes('@') || cloudPw.length < 8}
-                      onClick={() =>
-                        cloudAct(async () => {
-                          const mode = await signInOrUp(cloudEmail, cloudPw)
-                          setCloudUser(cloudEmail)
-                          setCloudStage('in')
-                          const r = await syncNow()
-                          await startAutoSync() // 登入即啟用自動推送
-                          setCloudMsg(
-                            `✓ ${mode === 'up' ? '註冊成功' : '登入成功'}，已同步（↓${r.pulled} ↑${r.pushed}）`
-                          )
-                          if (r.pulled > 0) setTimeout(() => location.reload(), 1000)
-                        })
-                      }
-                    >
-                      登入
-                    </button>
+                    {!showLicense ? (
+                      <>
+                        <button
+                          disabled={!cloudEmail.includes('@') || cloudPw.length < 8}
+                          onClick={() =>
+                            cloudAct(async () => {
+                              const mode = await signInOrUp(cloudEmail, cloudPw)
+                              setCloudUser(cloudEmail)
+                              setCloudStage('in')
+                              const r = await syncNow()
+                              await startAutoSync() // 登入即啟用自動推送
+                              setCloudMsg(
+                                `✓ ${mode === 'up' ? '開通成功' : '登入成功'}，已同步（↓${r.pulled} ↑${r.pushed}）`
+                              )
+                              if (r.pulled > 0) setTimeout(() => location.reload(), 1000)
+                            })
+                          }
+                        >
+                          登入
+                        </button>
+                        <button onClick={() => setShowLicense(true)}>🛒 我有購買序號</button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          disabled={!cloudEmail.includes('@') || cloudPw.length < 8 || license.length < 8}
+                          onClick={() =>
+                            cloudAct(async () => {
+                              await activateLicense(license, cloudEmail, cloudPw)
+                              setCloudUser(cloudEmail)
+                              setCloudStage('in')
+                              const r = await syncNow()
+                              await startAutoSync()
+                              setCloudMsg(`✓ 序號啟用成功，已同步（↓${r.pulled} ↑${r.pushed}）`)
+                            })
+                          }
+                        >
+                          啟用並登入
+                        </button>
+                        <button onClick={() => setShowLicense(false)}>返回登入</button>
+                      </>
+                    )}
                   </div>
                 </>
               )}
