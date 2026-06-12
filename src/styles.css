@@ -15,7 +15,7 @@
   --gold-deep: #96732b;
   --gold-soft: #e6d4a8;
   --terra: #b65c38; /* 赤陶色：強調/計時器 */
-  --ink-write: #26354f; /* 藍黑墨水：用戶手寫的字（對比印刷的墨黑） */
+  --ink-write: #1e2a40; /* 藍黑墨水：用戶手寫的字（對比印刷的墨黑） */
   --sage: #6e7d5c; /* 鼠尾草綠：完成 */
   --serif: 'Noto Serif TC', 'Songti TC', serif;
   --hand: 'LXGW WenKai TC', 'Noto Serif TC', serif;
@@ -62,8 +62,9 @@ button {
 input,
 textarea {
   font-family: var(--hand);
-  font-size: 17px;
+  font-size: 17.5px;
   color: var(--ink-write);
+  -webkit-text-stroke: 0.25px currentColor; /* 文楷筆畫偏細，微加粗 */
   background: transparent;
   border: none;
   outline: none;
@@ -1934,4 +1935,52 @@ button.wk-head:hover {
   border-radius: 999px;
   padding: 4px 12px;
   width: 150px;
+}
+
+/* MIT 大專注鈕（番茄鐘入口） */
+.mit-focus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 10px 0 2px;
+  padding: 12px 18px;
+  border: 1.5px solid var(--terra);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(182, 92, 56, 0.08), rgba(182, 92, 56, 0.14));
+  color: var(--terra);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  transition: all 0.25s;
+}
+
+.mit-focus:hover {
+  background: var(--terra);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(182, 92, 56, 0.35);
+}
+
+.mit-focus:hover .mit-focus-sub { color: rgba(255,255,255,.8); }
+.mit-focus:hover .mit-focus-ring { background: #fff; color: var(--terra); }
+
+.mit-focus-ring {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--terra);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  animation: pulse 2.5s infinite;
+}
+
+.mit-focus-sub {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: 12.5px;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
 }
