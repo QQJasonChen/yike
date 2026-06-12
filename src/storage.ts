@@ -38,6 +38,17 @@ export const addDays = (key: string, n: number): string => {
   return toDateKey(d)
 }
 
+/** ISO 週數（避開 DST 用天數四捨五入） */
+export const isoWeekOf = (d: Date): number => {
+  const dow = (d.getDay() + 6) % 7
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow)
+  const jan4 = new Date(monday.getFullYear(), 0, 4)
+  const jan4Mon = new Date(jan4.getFullYear(), 0, 4 - ((jan4.getDay() + 6) % 7))
+  const week = Math.round((monday.getTime() - jan4Mon.getTime()) / 86400000) / 7 + 1
+  if (week < 1) return isoWeekOf(new Date(monday.getFullYear() - 1, 11, 28))
+  return week
+}
+
 /** 該日期所屬週的星期一（週為 一 ~ 日） */
 export const mondayOf = (key: string): string => {
   const d = fromDateKey(key)

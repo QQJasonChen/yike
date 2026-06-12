@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import MiniCal from './MiniCal'
 import PeriodSummary from './PeriodSummary'
 import { addMonths, loadDay, loadMonth, saveMonth, toDateKey } from './storage'
 import { DayEntry, MonthEntry } from './types'
@@ -65,6 +66,20 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
               ›
             </button>
           </div>
+        </div>
+
+        <div className="yr-strip">
+          {Array.from({ length: 12 }, (_, i) => (
+            <MiniCal
+              key={i}
+              micro
+              year={y}
+              month={i + 1}
+              current={i + 1 === m}
+              onPick={onOpenDay}
+              onPickMonth={() => onMonthChange(`${y}-${String(i + 1).padStart(2, '0')}`)}
+            />
+          ))}
         </div>
 
         <h2 className="section-title">{MONTHS_EN[m - 1]}</h2>
