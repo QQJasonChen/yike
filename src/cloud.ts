@@ -27,8 +27,12 @@ export const signInOrUp = async (email: string, password: string): Promise<'in' 
   if (!/invalid login credentials/i.test(error.message)) throw new Error(error.message)
   // 帳號不存在 → 註冊
   const { data, error: upErr } = await db.auth.signUp({ email, password })
-  if (upErr) throw new Error(upErr.message)
-  if (!data.session) throw new Error('密碼錯誤，或此信箱已註冊')
+  if (upErr) {
+    if (/already registered/i.test(upErr.message))
+      throw new Error('這個 Email 已經註冊過——請確認密碼是否輸入正確')
+    throw new Error(upErr.message)
+  }
+  if (!data.session) throw new Error('這個 Email 已經註冊過——請確認密碼是否輸入正確')
   return 'up'
 }
 
