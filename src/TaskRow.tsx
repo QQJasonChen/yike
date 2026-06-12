@@ -62,6 +62,7 @@ export default function TaskRow({
       <span className="task-num">{index + 1}.</span>
       <div className="task-text line-input" style={{ borderBottom: 'none' }}>
         <input
+          list="yike-names"
           placeholder={index === 0 ? '今天就算只做成這一件，也值得了' : ''}
           value={task.text}
           onChange={(e) => onChange({ ...task, text: e.target.value })}

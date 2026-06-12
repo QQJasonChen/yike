@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import PeriodSummary from './PeriodSummary'
 import { addMonths, loadDay, loadMonth, saveMonth, toDateKey } from './storage'
 import { DayEntry, MonthEntry } from './types'
 
@@ -97,6 +98,14 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
             )
           })}
         </div>
+
+        <PeriodSummary
+          title="本月總結"
+          periodLabel={`${y} 年 ${m} 月`}
+          dayKeys={Array.from({ length: daysInMonth }, (_, i) =>
+            `${monthKey}-${String(i + 1).padStart(2, '0')}`
+          )}
+        />
 
         <div className="label">本月優先事項</div>
         {entry.priorities.map((p, i) => (

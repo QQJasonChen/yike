@@ -132,6 +132,7 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
                   >
                     <input
                       autoFocus
+                      list="yike-names"
                       placeholder="做什麼？"
                       value={edit.text}
                       onChange={(e) => updateBlock(k, edit.id, { text: e.target.value })}

@@ -170,6 +170,46 @@ export const currentStreak = (todayKey: string): number => {
   return streak
 }
 
+// ---- 活動名稱統計（自動完成＋總結用） ----
+
+export interface NameStat {
+  name: string
+  days: number
+  sessions: number // 專注段數（任務塗格）
+  minutes: number // 時間軸累計分鐘
+}
+
+export const nameStats = (): NameStat[] => {
+  const map = new Map<string, { days: Set<string>; sessions: number; minutes: number }>()
+  const touch = (n: string) => {
+    if (!map.has(n)) map.set(n, { days: new Set(), sessions: 0, minutes: 0 })
+    return map.get(n)!
+  }
+  for (const k of allDayKeys()) {
+    const d = loadDay(k)
+    for (const task of d.tasks) {
+      const n = task.text.trim()
+      if (!n) continue
+      const e = touch(n)
+      e.days.add(k)
+      e.sessions += task.done
+    }
+    for (const b of d.blocks) {
+      const n = b.text.trim()
+      if (!n) continue
+      const e = touch(n)
+      e.days.add(k)
+      e.minutes += b.end - b.start
+    }
+  }
+  return [...map.entries()]
+    .map(([name, e]) => ({ name, days: e.days.size, sessions: e.sessions, minutes: e.minutes }))
+    .sort((a, b) => b.minutes + b.sessions * 30 - (a.minutes + a.sessions * 30))
+}
+
+/** 常用名稱（自動完成清單），頻率排序，最多 40 個 */
+export const recentNames = (): string[] => nameStats().slice(0, 40).map((s) => s.name)
+
 // ---- 匯出 / 匯入 ----
 
 /** 所有要同步/備份的資料 key（排除裝置本地的 sync 設定與 meta） */

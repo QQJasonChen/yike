@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, currentEmail, startAutoSync } from './cloud'
 import DayView from './DayView'
 import WeekView from './WeekView'
@@ -11,6 +11,7 @@ import {
   loadSettings,
   mondayOf,
   monthOf,
+  recentNames,
   saveSettings,
   toDateKey,
 } from './storage'
@@ -71,9 +72,16 @@ export default function App() {
   }
 
   const streak = currentStreak(todayKey)
+  // 歷史名稱 → 全域自動完成（切換分頁時刷新）
+  const names = useMemo(() => recentNames(), [tab])
 
   return (
     <>
+      <datalist id="yike-names">
+        {names.map((n) => (
+          <option key={n} value={n} />
+        ))}
+      </datalist>
       <div className="topbar">
         <span className="brand">一刻手帳 Yike</span>
         <nav className="tabs">

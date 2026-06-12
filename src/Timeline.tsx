@@ -284,6 +284,7 @@ export default function Timeline({ blocks, isToday, onChange, dropRef }: Props) 
           >
             <input
               autoFocus
+              list="yike-names"
               placeholder="做什麼？例：上班、深度工作"
               value={editing.text}
               onChange={(e) => updateBlock(editing.id, { text: e.target.value })}

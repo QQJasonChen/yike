@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import {
   addDays,
   allDayKeys,
+  nameStats,
   currentStreak,
   exportAll,
   importAll,
@@ -220,6 +221,37 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
             <span key={k}>{WD[new Date(k).getDay() >= 0 ? new Date(`${k}T12:00:00`).getDay() : 0]}</span>
           ))}
         </div>
+
+        <div className="label">
+          活動統計 <span className="hint">同名才會合併——輸入時點選建議名稱，數據就會對齊</span>
+        </div>
+        {(() => {
+          const stats = nameStats().slice(0, 12)
+          if (stats.length === 0)
+            return <p className="wk-noresult">還沒有資料——開始記錄後這裡會自動總結。</p>
+          return (
+            <table className="act-table">
+              <thead>
+                <tr>
+                  <th>活動</th>
+                  <th>天數</th>
+                  <th>專注段</th>
+                  <th>時間軸</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.map((s) => (
+                  <tr key={s.name}>
+                    <td className="act-name">{s.name}</td>
+                    <td>{s.days}</td>
+                    <td>{s.sessions > 0 ? `${s.sessions} 段` : '–'}</td>
+                    <td>{s.minutes > 0 ? `${Math.round((s.minutes / 60) * 10) / 10} 小時` : '–'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        })()}
 
         <div className="label">所有記錄</div>
         {keys.length === 0 && (
