@@ -2192,3 +2192,35 @@ button.wk-head:hover {
 
 .task-row:hover .tally-minus { opacity: 1; }
 @media (hover: none) { .tally-minus { opacity: 0.6; } }
+
+/* ---------- 分段進度環 ---------- */
+
+.pie-btn {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.pie-btn:hover { background: rgba(184, 146, 62, 0.1); }
+.pie-btn:active { transform: scale(0.9); }
+
+.pie { width: 30px; height: 30px; overflow: visible; }
+
+.pie path {
+  fill: none;
+  stroke-width: 5.5;
+  stroke-linecap: round;
+  transition: stroke 0.3s;
+}
+
+.pie .pg-done { stroke: var(--ink-write); }
+.pie .pg-rest { stroke: rgba(154, 143, 125, 0.28); }
+
+.pie .pg-dot {
+  fill: var(--gold);
+  animation: dotDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}

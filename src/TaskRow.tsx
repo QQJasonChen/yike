@@ -1,14 +1,21 @@
 import { useRef, useState } from 'react'
 import { Task } from './types'
 
-// 「正」五畫的線段座標（筆順：上橫、中豎、右橫、左豎、底橫）
-const ZHENG_STROKES: [number, number, number, number][] = [
-  [3, 4, 21, 4],
-  [12, 4, 12, 20],
-  [12.5, 12, 20, 12],
-  [5.5, 9.5, 5.5, 20],
-  [3, 20, 21, 20],
-]
+// 分段進度環：目標數把圓拆成等份，完成的段填墨色
+const polar = (deg: number, r = 10.5): [number, number] => {
+  const rad = ((deg - 90) * Math.PI) / 180
+  return [14 + r * Math.cos(rad), 14 + r * Math.sin(rad)]
+}
+
+const segPath = (i: number, n: number): string => {
+  const span = 360 / n
+  const gap = n > 1 ? Math.min(14, span * 0.18) : 0.01
+  const a0 = i * span + gap / 2
+  const a1 = (i + 1) * span - gap / 2
+  const [x0, y0] = polar(a0)
+  const [x1, y1] = polar(a1)
+  return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A 10.5 10.5 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`
+}
 
 interface Props {
   index: number
@@ -92,34 +99,30 @@ export default function TaskRow({
         ⠿
       </span>
 
-      {/* 正字記號：一刻一畫，五刻成正（取代 v1.2 的圈圈追蹤） */}
+      {/* 分段進度環：目標 N → 圓分 N 等份，完成幾段填幾段 */}
       <div className="focus-track">
         {task.done > 0 && (
-          <button className="tally-minus" onClick={() => setDone(task.done - 1)} title="刻回一筆">
+          <button className="tally-minus" onClick={() => setDone(task.done - 1)} title="退回一段">
             −
           </button>
         )}
         <button
-          className="zheng-btn"
+          className="pie-btn"
           onClick={() => setDone(Math.min(5, task.done + 1))}
-          title="刻一筆（一段 30 分鐘）"
+          title="完成一段（30 分鐘）"
         >
-          <svg className="zheng" viewBox="0 0 24 24">
-            {ZHENG_STROKES.map((p, i) => (
-              <line
-                key={i}
-                x1={p[0]}
-                y1={p[1]}
-                x2={p[2]}
-                y2={p[3]}
-                className={
-                  i < task.done ? 'zs-done' : task.target !== null && i < task.target ? 'zs-target' : 'zs-ghost'
-                }
-              />
-            ))}
+          <svg className="pie" viewBox="0 0 28 28">
+            {(() => {
+              const segs = task.target ?? 5
+              const filled = Math.min(task.done, segs)
+              return Array.from({ length: segs }, (_, i) => (
+                <path key={i} d={segPath(i, segs)} className={i < filled ? 'pg-done' : 'pg-rest'} />
+              ))
+            })()}
+            {task.target !== null && task.done >= task.target && <circle cx="14" cy="14" r="3.6" className="pg-dot" />}
           </svg>
         </button>
-        <button className="tally-chip" onClick={cycleTarget} title="點擊設定目標刻數（每刻 30 分鐘）">
+        <button className="tally-chip" onClick={cycleTarget} title="點擊設定目標段數（每段 30 分鐘）">
           {task.done}<span>/</span>{task.target ?? '–'}
         </button>
       </div>
