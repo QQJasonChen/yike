@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Block } from './types'
 
-// 時間軸範圍：06:00 – 22:00，每格 30 分鐘
+// 時間軸範圍：06:00 – 23:00，每格 30 分鐘
 const START_MIN = 6 * 60
-const END_MIN = 22 * 60
+const END_MIN = 23 * 60
 const SLOT = 30
 const SLOT_PX = 26 // 與 .tl-row 高度一致
 

@@ -2109,3 +2109,17 @@ button.wk-head:hover {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.035); }
 }
+
+/* 30 分鐘短塊：單行模式（時間藏進 hover/編輯）——v2 補回 */
+.tl-block.slim {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tl-block.slim .tl-block-time {
+  display: none;
+}

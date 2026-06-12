@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { addDays, fromDateKey, loadDay, saveDay, toDateKey } from './storage'
 import { Block, DayEntry } from './types'
 
-// 無印良品週間バーチカル式：7 天直欄 × 06:00–22:00 時間格
+// 無印良品週間バーチカル式：7 天直欄 × 06:00–23:00 時間格
 const START_MIN = 6 * 60
-const END_MIN = 22 * 60
+const END_MIN = 23 * 60
 const SLOT = 30
 const SLOT_PX = 16
 
