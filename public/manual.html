@@ -79,9 +79,8 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
     <a href="#year">9. 年（整年一覽）</a>
     <a href="#review">10. 回顧與 AI 教練</a>
     <a href="#cloud">11. 雲端同步（帳號）</a>
-    <a href="#sync">12. Gist 同步（進階）</a>
-    <a href="#export">13. 匯出與備份</a>
-    <a href="#faq">14. 疑難排解</a>
+    <a href="#export">12. 匯出與備份</a>
+    <a href="#faq">13. 疑難排解</a>
   </nav>
 
   <main class="doc">
@@ -215,20 +214,9 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
       <li>之後不用再做任何事；想手動觸發按 <kbd>⟳ 立即同步</kbd></li>
       <li>衝突處理：逐筆比較修改時間，<b>新的贏</b></li>
     </ol>
-    <div class="warn"><b>還沒看到這個區塊？</b>雲端同步需要站方完成 Supabase 設定（把專案金鑰填入 <kbd>cloudConfig.ts</kbd>）後才會顯示。在那之前可以先用下一章的 Gist 同步。</div>
+    <p>入口：任何頁面右上角的「☁ 登入」。</p>
 
-    <h2 id="sync"><span class="no">12</span>Gist 同步（進階・極客版）</h2>
-    <p>資料預設只存在單一裝置。要多裝置同步，用你自己的 GitHub 帳號當免費私人雲端：</p>
-    <ol>
-      <li>到「回顧」頁底部「跨裝置同步」，點 token 連結（或到 <a href="https://github.com/settings/tokens/new?scopes=gist&description=InkDay+Sync" target="_blank" rel="noreferrer">github.com/settings/tokens</a>）</li>
-      <li>建立一個<b>只勾 gist 權限</b>的 token，複製</li>
-      <li>貼到輸入框 → 點「⬆ 上傳到雲端」</li>
-      <li>在另一台裝置：貼<b>同一個 token</b> → 點「⬇ 從雲端下載」</li>
-      <li>之後養成習慣：寫完上傳、換裝置先下載</li>
-    </ol>
-    <div class="tip"><b>資料去哪了？</b>存在你 GitHub 帳號的「私人 Gist」，只有你看得到。token 只留在裝置上，不會跟著備份檔外流。</div>
-
-    <h2 id="export"><span class="no">13</span>匯出與備份</h2>
+    <h2 id="export"><span class="no">12</span>匯出與備份</h2>
     <table>
       <tr><th>功能</th><th>位置</th><th>用途</th></tr>
       <tr><td><kbd>⧉ MD</kbd> 複製當日 Markdown</td><td>「今天」頁右上角</td><td>貼到 Heptabase journal、Notion、任何筆記軟體，格式完美</td></tr>
@@ -237,13 +225,13 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
     </table>
     <div class="warn"><b>重要：</b>清除瀏覽器資料（清快取／無痕模式）會洗掉本機記錄。請開啟 Gist 同步，或每週匯出一次 JSON。你的日記值得一份備份。</div>
 
-    <h2 id="faq"><span class="no">14</span>疑難排解</h2>
+    <h2 id="faq"><span class="no">13</span>疑難排解</h2>
     <h3>計時器的聲音沒響？</h3>
     <p>手機請確認沒開靜音／勿擾；瀏覽器分頁須是有互動過的狀態（點過任意按鈕即可）。切到其他分頁時，倒數會顯示在分頁標題上。</p>
     <h3>加入主畫面後畫面沒更新？</h3>
     <p>PWA 會快取舊版。完全關閉 App 再重開，或下拉重新整理兩次即可拿到新版。</p>
-    <h3>同步顯示「上傳失敗（401）」？</h3>
-    <p>Token 過期或權限不對。重新建立一個只勾 <kbd>gist</kbd> 的 token 再貼一次。</p>
+    <h3>換裝置看不到資料？</h3>
+    <p>確認兩台裝置右上角都是綠色「☁ 同步中」且登入同一個 Email。手動按「⟳ 立即同步」可立刻強制雙向同步。</p>
     <h3>手機上拖拉時間塊會捲動頁面？</h3>
     <p>直接按住時間塊拖即可（塊本身不會觸發捲動）；新增請用「點空格」，比拖拉更快。</p>
     <h3>想從某一天開始補寫過去的記錄？</h3>
