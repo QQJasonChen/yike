@@ -70,14 +70,18 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
     <div class="t">目錄</div>
     <a href="#start">1. 快速開始</a>
     <a href="#daily">2. 每日流程</a>
-    <a href="#focus">3. Focus 計時器</a>
-    <a href="#timeline">4. 時間軸拖拉</a>
-    <a href="#week">5. 本週與搜尋</a>
-    <a href="#month">6. 本月</a>
-    <a href="#review">7. 回顧與統計</a>
-    <a href="#sync">8. 跨裝置同步</a>
-    <a href="#export">9. 匯出與備份</a>
-    <a href="#faq">10. 疑難排解</a>
+    <a href="#questions">3. 自訂每日問題</a>
+    <a href="#focus">4. Focus 計時器</a>
+    <a href="#timeline">5. 時間軸拖拉</a>
+    <a href="#rollover">6. 昨日未完成帶入</a>
+    <a href="#week">7. 本週與搜尋</a>
+    <a href="#month">8. 本月</a>
+    <a href="#year">9. 年（整年一覽）</a>
+    <a href="#review">10. 回顧與 AI 教練</a>
+    <a href="#cloud">11. 雲端同步（帳號）</a>
+    <a href="#sync">12. Gist 同步（進階）</a>
+    <a href="#export">13. 匯出與備份</a>
+    <a href="#faq">14. 疑難排解</a>
   </nav>
 
   <main class="doc">
@@ -116,7 +120,19 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
     </ol>
     <div class="tip"><b>所有輸入即時自動儲存</b>，沒有儲存按鈕。寫完直接關掉就行。</div>
 
-    <h2 id="focus"><span class="no">3</span>Focus 計時器與塗圈</h2>
+    <h2 id="questions"><span class="no">3</span>自訂每日問題（日刻三問）</h2>
+    <p>晨間與晚間的反思問題<b>完全可以自訂</b>——把日刻手帳變成你自己的方法。</p>
+    <p>預設是「日刻三問」：</p>
+    <ol>
+      <li><b>我感謝</b>——先定調心情</li>
+      <li><b>今天的意圖（我是一個＿＿的人）</b>——用現在式宣告今天的狀態</li>
+      <li><b>今天，我玩什麼不一樣的玩法？</b>——跳出慣性的一問</li>
+    </ol>
+    <p>修改方式：到「回顧」頁 → <kbd>✎ 自訂每日問題</kbd> → 一行一個問題（晨間、晚間各最多 6 題）→ 按「儲存問題」。
+    「今天」頁立即生效，舊記錄的回答不會消失。想回到預設按「還原日刻法預設」。</p>
+    <div class="tip"><b>點子：</b>把你教練的提問、每週 OKR 檢查、或「今天有沒有推進主線？」放進晚間問題，手帳就成了你的問責系統。</div>
+
+    <h2 id="focus"><span class="no">4</span>Focus 計時器與塗圈</h2>
     <p>每個任務右側是一組追蹤格：<kbd>▢ Target</kbd> → <kbd>○○○○○</kbd> → <kbd>▢ Actual</kbd></p>
     <table>
       <tr><th>操作</th><th>怎麼做</th></tr>
@@ -130,7 +146,7 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
     </table>
     <div class="tip"><b>30 分鐘不合手感？</b>到「回顧」頁最下面可改 25–50 分鐘，休息 5–15 分鐘。</div>
 
-    <h2 id="timeline"><span class="no">4</span>時間軸（Google 日曆式拖拉）</h2>
+    <h2 id="timeline"><span class="no">5</span>時間軸（Google 日曆式拖拉）</h2>
     <p>「今天」頁右側是 06:00–22:00 的時間軸，紅線是現在時刻。</p>
     <ul>
       <li><b>新增</b>：點任何空格，長出 30 分鐘時間塊，直接命名</li>
@@ -141,7 +157,16 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
       <li><b>編輯／刪除</b>：點時間塊開啟小視窗</li>
     </ul>
 
-    <h2 id="week"><span class="no">5</span>本週：七天時間格＋全域搜尋</h2>
+    <h2 id="rollover"><span class="no">6</span>昨日未完成帶入</h2>
+    <p>紙本手帳最麻煩的就是「昨天沒做完的要手抄到今天」。日刻手帳自動處理：</p>
+    <ul>
+      <li>打開「今天」時，若昨天有<b>寫了但沒打勾</b>的任務，任務區上方會出現提示：「昨天有 N 件未完成」</li>
+      <li>點 <kbd>帶入今天 →</kbd>：未完成任務（含預估格數）填進今天的空位，塗圈歸零重新計</li>
+      <li>已完成的任務不會被帶入；不想接續就點 <kbd>✕</kbd> 忽略</li>
+    </ul>
+    <div class="tip"><b>連續三天都帶入同一件事？</b>那可能不是時間問題。把它丟給 AI 教練（見第 10 章），或拆小、或誠實放棄。</div>
+
+    <h2 id="week"><span class="no">7</span>本週：七天時間格＋全域搜尋</h2>
     <img class="shot" src="img/shot-week.png" alt="週檢視" />
     <p class="cap">無印手帳式的週間直式時間格</p>
     <ul>
@@ -151,7 +176,7 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
       <li>往下捲是<b>週計劃</b>（本週意圖＋五大任務）和<b>週回顧四問</b>，建議週日花 10 分鐘填</li>
     </ul>
 
-    <h2 id="month"><span class="no">6</span>本月</h2>
+    <h2 id="month"><span class="no">8</span>本月</h2>
     <img class="shot" src="img/shot-month.png" alt="月檢視" />
     <p class="cap">每天的最重要任務、心情、評分濃縮成一格</p>
     <ul>
@@ -161,12 +186,38 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
       <li><kbd>‹</kbd><kbd>›</kbd> 可以跨月、跨年翻頁</li>
     </ul>
 
-    <h2 id="review"><span class="no">7</span>回顧與統計</h2>
+    <h2 id="year"><span class="no">9</span>年：One Year at a Glance</h2>
+    <p>一頁看見一整年——12 個月並排、每月 31 格，<b>格子的金色深淺＝當天的生產力評分</b>，像你一整年的指紋。</p>
+    <ul>
+      <li><b>年度三大目標</b>：「今年就算只完成這一件，也值得了」，完成就打勾</li>
+      <li><b>每月主題</b>：每欄底部寫這個月的一件主事（例：6 月＝雙週更）</li>
+      <li>點任何格子跳入那一天；<kbd>‹</kbd><kbd>›</kbd> 可跨年翻頁</li>
+      <li>今天的格子有紅框；斜線格＝該月不存在的日期</li>
+    </ul>
+    <div class="tip"><b>用法：</b>每週日掃一眼——金色連起來了嗎？空白多的那幾週發生了什麼？這比任何統計圖都誠實。</div>
+
+    <h2 id="review"><span class="no">10</span>回顧、統計與 AI 教練</h2>
     <img class="shot" src="img/shot-review.png" alt="回顧統計" />
     <p class="cap">看見自己的模式，就是進步的開始</p>
     <p>「回顧」頁自動統計：<b>連續記錄天數</b>（streak）、累計天數、平均生產力評分、累計 FOCUS 時段與專注小時、任務完成率、心情分布、近 14 天評分圖表，以及所有記錄列表（點任一筆跳回那天）。</p>
+    <h3>🤖 AI 教練分析</h3>
+    <ol>
+      <li>點「回顧」頁的 <kbd>🤖 AI 教練分析</kbd>——自動複製<b>近 7 天完整記錄＋分析指令</b></li>
+      <li>貼到 Claude、ChatGPT 或任何 AI</li>
+      <li>得到：高分日／低分日的模式、能量時段分析、重複拖延任務的誠實提醒、下週三個具體行動</li>
+    </ol>
+    <p>資料不會自動傳給任何人——複製到剪貼簿後，貼去哪、給誰看，完全由你決定。</p>
 
-    <h2 id="sync"><span class="no">8</span>跨裝置同步（手機 ⇄ 電腦）</h2>
+    <h2 id="cloud"><span class="no">11</span>雲端同步（帳號制・自動）</h2>
+    <p>登入後<b>全自動</b>：寫完幾秒內上雲，換裝置打開自動拉取，手機電腦 iOS 永遠一致。</p>
+    <ol>
+      <li>到「回顧」頁「雲端同步（帳號制）」輸入 Email → 收 6 位數驗證碼 → 登入</li>
+      <li>之後不用再做任何事；想手動觸發按 <kbd>⟳ 立即同步</kbd></li>
+      <li>衝突處理：逐筆比較修改時間，<b>新的贏</b></li>
+    </ol>
+    <div class="warn"><b>還沒看到這個區塊？</b>雲端同步需要站方完成 Supabase 設定（把專案金鑰填入 <kbd>cloudConfig.ts</kbd>）後才會顯示。在那之前可以先用下一章的 Gist 同步。</div>
+
+    <h2 id="sync"><span class="no">12</span>Gist 同步（進階・極客版）</h2>
     <p>資料預設只存在單一裝置。要多裝置同步，用你自己的 GitHub 帳號當免費私人雲端：</p>
     <ol>
       <li>到「回顧」頁底部「跨裝置同步」，點 token 連結（或到 <a href="https://github.com/settings/tokens/new?scopes=gist&description=InkDay+Sync" target="_blank" rel="noreferrer">github.com/settings/tokens</a>）</li>
@@ -177,7 +228,7 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
     </ol>
     <div class="tip"><b>資料去哪了？</b>存在你 GitHub 帳號的「私人 Gist」，只有你看得到。token 只留在裝置上，不會跟著備份檔外流。</div>
 
-    <h2 id="export"><span class="no">9</span>匯出與備份</h2>
+    <h2 id="export"><span class="no">13</span>匯出與備份</h2>
     <table>
       <tr><th>功能</th><th>位置</th><th>用途</th></tr>
       <tr><td><kbd>⧉ MD</kbd> 複製當日 Markdown</td><td>「今天」頁右上角</td><td>貼到 Heptabase journal、Notion、任何筆記軟體，格式完美</td></tr>
@@ -186,7 +237,7 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
     </table>
     <div class="warn"><b>重要：</b>清除瀏覽器資料（清快取／無痕模式）會洗掉本機記錄。請開啟 Gist 同步，或每週匯出一次 JSON。你的日記值得一份備份。</div>
 
-    <h2 id="faq"><span class="no">10</span>疑難排解</h2>
+    <h2 id="faq"><span class="no">14</span>疑難排解</h2>
     <h3>計時器的聲音沒響？</h3>
     <p>手機請確認沒開靜音／勿擾；瀏覽器分頁須是有互動過的狀態（點過任意按鈕即可）。切到其他分頁時，倒數會顯示在分頁標題上。</p>
     <h3>加入主畫面後畫面沒更新？</h3>
