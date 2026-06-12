@@ -2587,3 +2587,7 @@ button.mc-month:disabled { cursor: default; }
   background: linear-gradient(135deg, #33415e, #1e2a40);
   opacity: 0.65;
 }
+
+/* 月甘特：31 欄字縮小 */
+.gantt .g-day { font-size: 10px; overflow: hidden; }
+.gantt .g-bar { min-width: 0; }

@@ -188,12 +188,23 @@ export interface NameStat {
   days: number
   sessions: number // 專注段數（任務塗格）
   minutes: number // 時間軸累計分鐘
+  plans: number // 出現在週/月/年計畫的次數
+}
+
+/** 列出 localStorage 中指定前綴的所有 key 後綴 */
+const keysWithPrefix = (prefix: string): string[] => {
+  const keys: string[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (k?.startsWith(prefix)) keys.push(k.slice(prefix.length))
+  }
+  return keys
 }
 
 export const nameStats = (): NameStat[] => {
-  const map = new Map<string, { days: Set<string>; sessions: number; minutes: number }>()
+  const map = new Map<string, { days: Set<string>; sessions: number; minutes: number; plans: number }>()
   const touch = (n: string) => {
-    if (!map.has(n)) map.set(n, { days: new Set(), sessions: 0, minutes: 0 })
+    if (!map.has(n)) map.set(n, { days: new Set(), sessions: 0, minutes: 0, plans: 0 })
     return map.get(n)!
   }
   for (const k of allDayKeys()) {
@@ -213,9 +224,34 @@ export const nameStats = (): NameStat[] => {
       e.minutes += b.end - b.start
     }
   }
+  // 週/月/年計畫項目也納入同一份名稱統計（讓計畫與每日記錄用同一套詞）
+  for (const k of keysWithPrefix(WEEK_PREFIX))
+    for (const t of loadWeek(k).tasks) {
+      const n = t.text.trim()
+      if (n) touch(n).plans++
+    }
+  for (const k of keysWithPrefix(MONTH_PREFIX))
+    for (const p of loadMonth(k).priorities) {
+      const n = p.text.trim()
+      if (n) touch(n).plans++
+    }
+  for (const k of keysWithPrefix(YEAR_PREFIX))
+    for (const g of loadYear(k).goals) {
+      const n = g.text.trim()
+      if (n) touch(n).plans++
+    }
   return [...map.entries()]
-    .map(([name, e]) => ({ name, days: e.days.size, sessions: e.sessions, minutes: e.minutes }))
-    .sort((a, b) => b.minutes + b.sessions * 30 - (a.minutes + a.sessions * 30))
+    .map(([name, e]) => ({
+      name,
+      days: e.days.size,
+      sessions: e.sessions,
+      minutes: e.minutes,
+      plans: e.plans,
+    }))
+    .sort(
+      (a, b) =>
+        b.minutes + b.sessions * 30 + b.plans * 15 - (a.minutes + a.sessions * 30 + a.plans * 15)
+    )
 }
 
 /** 常用名稱（自動完成清單），頻率排序，最多 40 個 */

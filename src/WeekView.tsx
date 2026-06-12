@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import GanttWeek from './GanttWeek'
+import Gantt from './Gantt'
 import HabitWeek from './HabitWeek'
 import MiniCal from './MiniCal'
 import PeriodSummary from './PeriodSummary'
 import WeekGrid from './WeekGrid'
-import { addDays, allDayKeys, fromDateKey, loadDay, loadWeek, saveWeek } from './storage'
+import { addDays, allDayKeys, fromDateKey, loadDay, loadWeek, saveWeek, toDateKey } from './storage'
 import { WeekEntry } from './types'
 
 import { Settings } from './types'
@@ -103,7 +103,11 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
         return (
           <div key={idx} className={`week-task-row ${t.done ? 'done' : ''}`}>
             <span className="task-num">{idx + 1}.</span>
-            <input value={t.text} onChange={(e) => updateTask(idx, { text: e.target.value })} />
+            <input
+              list="yike-names"
+              value={t.text}
+              onChange={(e) => updateTask(idx, { text: e.target.value })}
+            />
             <button
               className={`week-check ${t.done ? 'on' : ''}`}
               onClick={() => updateTask(idx, { done: !t.done })}
@@ -188,19 +192,29 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
           />
         </div>
 
-        {section('本週五大最重要任務', '如果這週只完成這五件事，你會滿意', 0, 5)}
-        {section('次要任務', '完成上面的才做這些', 5, 10)}
-        {section('額外任務', '行有餘力再做', 10, 15)}
-
-        <GanttWeek
-          mondayKey={mondayKey}
-          week={week}
+        <Gantt
+          title="本週甘特"
+          hint="在任務的列上拖出起訖・雙擊橫條清除"
+          emptyHint="先在下方「本週五大任務」寫下任務，這裡就會出現可拖拉的時程列"
+          cols={Array.from({ length: 7 }, (_, d) => {
+            const k = addDays(mondayKey, d)
+            return {
+              label: ['一', '二', '三', '四', '五', '六', '日'][d],
+              sub: String(Number(k.slice(8, 10))),
+              today: k === toDateKey(new Date()),
+            }
+          })}
+          rows={week.tasks.map((t, i) => ({ ...t, i })).filter((t) => t.text.trim()).slice(0, 10)}
           onSpan={(i, span) => {
             const tasks = week.tasks.slice()
             tasks[i] = { ...tasks[i], span }
             update({ tasks })
           }}
         />
+
+        {section('本週五大最重要任務', '如果這週只完成這五件事，你會滿意', 0, 5)}
+        {section('次要任務', '完成上面的才做這些', 5, 10)}
+        {section('額外任務', '行有餘力再做', 10, 15)}
 
         <PeriodSummary
           title="本週總結"

@@ -47,7 +47,7 @@ export interface WeekEntry {
 }
 
 export interface MonthEntry {
-  priorities: { text: string; done: boolean }[] // 本月優先事項（6 格）
+  priorities: { text: string; done: boolean; span?: [number, number] | null }[] // 本月優先事項（6 格）；span=日 index
   highlights: string // 本月亮點
 }
 
@@ -61,7 +61,7 @@ export interface Settings {
 }
 
 export interface YearEntry {
-  goals: { text: string; done: boolean }[] // 年度三大目標
+  goals: { text: string; done: boolean; span?: [number, number] | null }[] // 年度三大目標；span=月 index 0-11
   monthFocus: string[] // 12 個月，每月一個主題
   /** 年曆上的一句話（生日/死線/里程碑），key = YYYY-MM-DD。
    *  存在 year entry 而非 day entry：未來日期寫事件不會「污染」記錄天數統計 */

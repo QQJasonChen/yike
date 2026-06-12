@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import MiniCal from './MiniCal'
+import Gantt from './Gantt'
 import PeriodSummary from './PeriodSummary'
 import { addMonths, loadDay, loadMonth, saveMonth, toDateKey } from './storage'
 import { DayEntry, MonthEntry } from './types'
@@ -127,6 +128,7 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
           <div key={i} className={`week-task-row ${p.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
             <input
+              list="yike-names"
               value={p.text}
               onChange={(e) => {
                 const priorities = entry.priorities.slice()
@@ -146,6 +148,23 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
             </button>
           </div>
         ))}
+
+        <Gantt
+          title="本月甘特"
+          hint="在事項的列上拖出起訖日・雙擊清除"
+          emptyHint="先寫下本月優先事項，這裡就會出現可拖拉的時程列"
+          labelWidth={130}
+          cols={Array.from({ length: daysInMonth }, (_, d) => ({
+            label: String(d + 1),
+            today: `${monthKey}-${String(d + 1).padStart(2, '0')}` === todayKey,
+          }))}
+          rows={entry.priorities.map((p, i) => ({ ...p, i })).filter((p) => p.text.trim())}
+          onSpan={(i, span) => {
+            const priorities = entry.priorities.slice()
+            priorities[i] = { ...priorities[i], span }
+            update({ priorities })
+          }}
+        />
 
         <div className="label">本月亮點</div>
         <textarea

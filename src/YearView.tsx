@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import Gantt from './Gantt'
 import { allDayKeys, loadDay, loadYear, saveYear, toDateKey } from './storage'
 import { YearEntry } from './types'
 
@@ -76,6 +77,7 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
           <div key={i} className={`week-task-row ${g.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
             <input
+              list="yike-names"
               value={g.text}
               placeholder={i === 0 ? '今年就算只完成這一件，也值得了' : ''}
               onChange={(e) => {
@@ -96,6 +98,22 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
             </button>
           </div>
         ))}
+
+        <Gantt
+          title="年度甘特"
+          hint="在目標的列上拖出起訖月・雙擊清除"
+          emptyHint="先寫下年度三大目標，這裡就會出現可拖拉的時程列"
+          cols={Array.from({ length: 12 }, (_, mi) => ({
+            label: `${mi + 1}月`,
+            today: year === new Date().getFullYear() && mi === new Date().getMonth(),
+          }))}
+          rows={entry.goals.map((g, i) => ({ ...g, i })).filter((g) => g.text.trim())}
+          onSpan={(i, span) => {
+            const goals = entry.goals.slice()
+            goals[i] = { ...goals[i], span }
+            update({ goals })
+          }}
+        />
 
         <div className="label">
           整年一覽{' '}

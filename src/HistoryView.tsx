@@ -237,6 +237,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
                   <th>天數</th>
                   <th>專注段</th>
                   <th>時間軸</th>
+                  <th>計畫</th>
                 </tr>
               </thead>
               <tbody>
@@ -246,6 +247,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
                     <td>{s.days}</td>
                     <td>{s.sessions > 0 ? `${s.sessions} 段` : '–'}</td>
                     <td>{s.minutes > 0 ? `${Math.round((s.minutes / 60) * 10) / 10} 小時` : '–'}</td>
+                    <td>{s.plans > 0 ? `${s.plans} 次` : '–'}</td>
                   </tr>
                 ))}
               </tbody>
