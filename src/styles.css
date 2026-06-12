@@ -1998,3 +1998,124 @@ button.wk-head:hover {
 .tl-block.slim .tl-block-time {
   display: none;
 }
+
+/* ---------- 全螢幕專注（Zen 模式） ---------- */
+
+.zen {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--paper-deep);
+  background-image: radial-gradient(ellipse at 38% 28%, rgba(255, 252, 244, 0.85), transparent 65%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0 0.26 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  animation: zenIn 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes zenIn {
+  from { opacity: 0; transform: scale(1.04); }
+  to { opacity: 1; transform: none; }
+}
+
+.zen-collapse {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 22px;
+  font-size: 26px;
+  color: var(--ink-faint);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.zen-collapse:hover { background: rgba(43, 38, 32, 0.07); color: var(--ink); }
+
+.zen-stage {
+  position: relative;
+  width: min(72vmin, 420px);
+  height: min(72vmin, 420px);
+}
+
+.zen-enso { width: 100%; height: 100%; }
+
+.zen-enso-fg {
+  stroke: #2b2620;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.zen-break .zen-enso-fg { stroke: var(--gold); }
+
+.zen-dot {
+  animation: dotDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes dotDrop {
+  from { opacity: 0; transform: scale(3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.zen-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.zen-clock {
+  font-family: var(--eng);
+  font-size: clamp(56px, 13vmin, 84px);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.zen-phase {
+  font-size: 13px;
+  letter-spacing: 0.35em;
+  color: var(--gold-deep);
+  margin-left: 0.35em;
+}
+
+.zen-break .zen-clock { color: var(--gold-deep); }
+
+.zen-task {
+  font-family: var(--hand);
+  font-size: clamp(17px, 2.6vmin, 21px);
+  color: var(--ink-write);
+  max-width: 80vw;
+  text-align: center;
+}
+
+.zen-actions { display: flex; gap: 12px; margin-top: 8px; }
+
+.zen-actions button {
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  padding: 10px 22px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: rgba(255, 253, 248, 0.6);
+  transition: all 0.2s;
+}
+
+.zen-actions button:hover { border-color: var(--gold); color: var(--gold-deep); }
+.zen-actions .zen-stop:hover { border-color: var(--terra); color: var(--terra); }
+
+/* 休息時墨圈緩慢呼吸 */
+.zen-break .zen-stage { animation: breathe 4s ease-in-out infinite; }
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
+}

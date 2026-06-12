@@ -46,6 +46,7 @@ const chime = () => {
 
 export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinutes }: Props) {
   const [, force] = useState(0)
+  const [zen, setZen] = useState(true) // 開始即全螢幕專注；可收成底部小列
   const firedRef = useRef(false)
 
   const remaining =
@@ -93,8 +94,71 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
   const R = 23
   const C = 2 * Math.PI * R
 
+  const togglePause = () =>
+    onUpdate(
+      paused
+        ? { ...timer, endsAt: Date.now() + (timer.pausedRemaining ?? 0), pausedRemaining: null }
+        : { ...timer, pausedRemaining: Math.max(0, timer.endsAt - Date.now()) }
+    )
+
+  const finishEarly = () => {
+    chime()
+    onSessionDone(timer.taskIndex)
+    onUpdate({
+      ...timer,
+      phase: 'break',
+      totalMs: breakMinutes * 60_000,
+      endsAt: Date.now() + breakMinutes * 60_000,
+      pausedRemaining: null,
+    })
+  }
+
+  // 墨圈（與 app icon 同一筆）：弧長隨倒數慢慢畫滿
+  const ZR = 150
+  const ZC = 2 * Math.PI * ZR
+  const arcMax = ZC * 0.86 // 留一個開口，畫滿 = 一段完成
+
+  if (zen) {
+    return (
+      <div className={`zen ${timer.phase === 'break' ? 'zen-break' : ''}`}>
+        <button className="zen-collapse" onClick={() => setZen(false)} title="收合，邊用邊計時">
+          ⌄
+        </button>
+
+        <div className="zen-stage">
+          <svg className="zen-enso" viewBox="0 0 400 400">
+            <g transform="rotate(-100 200 200)">
+              <circle cx="200" cy="200" r={ZR} fill="none" stroke="rgba(43,38,32,.1)"
+                strokeWidth="40" strokeLinecap="round" strokeDasharray={`${arcMax} ${ZC}`} />
+              <circle className="zen-enso-fg" cx="200" cy="200" r={ZR} fill="none"
+                strokeWidth="40" strokeLinecap="round"
+                strokeDasharray={`${arcMax} ${ZC}`}
+                strokeDashoffset={arcMax * (1 - progress)} />
+            </g>
+            {progress >= 0.999 && <circle cx="200" cy="200" r="26" fill="#b8923e" className="zen-dot" />}
+          </svg>
+          <div className="zen-center">
+            <div className="zen-clock">{fmtClock(remaining)}</div>
+            <div className="zen-phase">
+              {timer.phase === 'focus' ? (paused ? '已暫停' : '專注中') : '休息一下'}
+            </div>
+          </div>
+        </div>
+
+        {timer.phase === 'focus' && <div className="zen-task">{timer.taskText || '未命名任務'}</div>}
+        {timer.phase === 'break' && <div className="zen-task">起來走走、喝口水——下一段更好。</div>}
+
+        <div className="zen-actions">
+          <button onClick={togglePause}>{paused ? '▶ 繼續' : '⏸ 暫停'}</button>
+          {timer.phase === 'focus' && <button onClick={finishEarly}>✓ 提前完成</button>}
+          <button className="zen-stop" onClick={() => onUpdate(null)}>✕ 結束</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="timer-bar">
+    <div className="timer-bar" onClick={() => setZen(true)} title="點擊展開全螢幕專注">
       <svg className={`timer-ring ${timer.phase === 'break' ? 'break-mode' : ''}`} viewBox="0 0 54 54">
         <circle className="ring-bg" cx="27" cy="27" r={R} />
         <circle
@@ -117,37 +181,15 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
       </div>
       {timer.phase === 'focus' && <div className="timer-task">{timer.taskText || '未命名任務'}</div>}
       <div className="timer-actions">
-        <button
-          title={paused ? '繼續' : '暫停'}
-          onClick={() =>
-            onUpdate(
-              paused
-                ? { ...timer, endsAt: Date.now() + (timer.pausedRemaining ?? 0), pausedRemaining: null }
-                : { ...timer, pausedRemaining: Math.max(0, timer.endsAt - Date.now()) }
-            )
-          }
-        >
+        <button title={paused ? '繼續' : '暫停'} onClick={(e) => { e.stopPropagation(); togglePause() }}>
           {paused ? '▶' : '⏸'}
         </button>
         {timer.phase === 'focus' && (
-          <button
-            title="提前完成這個時段"
-            onClick={() => {
-              chime()
-              onSessionDone(timer.taskIndex)
-              onUpdate({
-                ...timer,
-                phase: 'break',
-                totalMs: breakMinutes * 60_000,
-                endsAt: Date.now() + breakMinutes * 60_000,
-                pausedRemaining: null,
-              })
-            }}
-          >
+          <button title="提前完成這個時段" onClick={(e) => { e.stopPropagation(); finishEarly() }}>
             ✓
           </button>
         )}
-        <button className="stop" title="結束計時" onClick={() => onUpdate(null)}>
+        <button className="stop" title="結束計時" onClick={(e) => { e.stopPropagation(); onUpdate(null) }}>
           ✕
         </button>
       </div>
