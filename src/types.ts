@@ -86,7 +86,7 @@ export const emptyDay = (): DayEntry => ({
 })
 
 // 一刻預設問題（可在「回顧」頁自訂）
-export const DEFAULT_MORNING_QS = ['我感謝', '今天的意圖（我是一個＿＿的人）', '今天，我玩什麼不一樣的玩法？']
+export const DEFAULT_MORNING_QS = ['我感謝'] // 晨間 30 秒原則：預設只留一問，想加的用範本
 export const DEFAULT_EVENING_QS = ['今日亮點', '我今天學到了什麼？', '我想記住今天的什麼？']
 
 export const emptyYear = (): YearEntry => ({

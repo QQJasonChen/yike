@@ -165,7 +165,7 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
           <input
             value={week.intention}
             onChange={(e) => update({ intention: e.target.value })}
-            placeholder="用一句話定調這一週的方向"
+            placeholder="一句話定調這週：方向、或身分宣言「這週我是一個＿＿的人」"
           />
         </div>
 

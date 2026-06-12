@@ -242,6 +242,12 @@ export default function DayView({
             ))}
 
             <div className="eval-bar">
+              {settings.habits.length === 0 && (
+                <div className="eval-group">
+                  <span className="eval-label">習慣</span>
+                  <span className="habit-hint">到「本週」的一週檢視新增 →</span>
+                </div>
+              )}
               {settings.habits.length > 0 && (
                 <div className="eval-group" title="今日習慣（到「本週」管理清單）">
                   <span className="eval-label">習慣</span>
