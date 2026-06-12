@@ -46,7 +46,7 @@ const chime = () => {
 
 export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinutes }: Props) {
   const [, force] = useState(0)
-  const [zen, setZen] = useState(true) // 開始即全螢幕專注；可收成底部小列
+  const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
 
   const remaining =
@@ -181,6 +181,9 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
       </div>
       {timer.phase === 'focus' && <div className="timer-task">{timer.taskText || '未命名任務'}</div>}
       <div className="timer-actions">
+        <button title="全螢幕專注" onClick={(e) => { e.stopPropagation(); setZen(true) }}>
+          ⤢
+        </button>
         <button title={paused ? '繼續' : '暫停'} onClick={(e) => { e.stopPropagation(); togglePause() }}>
           {paused ? '▶' : '⏸'}
         </button>

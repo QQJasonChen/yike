@@ -238,13 +238,15 @@ export default function DayView({
                   }}
                 />
                 {i === 0 && isToday && t.text.trim() && !t.completed && !timer && (
-                  <button className="mit-focus" onClick={() => onStartFocus(0, t.text)}>
-                    <span className="mit-focus-ring">▶</span>
-                    開始一段專注（{settings.focusMinutes} 分鐘）
+                  <div className="mit-focus-row">
+                    <button className="mit-focus" onClick={() => onStartFocus(0, t.text)}>
+                      <span className="mit-focus-ring">▶</span>
+                      專注 {settings.focusMinutes} 分鐘
+                    </button>
                     <span className="mit-focus-sub">
-                      倒數結束自動塗一圈{t.target ? `・目標 ${t.target} 圈` : ''}
+                      結束自動塗一圈{t.target ? `・目標 ${t.target}` : ''}
                     </span>
-                  </button>
+                  </div>
                 )}
               </span>
             ))}
