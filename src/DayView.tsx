@@ -8,6 +8,19 @@ import { addDays, loadDay, saveDay, toDateKey } from './storage'
 import { DayEntry, Settings, Task } from './types'
 
 const WEEKDAYS_EN = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
+
+/** ISO 週數＋週內進度（週一 .0 → 週日 .9），例：W24.6 */
+const weekDecimal = (d: Date): string => {
+  const dow = (d.getDay() + 6) % 7 // Mon=0..Sun=6
+  const monday = new Date(d)
+  monday.setDate(d.getDate() - dow)
+  const jan4 = new Date(monday.getFullYear(), 0, 4)
+  const jan4Mon = new Date(jan4)
+  jan4Mon.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7))
+  let week = Math.floor((monday.getTime() - jan4Mon.getTime()) / 604800000) + 1
+  if (week < 1) week = 52
+  return `W${week}.${Math.round((dow / 7) * 10)}`
+}
 const MOODS = ['😖', '🙁', '😐', '🙂', '😄']
 
 interface Props {
@@ -121,7 +134,7 @@ export default function DayView({
         const tasks = prev.tasks.slice()
         const t = tasks[taskIndex]
         if (t) {
-          const done = Math.min(t.done + 1, 5)
+          const done = Math.min(t.done + 1, 8)
           tasks[taskIndex] = { ...t, done, actual: done }
         }
         // 真實起訖 → 分鐘（夾在時間軸 06:00–23:00 範圍內，最短 15 分鐘）
@@ -185,6 +198,7 @@ export default function DayView({
             <span className="day-weekday">{WEEKDAYS_EN[d.getDay()]}</span>
             <span className="day-date">
               {d.getMonth() + 1} 月 {d.getDate()} 日 {d.getFullYear()}
+              <span className="week-no">・{weekDecimal(d)}</span>
             </span>
           </div>
           <div className="day-nav">
