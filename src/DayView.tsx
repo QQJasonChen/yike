@@ -17,7 +17,8 @@ const weekDecimal = (d: Date): string => {
   const jan4 = new Date(monday.getFullYear(), 0, 4)
   const jan4Mon = new Date(jan4)
   jan4Mon.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7))
-  let week = Math.floor((monday.getTime() - jan4Mon.getTime()) / 604800000) + 1
+  // 用「天數四捨五入」避免日光節約時間的 1 小時誤差
+  let week = Math.round((monday.getTime() - jan4Mon.getTime()) / 86400000) / 7 + 1
   if (week < 1) week = 52
   return `W${week}.${Math.round((dow / 7) * 10)}`
 }
