@@ -70,7 +70,7 @@ export default function TaskRow({
 
       <span
         className="drag-handle"
-        title="拖到時間軸排程"
+        title="點一下＝排進下一個空檔；拖到時間軸＝排在指定時間"
         onPointerDown={onHandleDown}
         onPointerMove={onHandleMove}
         onPointerUp={onHandleUp}

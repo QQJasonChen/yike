@@ -273,7 +273,31 @@ export default function DayView({
                   isRunning={timer?.phase === 'focus' && timer.taskIndex === i && isToday}
                   onStartFocus={() => onStartFocus(i, t.text)}
                   onDropToTimeline={(x, y) => {
-                    dropRef.current?.(x, y, t.text, i)
+                    const landed = dropRef.current?.(x, y, t.text, i)
+                    if (!landed && t.text.trim()) {
+                      // 沒掉在時間軸上（手機時間軸在下方搆不到）→ 自動排進下一個空檔
+                      const now = new Date()
+                      const nowMin = now.getHours() * 60 + now.getMinutes()
+                      const dur = Math.min(120, 30 * Math.max(1, (t.target ?? 1) - t.done))
+                      let start = Math.max(6 * 60, Math.ceil(nowMin / 30) * 30)
+                      const blocks = entry.blocks
+                      const overlaps = (s0: number, e0: number) =>
+                        blocks.some((b) => s0 < b.end && e0 > b.start)
+                      while (start + dur <= 23 * 60 && overlaps(start, start + dur)) start += 30
+                      if (start + dur > 23 * 60) start = Math.max(6 * 60, 23 * 60 - dur)
+                      update({
+                        blocks: [
+                          ...blocks,
+                          {
+                            id: `a${Date.now().toString(36)}`,
+                            start,
+                            end: start + dur,
+                            text: t.text,
+                            taskIndex: i,
+                          },
+                        ],
+                      })
+                    }
                   }}
                 />
                 {i === 0 && isToday && t.text.trim() && !t.completed && !timer && (
