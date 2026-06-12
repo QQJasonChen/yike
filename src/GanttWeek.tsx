@@ -22,7 +22,17 @@ export default function GanttWeek({ mondayKey, week, onSpan }: Props) {
     .filter((t) => t.text.trim())
     .slice(0, 10)
 
-  if (rows.length === 0) return null
+  if (rows.length === 0)
+    return (
+      <div className="gantt-wrap">
+        <div className="label">
+          本週甘特 <span className="hint">先在上方「本週五大任務」寫下任務，這裡就會出現可拖拉的時程列</span>
+        </div>
+        <div className="gantt g-empty">在任務的列上橫向一拖，畫出這件事的起訖日 →　像這樣
+          <span className="g-demo" />
+        </div>
+      </div>
+    )
 
   const dayFromX = (clientX: number): number => {
     const el = gridRef.current!

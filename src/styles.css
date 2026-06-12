@@ -2567,3 +2567,23 @@ button.mc-month:disabled { cursor: default; }
   .g-row { grid-template-columns: 96px repeat(7, 1fr); }
   .g-label { font-size: 12px; padding: 6px 6px; }
 }
+
+.g-empty {
+  padding: 16px 18px;
+  font-family: var(--hand);
+  font-size: 14px;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-style: dashed;
+}
+
+.g-demo {
+  display: inline-block;
+  width: 110px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #33415e, #1e2a40);
+  opacity: 0.65;
+}
