@@ -27,7 +27,7 @@ export default function App() {
   const [yearNum, setYearNum] = useState(() => Number(todayKey.slice(0, 4)))
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [timer, setTimer] = useState<TimerState | null>(null)
-  const sessionSink = useRef<((taskIndex: number) => void) | null>(null)
+  const sessionSink = useRef<((taskIndex: number, startMs: number, endMs: number) => void) | null>(null)
 
   const updateSettings = (s: Settings) => {
     setSettings(s)
@@ -45,10 +45,11 @@ export default function App() {
       totalMs: ms,
       endsAt: Date.now() + ms,
       pausedRemaining: null,
+      startedAt: Date.now(),
     })
   }
 
-  const registerSessionSink = useCallback((fn: (taskIndex: number) => void) => {
+  const registerSessionSink = useCallback((fn: (taskIndex: number, startMs: number, endMs: number) => void) => {
     sessionSink.current = fn
   }, [])
 
@@ -171,7 +172,7 @@ export default function App() {
           timer={timer}
           onUpdate={setTimer}
           breakMinutes={settings.breakMinutes}
-          onSessionDone={(taskIndex) => sessionSink.current?.(taskIndex)}
+          onSessionDone={(ti, s, e) => sessionSink.current?.(ti, s, e)}
         />
       )}
     </>

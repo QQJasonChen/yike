@@ -7,12 +7,14 @@ export interface TimerState {
   endsAt: number // epoch ms
   pausedRemaining: number | null // 暫停時剩餘 ms
   totalMs: number
+  startedAt: number // 本段專注開始的 epoch ms（時間軸記錄用）
 }
 
 interface Props {
   timer: TimerState
   onUpdate: (t: TimerState | null) => void
-  onSessionDone: (taskIndex: number) => void
+  /** 一段專注完成：任務 index ＋ 真實起訖（ms），用來塗圈＋寫進時間軸 */
+  onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void
   breakMinutes: number
 }
 
@@ -66,7 +68,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
       firedRef.current = true
       chime()
       if (timer.phase === 'focus') {
-        onSessionDone(timer.taskIndex)
+        onSessionDone(timer.taskIndex, timer.startedAt, Date.now())
         // 自動進入休息
         onUpdate({
           ...timer,
@@ -103,7 +105,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
 
   const finishEarly = () => {
     chime()
-    onSessionDone(timer.taskIndex)
+    onSessionDone(timer.taskIndex, timer.startedAt, Date.now())
     onUpdate({
       ...timer,
       phase: 'break',

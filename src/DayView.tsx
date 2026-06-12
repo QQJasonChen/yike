@@ -18,7 +18,7 @@ interface Props {
   settings: Settings
   onSettingsChange: (s: Settings) => void
   /** 計時器完成一個時段時，由 App 呼叫塗圈 */
-  registerSessionSink: (fn: (taskIndex: number) => void) => void
+  registerSessionSink: (fn: (taskIndex: number, startMs: number, endMs: number) => void) => void
 }
 
 export default function DayView({
@@ -114,9 +114,9 @@ export default function DayView({
     2: '一個小實驗：例「最難的事排第一段專注」「先錄影再回訊息」',
   }
 
-  // Focus Timer 完成時段 → 塗下一個圈（只對今天有效）
+  // Focus Timer 完成時段 → 塗圈 ＋ 把真實時段自動寫進右邊時間軸
   useEffect(() => {
-    registerSessionSink((taskIndex) => {
+    registerSessionSink((taskIndex, startMs, endMs) => {
       setEntry((prev) => {
         const tasks = prev.tasks.slice()
         const t = tasks[taskIndex]
@@ -124,7 +124,30 @@ export default function DayView({
           const done = Math.min(t.done + 1, 5)
           tasks[taskIndex] = { ...t, done, actual: done }
         }
-        const next = { ...prev, tasks }
+        // 真實起訖 → 分鐘（夾在時間軸 06:00–23:00 範圍內，最短 15 分鐘）
+        const toMin = (ms: number) => {
+          const dd = new Date(ms)
+          return dd.getHours() * 60 + dd.getMinutes()
+        }
+        let bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, toMin(startMs)))
+        let bEnd = Math.max(bStart + 15, Math.min(23 * 60, toMin(endMs)))
+        const blocks = prev.blocks.slice()
+        // 同任務、上一塊結尾相距 ≤6 分鐘 → 直接接長（連續番茄變一條）
+        const tail = blocks
+          .filter((b) => b.taskIndex === taskIndex)
+          .sort((x, y) => y.end - x.end)[0]
+        if (tail && Math.abs(bStart - tail.end) <= 6) {
+          tail.end = bEnd
+        } else {
+          blocks.push({
+            id: `f${Date.now().toString(36)}`,
+            start: bStart,
+            end: bEnd,
+            text: t?.text ?? '專注',
+            taskIndex,
+          })
+        }
+        const next = { ...prev, tasks, blocks }
         saveDay(todayKey, next)
         return next
       })
