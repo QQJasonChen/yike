@@ -267,7 +267,7 @@ export default function DayView({
                       專注 {settings.focusMinutes} 分鐘
                     </button>
                     <span className="mit-focus-sub">
-                      結束自動塗一圈{t.target ? `・目標 ${t.target}` : ''}
+                      結束自動刻一筆{t.target ? `・目標 ${t.target}` : ''}
                     </span>
                   </div>
                 )}

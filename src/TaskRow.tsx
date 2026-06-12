@@ -1,6 +1,15 @@
 import { useRef, useState } from 'react'
 import { Task } from './types'
 
+// 「正」五畫的線段座標（筆順：上橫、中豎、右橫、左豎、底橫）
+const ZHENG_STROKES: [number, number, number, number][] = [
+  [3, 4, 21, 4],
+  [12, 4, 12, 20],
+  [12.5, 12, 20, 12],
+  [5.5, 9.5, 5.5, 20],
+  [3, 20, 21, 20],
+]
+
 interface Props {
   index: number
   task: Task
@@ -23,14 +32,13 @@ export default function TaskRow({
   const dragging = useRef(false)
 
   const cycleTarget = () => {
-    const next = task.target === null ? 1 : task.target >= 6 ? null : task.target + 1
+    const next = task.target === null ? 1 : task.target >= 5 ? null : task.target + 1
     onChange({ ...task, target: next })
   }
 
-  const tapCircle = (i: number) => {
-    // 點第 i 顆：若它已是最後一顆填滿的 → 退回；否則填到 i+1
-    const next = task.done === i + 1 ? i : i + 1
-    onChange({ ...task, done: next, actual: next > 0 ? next : null })
+  const setDone = (n: number) => {
+    const done = Math.max(0, Math.min(5, n))
+    onChange({ ...task, done, actual: done > 0 ? done : null })
   }
 
   const toggleDone = () => {
@@ -84,23 +92,36 @@ export default function TaskRow({
         ⠿
       </span>
 
+      {/* 正字記號：一刻一畫，五刻成正（取代 v1.2 的圈圈追蹤） */}
       <div className="focus-track">
-        <button className={`ft-box ${task.target === null ? 'empty' : ''}`} onClick={cycleTarget} title="預估格數（每格 30 分鐘）">
-          {task.target ?? '▢'}
+        {task.done > 0 && (
+          <button className="tally-minus" onClick={() => setDone(task.done - 1)} title="刻回一筆">
+            −
+          </button>
+        )}
+        <button
+          className="zheng-btn"
+          onClick={() => setDone(Math.min(5, task.done + 1))}
+          title="刻一筆（一段 30 分鐘）"
+        >
+          <svg className="zheng" viewBox="0 0 24 24">
+            {ZHENG_STROKES.map((p, i) => (
+              <line
+                key={i}
+                x1={p[0]}
+                y1={p[1]}
+                x2={p[2]}
+                y2={p[3]}
+                className={
+                  i < task.done ? 'zs-done' : task.target !== null && i < task.target ? 'zs-target' : 'zs-ghost'
+                }
+              />
+            ))}
+          </svg>
         </button>
-        <div className="ft-circles">
-          {Array.from({ length: 5 }, (_, i) => (
-            <button
-              key={i}
-              className={`ft-circle ${i < task.done ? 'filled' : ''} ${i >= 5 ? 'overflow-dot' : ''}`}
-              onClick={() => tapCircle(i)}
-              title={`第 ${i + 1} 個 30 分鐘`}
-            />
-          ))}
-        </div>
-        <span className="ft-box actual" title="實際格數">
-          {task.actual ?? ''}
-        </span>
+        <button className="tally-chip" onClick={cycleTarget} title="點擊設定目標刻數（每刻 30 分鐘）">
+          {task.done}<span>/</span>{task.target ?? '–'}
+        </button>
       </div>
 
       <button

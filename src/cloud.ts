@@ -154,6 +154,15 @@ export const startAutoSync = async (onChange?: (msg: string) => void): Promise<v
         .catch(() => onChange?.('同步失敗，下次寫入時重試'))
     }, 4000)
   })
+
+  // 切回 app／分頁時立刻拉一次（手機-電腦輪流用時幾乎即時）
+  let lastVisPull = 0
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return
+    if (Date.now() - lastVisPull < 15_000) return
+    lastVisPull = Date.now()
+    syncNow().catch(() => {})
+  })
 }
 
 export const stopAutoSync = () => {
