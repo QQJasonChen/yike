@@ -82,9 +82,9 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
 
   // 頁面標題倒數，切到別的分頁也看得到
   useEffect(() => {
-    document.title = `${fmtClock(remaining)} ${timer.phase === 'focus' ? '專注中' : '休息'} — 日刻手帳`
+    document.title = `${fmtClock(remaining)} ${timer.phase === 'focus' ? '專注中' : '休息'} — 一刻手帳`
     return () => {
-      document.title = 'InkDay 日刻手帳'
+      document.title = '一刻手帳 Yike'
     }
   }, [remaining, timer.phase])
 

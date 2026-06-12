@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'com.qqchen.inkday',
-  appName: 'InkDay 日刻手帳',
+  appName: '一刻手帳 Yike',
   webDir: 'dist',
   ios: {
     contentInset: 'automatic',

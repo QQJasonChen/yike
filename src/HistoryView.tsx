@@ -134,7 +134,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
     const blob = new Blob([exportAll()], { type: 'application/json' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `productivity-planner-${todayKey}.json`
+    a.download = `yike-${todayKey}.json`
     a.click()
     URL.revokeObjectURL(a.href)
   }
@@ -261,7 +261,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
         {showQEditor && (
           <div className="sync-box" style={{ marginTop: 14 }}>
             <p className="sync-help">
-              一行一個問題，存了之後「今天」頁立即生效。把日刻手帳變成<b>你的</b>方法。
+              一行一個問題，存了之後「今天」頁立即生效。把一刻手帳變成<b>你的</b>方法。
             </p>
             <div className="label" style={{ marginTop: 10 }}>晨間問題</div>
             <textarea
@@ -288,7 +288,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
                   saveQs(m, e)
                 }}
               >
-                日刻法預設
+                一刻預設
               </button>
               <button
                 title="Graham Weaver 的晨間框架"

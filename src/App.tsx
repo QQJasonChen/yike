@@ -74,7 +74,7 @@ export default function App() {
   return (
     <>
       <div className="topbar">
-        <span className="brand">InkDay 日刻手帳</span>
+        <span className="brand">一刻手帳 Yike</span>
         <nav className="tabs">
           <button className={tab === 'day' ? 'active' : ''} onClick={() => setTab('day')}>
             今天

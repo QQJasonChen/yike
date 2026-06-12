@@ -14,7 +14,7 @@ export const dayToMarkdown = (
   eveningQs: string[]
 ): string => {
   const d = new Date(`${dateKey}T12:00:00`)
-  const lines: string[] = [`## 📒 日刻手帳 ${dateKey}（${WD[d.getDay()]}）`, '']
+  const lines: string[] = [`## 📒 一刻手帳 ${dateKey}（${WD[d.getDay()]}）`, '']
 
   const morning = morningQs
     .map((q, i) => ({ q, a: e.answers[`m${i}`] ?? '' }))

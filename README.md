@@ -1,10 +1,10 @@
-# InkDay 日刻手帳
+# 一刻手帳 Yike
 
 > 一天，刻下一件最重要的事。
 
 紙本手帳質感的每日專注手帳 PWA：最重要任務 × 30 分鐘專注塗圈 × 拖拉時間軸 × 每日反思。
 
-**線上使用 → https://qqjasonchen.github.io/productivity-planner/**
+**線上使用 → https://qqjasonchen.github.io/yike/**
 
 手機開啟後「加入主畫面」即可當 app 使用（支援離線）。
 
