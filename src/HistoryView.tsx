@@ -17,6 +17,13 @@ import { cloudEnabled, currentEmail, sendCode, signOut, stopAutoSync, syncNow, v
 import { dayToMarkdown } from './exportMd'
 import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, Settings } from './types'
 
+// Graham Weaver 晨間三問（QQ 的每日框架）
+const WEAVER_MORNING_QS = [
+  '寫下 3 件能推進主線的事',
+  '今天的目標宣言（現在式）：「我是＿＿」',
+  '我今天在玩什麼 different game？',
+]
+
 const AI_COACH_PROMPT = `你是一位犀利但溫暖的生產力教練。以下是我最近的每日手帳記錄（最重要任務、專注時段、時間軸、反思、心情與評分）。請分析：
 
 1. **模式**：我的高分日和低分日各有什麼共同點？（時間安排、任務類型、心情）
@@ -315,7 +322,17 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
                   saveQs(m, e)
                 }}
               >
-                還原日刻法預設
+                日刻法預設
+              </button>
+              <button
+                title="Graham Weaver 的晨間框架"
+                onClick={() => {
+                  const m = WEAVER_MORNING_QS.join('\n')
+                  setMDraft(m)
+                  saveQs(m, eDraft)
+                }}
+              >
+                Weaver 三問
               </button>
             </div>
           </div>
