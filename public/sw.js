@@ -1,7 +1,7 @@
 // Offline-capable service worker.
 // - Navigations (index.html): network-first so updates arrive promptly.
 // - Static assets & fonts: cache-first (Vite assets are content-hashed).
-const CACHE = 'pp-cache-v1'
+const CACHE = 'pp-cache-v2'
 
 self.addEventListener('install', () => {
   self.skipWaiting()

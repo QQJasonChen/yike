@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { startAutoSync } from './cloud'
+import { cloudEnabled, currentEmail, startAutoSync } from './cloud'
 import DayView from './DayView'
 import WeekView from './WeekView'
 import MonthView from './MonthView'
@@ -52,10 +52,22 @@ export default function App() {
     sessionSink.current = fn
   }, [])
 
+  // 雲端登入狀態（頂欄 badge 用）
+  const [cloudIn, setCloudIn] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!cloudEnabled()) return
+    currentEmail().then((e) => setCloudIn(Boolean(e)))
+  }, [tab])
+
   // 已登入雲端帳號時：開站自動同步＋寫入自動推送
   useEffect(() => {
     startAutoSync()
   }, [])
+
+  const goCloudLogin = () => {
+    setTab('history')
+    setTimeout(() => document.getElementById('cloud-sync')?.scrollIntoView({ behavior: 'smooth' }), 150)
+  }
 
   const streak = currentStreak(todayKey)
 
@@ -81,6 +93,15 @@ export default function App() {
           </button>
         </nav>
         <span className="streak">
+          {cloudEnabled() && (
+            <button
+              className={`cloud-badge ${cloudIn ? 'on' : ''}`}
+              onClick={goCloudLogin}
+              title={cloudIn ? '雲端同步中，點擊管理' : '登入帳號，啟用全裝置自動同步'}
+            >
+              {cloudIn ? '☁ 同步中' : '☁ 登入'}
+            </button>
+          )}
           {streak > 0 ? (
             <>
               <strong>{streak}</strong> 天連續

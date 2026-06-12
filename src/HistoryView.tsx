@@ -340,7 +340,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
 
         {cloudEnabled() && (
           <>
-            <div className="label" style={{ justifyContent: 'center', marginTop: 30 }}>
+            <div id="cloud-sync" className="label" style={{ justifyContent: 'center', marginTop: 30 }}>
               雲端同步（帳號制）
             </div>
             <div className="sync-box">

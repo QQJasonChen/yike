@@ -1738,3 +1738,27 @@ button.wk-head:hover {
     display: none;
   }
 }
+
+/* 頂欄雲端登入 badge */
+.cloud-badge {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--gold);
+  color: var(--gold-deep);
+  border-radius: 999px;
+  padding: 4px 12px;
+  margin-right: 12px;
+  transition: all 0.2s;
+  animation: pulse-soft 2.5s infinite;
+}
+
+.cloud-badge.on {
+  border-color: var(--sage);
+  color: var(--sage);
+  animation: none;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(184, 146, 62, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(184, 146, 62, 0); }
+}
