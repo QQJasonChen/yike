@@ -13,7 +13,7 @@ import {
   toDateKey,
 } from './storage'
 import { useEffect } from 'react'
-import { cloudEnabled, currentEmail, sendCode, signOut, stopAutoSync, syncNow, verifyCode } from './cloud'
+import { cloudEnabled, currentEmail, sendCode, signOut, startAutoSync, stopAutoSync, syncNow, verifyCode } from './cloud'
 import { dayToMarkdown } from './exportMd'
 import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, Settings } from './types'
 
@@ -393,6 +393,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
                           setCloudUser(cloudEmail)
                           setCloudStage('in')
                           const r = await syncNow()
+                          await startAutoSync() // 登入即啟用自動推送，不用重新整理
                           setCloudMsg(`✓ 登入成功，已同步（↓${r.pulled} ↑${r.pushed}）`)
                           if (r.pulled > 0) setTimeout(() => location.reload(), 1000)
                         })
