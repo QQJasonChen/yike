@@ -119,6 +119,7 @@ export default function App() {
           timer={timer}
           onStartFocus={startFocus}
           settings={settings}
+          onSettingsChange={updateSettings}
           registerSessionSink={registerSessionSink}
         />
       )}

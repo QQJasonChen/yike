@@ -16,6 +16,7 @@ interface Props {
   timer: TimerState | null
   onStartFocus: (taskIndex: number, taskText: string) => void
   settings: Settings
+  onSettingsChange: (s: Settings) => void
   /** 計時器完成一個時段時，由 App 呼叫塗圈 */
   registerSessionSink: (fn: (taskIndex: number) => void) => void
 }
@@ -26,11 +27,22 @@ export default function DayView({
   timer,
   onStartFocus,
   settings,
+  onSettingsChange,
   registerSessionSink,
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
   const [copied, setCopied] = useState(false)
   const [rolloverDone, setRolloverDone] = useState(false)
+  const [addingHabit, setAddingHabit] = useState(false)
+  const [newHabit, setNewHabit] = useState('')
+
+  const addHabit = () => {
+    const name = newHabit.trim()
+    if (name && !settings.habits.includes(name) && settings.habits.length < 8)
+      onSettingsChange({ ...settings, habits: [...settings.habits, name] })
+    setNewHabit('')
+    setAddingHabit(false)
+  }
   const todayKey = toDateKey(new Date())
 
   const copyMarkdown = async () => {
@@ -242,54 +254,63 @@ export default function DayView({
             ))}
 
             <div className="eval-bar">
-              {settings.habits.length === 0 && (
-                <div className="eval-group">
-                  <span className="eval-label">習慣</span>
-                  <span className="habit-hint">到「本週」的一週檢視新增 →</span>
-                </div>
-              )}
-              {settings.habits.length > 0 && (
-                <div className="eval-group" title="今日習慣（到「本週」管理清單）">
-                  <span className="eval-label">習慣</span>
-                  {settings.habits.map((h) => (
+              <div className="eval-row habits-row">
+                <span className="eval-label">習慣</span>
+                {settings.habits.map((h) => (
+                  <button
+                    key={h}
+                    className={`habit-chip ${entry.habitsDone[h] ? 'on' : ''}`}
+                    onClick={() =>
+                      update({ habitsDone: { ...entry.habitsDone, [h]: !entry.habitsDone[h] } })
+                    }
+                  >
+                    {entry.habitsDone[h] ? '✓ ' : ''}
+                    {h}
+                  </button>
+                ))}
+                {addingHabit ? (
+                  <input
+                    autoFocus
+                    className="habit-add-input"
+                    placeholder="習慣名稱，Enter 確認"
+                    value={newHabit}
+                    onChange={(e) => setNewHabit(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addHabit()}
+                    onBlur={addHabit}
+                  />
+                ) : (
+                  settings.habits.length < 8 && (
+                    <button className="habit-chip ghost" onClick={() => setAddingHabit(true)}>
+                      ＋ 新增
+                    </button>
+                  )
+                )}
+              </div>
+              <div className="eval-row">
+                <div className="eval-group" title="今日心情">
+                  <span className="eval-label">心情</span>
+                  {MOODS.map((m, i) => (
                     <button
-                      key={h}
-                      className={`habit-chip ${entry.habitsDone[h] ? 'on' : ''}`}
-                      onClick={() =>
-                        update({ habitsDone: { ...entry.habitsDone, [h]: !entry.habitsDone[h] } })
-                      }
+                      key={i}
+                      className={`mood-btn ${entry.mood === i + 1 ? 'on' : ''}`}
+                      onClick={() => update({ mood: entry.mood === i + 1 ? null : i + 1 })}
                     >
-                      {entry.habitsDone[h] ? '✓ ' : ''}
-                      {h}
+                      {m}
                     </button>
                   ))}
                 </div>
-              )}
-
-              <div className="eval-group" title="今日心情">
-                <span className="eval-label">心情</span>
-                {MOODS.map((m, i) => (
-                  <button
-                    key={i}
-                    className={`mood-btn ${entry.mood === i + 1 ? 'on' : ''}`}
-                    onClick={() => update({ mood: entry.mood === i + 1 ? null : i + 1 })}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-
-              <div className="eval-group" title="今天的生產力 1-5 分">
-                <span className="eval-label">評分</span>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button
-                    key={n}
-                    className={`score-btn ${entry.score === n ? 'on celebrate' : ''}`}
-                    onClick={() => update({ score: entry.score === n ? null : n })}
-                  >
-                    {n}
-                  </button>
-                ))}
+                <div className="eval-group" title="今天的生產力 1-5 分">
+                  <span className="eval-label">評分</span>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      className={`score-btn ${entry.score === n ? 'on celebrate' : ''}`}
+                      onClick={() => update({ score: entry.score === n ? null : n })}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
