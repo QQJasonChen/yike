@@ -1062,6 +1062,65 @@ button.wk-head:hover {
 
 .yr-swatch.lv-1 { background: transparent; }
 
+/* 年曆一句話 */
+.yr-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.yr-d {
+  flex-shrink: 0;
+}
+
+.yr-note {
+  font-family: var(--hand);
+  font-size: 10px;
+  color: var(--gold-deep);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.yr-cell.lv4 .yr-note,
+.yr-cell.lv5 .yr-note {
+  color: #fff;
+}
+
+.yr-cell.noted .yr-d {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.yr-col {
+  position: relative;
+}
+
+.yr-pop {
+  width: 232px;
+}
+
+/* 時間下拉（日時間軸 popover） */
+.pop-times {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pop-times select {
+  font-family: var(--eng);
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--ink);
+  flex: 1;
+}
+
 /* ---------- 月曆 ---------- */
 
 .mo-grid {

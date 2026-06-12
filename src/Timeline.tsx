@@ -282,15 +282,45 @@ export default function Timeline({ blocks, isToday, onChange, dropRef }: Props) 
           >
             <input
               autoFocus
-              placeholder="做什麼？"
+              placeholder="做什麼？例：上班、深度工作"
               value={editing.text}
               onChange={(e) => updateBlock(editing.id, { text: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && setEditId(null)}
             />
+            <div className="pop-times">
+              <select
+                value={editing.start}
+                onChange={(e) => {
+                  const start = Number(e.target.value)
+                  updateBlock(editing.id, {
+                    start,
+                    end: Math.max(editing.end, start + SLOT),
+                  })
+                }}
+              >
+                {rows.map((min) => (
+                  <option key={min} value={min}>
+                    {fmt(min)}
+                  </option>
+                ))}
+              </select>
+              <span>–</span>
+              <select
+                value={editing.end}
+                onChange={(e) => updateBlock(editing.id, { end: Number(e.target.value) })}
+              >
+                {rows
+                  .map((min) => min + SLOT)
+                  .filter((min) => min > editing.start)
+                  .map((min) => (
+                    <option key={min} value={min}>
+                      {fmt(min)}
+                    </option>
+                  ))}
+              </select>
+            </div>
             <div className="pop-actions">
-              <span className="pop-time">
-                {fmt(editing.start)} – {fmt(editing.end)}
-              </span>
+              <span />
               <span>
                 <button className="pop-del" onClick={() => removeBlock(editing.id)}>
                   刪除

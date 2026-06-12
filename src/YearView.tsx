@@ -13,11 +13,24 @@ interface Props {
 
 export default function YearView({ year, onYearChange, onOpenDay }: Props) {
   const [entry, setEntry] = useState<YearEntry>(() => loadYear(String(year)))
+  const [editing, setEditing] = useState<{ key: string; mi: number; top: number } | null>(null)
   const todayKey = toDateKey(new Date())
 
   useEffect(() => {
     setEntry(loadYear(String(year)))
+    setEditing(null)
   }, [year])
+
+  const setNote = (key: string, text: string) => {
+    setEntry((prev) => {
+      const notes = { ...prev.notes }
+      if (text) notes[key] = text
+      else delete notes[key]
+      const next = { ...prev, notes }
+      saveYear(String(year), next)
+      return next
+    })
+  }
 
   const update = (patch: Partial<YearEntry>) => {
     setEntry((prev) => {
@@ -85,7 +98,10 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
         ))}
 
         <div className="label">
-          整年一覽 <span className="hint">{recordedCount} 天有記錄・顏色＝當日評分・點格子跳入那天</span>
+          整年一覽{' '}
+          <span className="hint">
+            {recordedCount} 天有記錄・顏色＝評分・點格子寫一句話或跳入那天
+          </span>
         </div>
         <div className="yr-scroll">
           <div className="yr-grid">
@@ -100,18 +116,53 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
                     if (d > daysInMonth) return <div key={d} className="yr-cell void" />
                     const k = `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
                     const rec = dayMap.get(k)
+                    const note = entry.notes[k]
                     const lv = rec ? (rec.score ?? 0) : -1
                     return (
                       <button
                         key={d}
-                        className={`yr-cell lv${lv} ${k === todayKey ? 'today' : ''}`}
-                        title={`${m}/${d}${rec?.mit ? `：${rec.mit}` : ''}${rec?.score ? `（${rec.score}/5）` : ''}`}
-                        onClick={() => onOpenDay(k)}
+                        className={`yr-cell lv${lv} ${k === todayKey ? 'today' : ''} ${note ? 'noted' : ''}`}
+                        title={`${m}/${d}${note ? `：${note}` : ''}${rec?.mit ? `｜${rec.mit}` : ''}`}
+                        onClick={(e) =>
+                          setEditing({ key: k, mi, top: (e.currentTarget as HTMLElement).offsetTop })
+                        }
                       >
-                        {d}
+                        <span className="yr-d">{d}</span>
+                        {note && <span className="yr-note">{note}</span>}
                       </button>
                     )
                   })}
+
+                  {editing && editing.mi === mi && (
+                    <div
+                      className="block-pop yr-pop"
+                      style={{
+                        top: Math.max(28, editing.top - 8),
+                        ...(mi < 6 ? { left: 2 } : { right: 2 }),
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        autoFocus
+                        placeholder="這天的一句話（生日、死線、里程碑⋯）"
+                        value={entry.notes[editing.key] ?? ''}
+                        onChange={(e) => setNote(editing.key, e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && setEditing(null)}
+                      />
+                      <div className="pop-actions">
+                        <span className="pop-time">
+                          {Number(editing.key.slice(5, 7))}/{Number(editing.key.slice(8, 10))}
+                        </span>
+                        <span>
+                          <button className="pop-del" onClick={() => onOpenDay(editing.key)}>
+                            打開這天 →
+                          </button>
+                          {'　'}
+                          <button onClick={() => setEditing(null)}>完成</button>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <input
                     className="yr-focus"
                     placeholder="主題"
