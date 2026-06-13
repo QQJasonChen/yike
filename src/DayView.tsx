@@ -339,7 +339,22 @@ export default function DayView({
                 {i === 0 && isToday && t.text.trim() && !t.completed && !timer && (
                   <div className="mit-focus-row">
                     <button className="mit-focus" onClick={() => onStartFocus(0, t.text)}>
-                      <span className="mit-focus-ring">▶</span>
+                      <svg className="mit-tomato" viewBox="0 0 32 32" aria-hidden="true">
+                        {/* 葉冠 */}
+                        <path
+                          d="M16 4 L17.3 7.2 L20.8 7.5 L18.1 9.7 L18.9 13 L16 11.2 L13.1 13 L13.9 9.7 L11.2 7.5 L14.7 7.2 Z"
+                          fill="#6aa345"
+                        />
+                        <rect x="15.2" y="2.4" width="1.6" height="3.4" rx="0.8" fill="#4a7a30" />
+                        {/* 果身 */}
+                        <ellipse cx="16" cy="19.5" rx="10.5" ry="9.6" fill="#e2503a" />
+                        <path
+                          d="M16 10.2c4.6 0 8.4 3.5 9.3 8-2.6.9-6 1.4-9.3 1.4s-6.7-.5-9.3-1.4c.9-4.5 4.7-8 9.3-8z"
+                          fill="#ec6347"
+                        />
+                        {/* 反光 */}
+                        <ellipse cx="11.6" cy="16" rx="2.6" ry="1.7" fill="#fff" opacity="0.5" />
+                      </svg>
                       專注 {settings.focusMinutes} 分鐘
                     </button>
                     <select
