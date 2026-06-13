@@ -233,6 +233,38 @@ export default function DayView({
           「{quote.text}」<span className="author">— {quote.author}</span>
         </div>
 
+        {weekEntry.tasks.some((t) => t.text.trim()) && (
+          <Gantt
+            title="本週甘特"
+            hint="今天該推進哪件事？金色欄＝今天・可直接拖拉調整"
+            emptyHint=""
+            legend={[
+              { tone: 'ink', label: '五大' },
+              { tone: 'gold', label: '次要' },
+              { tone: 'sage', label: '額外' },
+            ]}
+            cols={Array.from({ length: 7 }, (_, wd) => {
+              const k = addDays(mondayOf(dateKey), wd)
+              return {
+                label: ['一', '二', '三', '四', '五', '六', '日'][wd],
+                sub: String(Number(k.slice(8, 10))),
+                today: k === todayKey,
+                active: k === dateKey,
+              }
+            })}
+            rows={weekEntry.tasks
+              .map((t, i) => ({ ...t, i, tone: tierTone(i) }))
+              .filter((t) => t.text.trim())}
+            onSpan={(i, span) => {
+              const tasks = weekEntry.tasks.slice()
+              tasks[i] = { ...tasks[i], span }
+              const next = { ...weekEntry, tasks }
+              saveWeek(mondayOf(dateKey), next)
+              setWeekEntry(next)
+            }}
+          />
+        )}
+
         <div className="day-grid">
           <div>
             {settings.morningQs.map((q, i) => (
@@ -317,38 +349,6 @@ export default function DayView({
                 )}
               </span>
             ))}
-
-            {weekEntry.tasks.some((t) => t.text.trim()) && (
-              <Gantt
-                title="本週甘特"
-                hint="今天該推進哪件事？金色欄＝今天・可直接拖拉調整"
-                emptyHint=""
-                legend={[
-                  { tone: 'ink', label: '五大' },
-                  { tone: 'gold', label: '次要' },
-                  { tone: 'sage', label: '額外' },
-                ]}
-                cols={Array.from({ length: 7 }, (_, wd) => {
-                  const k = addDays(mondayOf(dateKey), wd)
-                  return {
-                    label: ['一', '二', '三', '四', '五', '六', '日'][wd],
-                    sub: String(Number(k.slice(8, 10))),
-                    today: k === todayKey,
-                    active: k === dateKey,
-                  }
-                })}
-                rows={weekEntry.tasks
-                  .map((t, i) => ({ ...t, i, tone: tierTone(i) }))
-                  .filter((t) => t.text.trim())}
-                onSpan={(i, span) => {
-                  const tasks = weekEntry.tasks.slice()
-                  tasks[i] = { ...tasks[i], span }
-                  const next = { ...weekEntry, tasks }
-                  saveWeek(mondayOf(dateKey), next)
-                  setWeekEntry(next)
-                }}
-              />
-            )}
 
             {settings.eveningQs.map((q, i) => (
               <span key={`e${i}`}>

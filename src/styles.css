@@ -2567,16 +2567,26 @@ button.mc-month:disabled { cursor: default; }
 .g-bar.done { opacity: 0.45; text-decoration: line-through; }
 .g-bar.dragging { opacity: 0.85; box-shadow: 0 6px 16px rgba(30, 42, 64, 0.4); }
 
-.g-legend { float: right; font-size: 11px; color: var(--ink-soft); display: inline-flex; gap: 10px; font-weight: 400; letter-spacing: 0.05em; }
+/* 甘特標題列：標題＋圖例同一行（圖例靠右），說明文字自動換到下一行，永不擠在一起 */
+.gantt-head { flex-wrap: wrap; gap: 6px 10px; }
+.gantt-head .g-title { white-space: nowrap; }
+.gantt-head .g-legend { margin-left: auto; }
+.gantt-head .hint { flex-basis: 100%; margin: 0; }
+
+.g-legend { font-size: 11px; color: var(--ink-soft); display: inline-flex; gap: 10px; font-weight: 400; letter-spacing: 0.05em; }
 .g-legend > span { display: inline-flex; align-items: center; gap: 4px; }
-.g-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; }
+.g-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; flex: none; }
 .g-dot.tone-ink { background: #1e2a40; }
 .g-dot.tone-gold { background: #a07d2e; }
 .g-dot.tone-sage { background: #5e7a4e; }
 
 @media (max-width: 640px) {
-  .g-row { grid-template-columns: 96px repeat(7, 1fr); }
-  .g-label { font-size: 12px; padding: 6px 6px; }
+  .g-row { grid-template-columns: 84px repeat(7, 1fr); min-height: 38px; }
+  .g-label { font-size: 12px; padding: 6px 7px; }
+  .g-day { font-size: 11px; }
+  .g-day span { margin-left: 2px; }
+  .g-bar { height: 22px; line-height: 22px; font-size: 11px; padding: 0 8px; margin: 0 3px; }
+  .gantt-head .g-legend { margin-left: 0; }
 }
 
 .g-empty {
@@ -2602,3 +2612,11 @@ button.mc-month:disabled { cursor: default; }
 /* 月甘特：31 欄字縮小 */
 .gantt .g-day { font-size: 10px; overflow: hidden; }
 .gantt .g-bar { min-width: 0; }
+
+/* 密集甘特（月＝30/31 欄）在手機上只留每 5 天刻度，避免日期數字擠成一團 */
+@media (max-width: 640px) {
+  .gantt.dense .g-head .g-day { font-size: 0; }
+  .gantt.dense .g-head .g-day.tick { font-size: 9px; color: var(--ink-faint); }
+  .gantt.dense .g-head .g-day.today.tick { color: var(--gold-deep); font-weight: 700; }
+  .gantt.dense .g-label { font-size: 11px; }
+}

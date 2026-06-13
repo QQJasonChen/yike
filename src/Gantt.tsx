@@ -60,10 +60,15 @@ export default function Gantt({ title, hint, emptyHint, cols, rows, labelWidth =
     setDrag(null)
   }
 
+  // 欄位很多時（月＝30/31 欄）標成「密集」：手機只顯示每 5 天的刻度，桌機照常全顯
+  const dense = cols.length > 14
+  const isTick = (c: { today?: boolean }, d: number) =>
+    d === 0 || (d + 1) % 5 === 0 || !!c.today
+
   return (
     <div className="gantt-wrap">
-      <div className="label">
-        {title} <span className="hint">{rows.length ? hint : emptyHint}</span>
+      <div className="label gantt-head">
+        <span className="g-title">{title}</span>
         {legend && rows.length > 0 && (
           <span className="g-legend">
             {legend.map((l) => (
@@ -74,6 +79,9 @@ export default function Gantt({ title, hint, emptyHint, cols, rows, labelWidth =
             ))}
           </span>
         )}
+        {(rows.length ? hint : emptyHint) && (
+          <span className="hint">{rows.length ? hint : emptyHint}</span>
+        )}
       </div>
       {rows.length === 0 ? (
         <div className="gantt g-empty">
@@ -81,11 +89,14 @@ export default function Gantt({ title, hint, emptyHint, cols, rows, labelWidth =
           <span className="g-demo" />
         </div>
       ) : (
-        <div className="gantt" ref={gridRef} onPointerMove={move} onPointerUp={up}>
+        <div className={`gantt ${dense ? 'dense' : ''}`} ref={gridRef} onPointerMove={move} onPointerUp={up}>
           <div className="g-row g-head" style={template}>
             <div className="g-label" />
             {cols.map((c, d) => (
-              <div key={d} className={`g-day ${c.today ? 'today' : ''} ${c.active ? 'active' : ''}`}>
+              <div
+                key={d}
+                className={`g-day ${c.today ? 'today' : ''} ${c.active ? 'active' : ''} ${dense && isTick(c, d) ? 'tick' : ''}`}
+              >
                 {c.label}
                 {c.sub && <span>{c.sub}</span>}
               </div>
