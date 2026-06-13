@@ -442,8 +442,8 @@ export default function DayView({
                     </button>
                   ))}
                 </div>
-                <div className="eval-group" title="今天的生產力 1-5 分">
-                  <span className="eval-label">評分</span>
+                <div className="eval-group" title="今天的生產力／滿意度 1-5 分">
+                  <span className="eval-label">生產力</span>
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button
                       key={n}

@@ -118,7 +118,7 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
         <div className="label">
           整年一覽{' '}
           <span className="hint">
-            {recordedCount} 天有記錄・顏色＝評分・點格子寫一句話或跳入那天
+            {recordedCount} 天有記錄・顏色＝生產力分數・點格子寫一句話或跳入那天
           </span>
         </div>
         <div className="yr-scroll">
