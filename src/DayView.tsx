@@ -338,7 +338,12 @@ export default function DayView({
                 />
                 {i === 0 && isToday && t.text.trim() && !t.completed && !timer && (
                   <div className="mit-focus-row">
-                    <button className="mit-focus" onClick={() => onStartFocus(0, t.text)}>
+                    <button
+                      className="mit-focus"
+                      onClick={() => onStartFocus(0, t.text)}
+                      title="開始專注（番茄鐘）"
+                      aria-label="開始專注"
+                    >
                       <svg className="mit-tomato" viewBox="0 0 32 32" aria-hidden="true">
                         {/* 葉冠 */}
                         <path
@@ -355,7 +360,6 @@ export default function DayView({
                         {/* 反光 */}
                         <ellipse cx="11.6" cy="16" rx="2.6" ry="1.7" fill="#fff" opacity="0.5" />
                       </svg>
-                      專注 {settings.focusMinutes} 分鐘
                     </button>
                     <select
                       className="mit-len"
