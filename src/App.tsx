@@ -6,6 +6,7 @@ import MonthView from './MonthView'
 import YearView from './YearView'
 import HistoryView from './HistoryView'
 import FocusTimer, { TimerState } from './FocusTimer'
+import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
 import {
   currentStreak,
   loadSettings,
@@ -30,6 +31,11 @@ export default function App() {
   const [timer, setTimer] = useState<TimerState | null>(null)
   const sessionSink = useRef<((taskIndex: number, startMs: number, endMs: number) => void) | null>(null)
 
+  // 浮窗讀「目前計時狀態」的即時來源（用 ref 避免每次 render 重註冊）
+  const timerRef = useRef<TimerState | null>(timer)
+  timerRef.current = timer
+  useEffect(() => setPipTimerSource(() => timerRef.current), [])
+
   const updateSettings = (s: Settings) => {
     setSettings(s)
     saveSettings(s)
@@ -48,6 +54,8 @@ export default function App() {
       pausedRemaining: null,
       startedAt: Date.now(),
     })
+    // 預設：開始專注就自動浮出置頂小窗（沿用此次點擊的使用者手勢）
+    if (pipSupported() && pipAutoEnabled()) openFloating()
   }
 
   const registerSessionSink = useCallback((fn: (taskIndex: number, startMs: number, endMs: number) => void) => {
