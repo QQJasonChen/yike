@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Gantt, { tierTone } from './Gantt'
+import Gantt from './Gantt'
+import { tierTone } from './ganttTone'
 import MiniCal from './MiniCal'
 import TaskRow from './TaskRow'
 import Timeline from './Timeline'
@@ -154,8 +155,8 @@ export default function DayView({
           const dd = new Date(ms)
           return dd.getHours() * 60 + dd.getMinutes()
         }
-        let bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, toMin(startMs)))
-        let bEnd = Math.max(bStart + 15, Math.min(23 * 60, toMin(endMs)))
+        const bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, toMin(startMs)))
+        const bEnd = Math.max(bStart + 15, Math.min(23 * 60, toMin(endMs)))
         const blocks = prev.blocks.slice()
         // 同任務、上一塊結尾相距 ≤6 分鐘 → 直接接長（連續番茄變一條）
         const tail = blocks

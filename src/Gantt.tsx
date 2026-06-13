@@ -1,10 +1,6 @@
 // 通用甘特引擎：任意欄數（週=7天、月=31天、年=12月），拖拉畫起訖橫條
 import { useRef, useState } from 'react'
-
-export type GanttTone = 'ink' | 'gold' | 'sage'
-
-/** 週任務層級 → 顏色：1–5 最重要、6–10 次要、11–15 額外 */
-export const tierTone = (i: number): GanttTone => (i < 5 ? 'ink' : i < 10 ? 'gold' : 'sage')
+import type { GanttTone } from './ganttTone'
 
 export interface GanttRow {
   i: number

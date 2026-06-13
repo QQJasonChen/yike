@@ -80,7 +80,8 @@ export default function App() {
   }
 
   const streak = currentStreak(todayKey)
-  // 歷史名稱 → 全域自動完成（切換分頁時刷新）
+  // 歷史名稱 → 全域自動完成；刻意在切換分頁時重算（抓到剛新增的名稱）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const names = useMemo(() => recentNames(), [tab])
 
   return (

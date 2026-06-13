@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import Gantt, { tierTone } from './Gantt'
+import Gantt from './Gantt'
+import { tierTone } from './ganttTone'
 import HabitWeek from './HabitWeek'
 import MiniCal from './MiniCal'
 import PeriodSummary from './PeriodSummary'

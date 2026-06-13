@@ -1,0 +1,158 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import {
+  addDays,
+  addMonths,
+  allDataKeys,
+  currentStreak,
+  exportAll,
+  fromDateKey,
+  importAll,
+  isoWeekOf,
+  loadDay,
+  mondayOf,
+  monthOf,
+  nameStats,
+  recentNames,
+  saveDay,
+  saveWeek,
+  toDateKey,
+} from '../storage'
+import { emptyDay, emptyWeek } from '../types'
+import type { DayEntry } from '../types'
+
+beforeEach(() => localStorage.clear())
+
+describe('date utils', () => {
+  it('toDateKey / fromDateKey round-trip in local time', () => {
+    const d = new Date(2026, 5, 13) // 2026-06-13
+    expect(toDateKey(d)).toBe('2026-06-13')
+    expect(toDateKey(fromDateKey('2026-06-13'))).toBe('2026-06-13')
+  })
+
+  it('addDays handles month and year boundaries', () => {
+    expect(addDays('2026-06-13', 1)).toBe('2026-06-14')
+    expect(addDays('2026-06-30', 1)).toBe('2026-07-01')
+    expect(addDays('2026-01-01', -1)).toBe('2025-12-31')
+    expect(addDays('2026-06-13', 7)).toBe('2026-06-20')
+  })
+
+  it('mondayOf returns the Monday of that week', () => {
+    // 2026-06-13 is a Saturday → Monday is 2026-06-08
+    expect(mondayOf('2026-06-13')).toBe('2026-06-08')
+    // Monday maps to itself
+    expect(mondayOf('2026-06-08')).toBe('2026-06-08')
+    // Sunday maps back to that week's Monday
+    expect(mondayOf('2026-06-14')).toBe('2026-06-08')
+  })
+
+  it('isoWeekOf is stable within a week and increments across weeks', () => {
+    const monday = fromDateKey('2026-06-08')
+    const sunday = fromDateKey('2026-06-14')
+    const nextMonday = fromDateKey('2026-06-15')
+    expect(isoWeekOf(monday)).toBe(isoWeekOf(sunday))
+    expect(isoWeekOf(nextMonday)).toBe(isoWeekOf(monday) + 1)
+  })
+
+  it('monthOf / addMonths', () => {
+    expect(monthOf('2026-06-13')).toBe('2026-06')
+    expect(addMonths('2026-06', 1)).toBe('2026-07')
+    expect(addMonths('2026-12', 1)).toBe('2027-01')
+    expect(addMonths('2026-01', -1)).toBe('2025-12')
+  })
+})
+
+describe('day persistence + legacy migration', () => {
+  it('saveDay / loadDay round-trips', () => {
+    const d = emptyDay()
+    d.tasks[0] = { text: '讀荷蘭文', target: 2, done: 1, actual: null, completed: false }
+    d.score = 4
+    saveDay('2026-06-13', d)
+    const back = loadDay('2026-06-13')
+    expect(back.tasks[0].text).toBe('讀荷蘭文')
+    expect(back.score).toBe(4)
+  })
+
+  it('migrates v1 fixed fields into answers', () => {
+    localStorage.setItem(
+      'pp:day:2026-06-10',
+      JSON.stringify({
+        tasks: [],
+        blocks: [],
+        gratitude: '謝謝',
+        intention: '專注',
+        highlight: '交付影片',
+      })
+    )
+    const d = loadDay('2026-06-10')
+    expect(d.answers.m0).toBe('謝謝')
+    expect(d.answers.m1).toBe('專注')
+    expect(d.answers.e0).toBe('交付影片')
+    expect(d.habitsDone).toEqual({})
+  })
+})
+
+describe('nameStats — daily + planning aggregation', () => {
+  it('aggregates days/sessions/minutes and counts planning appearances', () => {
+    const mk = (text: string): DayEntry => {
+      const d = emptyDay()
+      d.tasks[0] = { text, target: 2, done: 2, actual: 2, completed: true }
+      d.blocks = [{ id: 'b1', start: 540, end: 600, text, taskIndex: 0 }] // 60 min
+      return d
+    }
+    saveDay('2026-06-12', mk('讀荷蘭文'))
+    saveDay('2026-06-13', mk('讀荷蘭文'))
+
+    // planning item with the same name (week plan)
+    const w = emptyWeek()
+    w.tasks[0] = { text: '讀荷蘭文', done: false, span: [0, 4] }
+    saveWeek('2026-06-08', w)
+
+    const stats = nameStats()
+    const dutch = stats.find((s) => s.name === '讀荷蘭文')
+    expect(dutch).toBeTruthy()
+    expect(dutch!.days).toBe(2)
+    expect(dutch!.sessions).toBe(4) // 2 done × 2 days
+    expect(dutch!.minutes).toBe(120) // 60 × 2 days
+    expect(dutch!.plans).toBe(1) // appears once in week plan
+  })
+
+  it('recentNames returns trimmed names', () => {
+    const d = emptyDay()
+    d.tasks[0] = { text: '重訓', target: 1, done: 1, actual: 1, completed: false }
+    saveDay('2026-06-13', d)
+    expect(recentNames()).toContain('重訓')
+  })
+})
+
+describe('export / import', () => {
+  it('round-trips all pp: data and excludes sync settings', () => {
+    const d = emptyDay()
+    d.score = 5
+    saveDay('2026-06-13', d)
+    localStorage.setItem('pp:sync', JSON.stringify({ token: 'secret' }))
+
+    const json = exportAll()
+    expect(json).not.toContain('secret') // sync settings excluded
+    expect(allDataKeys()).toContain('pp:day:2026-06-13')
+
+    localStorage.clear()
+    const count = importAll(json)
+    expect(count).toBeGreaterThan(0)
+    expect(loadDay('2026-06-13').score).toBe(5)
+  })
+
+  it('importAll throws on malformed payload', () => {
+    expect(() => importAll('{"nope":1}')).toThrow()
+  })
+})
+
+describe('currentStreak', () => {
+  it('counts consecutive recorded days back from today', () => {
+    saveDay('2026-06-13', emptyDay())
+    saveDay('2026-06-12', emptyDay())
+    saveDay('2026-06-11', emptyDay())
+    // gap at 06-10
+    saveDay('2026-06-09', emptyDay())
+    expect(currentStreak('2026-06-13')).toBe(3)
+  })
+})
