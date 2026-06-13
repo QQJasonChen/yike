@@ -467,7 +467,7 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
             value={settings.focusMinutes}
             onChange={(e) => onSettingsChange({ ...settings, focusMinutes: Number(e.target.value) })}
           >
-            {[25, 30, 35, 40, 45, 50].map((m) => (
+            {[15, 20, 25, 30, 35, 40, 45, 50].map((m) => (
               <option key={m} value={m}>
                 {m} 分鐘
               </option>

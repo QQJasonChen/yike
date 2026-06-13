@@ -342,6 +342,20 @@ export default function DayView({
                       <span className="mit-focus-ring">▶</span>
                       專注 {settings.focusMinutes} 分鐘
                     </button>
+                    <select
+                      className="mit-len"
+                      value={settings.focusMinutes}
+                      title="一段專注的長度（會記住）"
+                      onChange={(e) =>
+                        onSettingsChange({ ...settings, focusMinutes: Number(e.target.value) })
+                      }
+                    >
+                      {[15, 20, 25, 30, 35, 40, 45, 50].map((m) => (
+                        <option key={m} value={m}>
+                          {m} 分
+                        </option>
+                      ))}
+                    </select>
                     <span className="mit-focus-sub">
                       結束自動刻一筆{t.target ? `・目標 ${t.target}` : ''}
                     </span>

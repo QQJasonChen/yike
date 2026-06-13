@@ -1979,6 +1979,18 @@ button.wk-head:hover {
   flex-shrink: 0;
 }
 
+.mit-len {
+  font-family: var(--serif);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.mit-len:hover { border-color: var(--terra); color: var(--terra); }
+
 .mit-focus-sub {
   font-size: 12.5px;
   letter-spacing: 0.06em;
