@@ -1802,6 +1802,12 @@ button.wk-head:hover {
   .topbar {
     flex-wrap: wrap;
   }
+  /* tabs 移到第二行：order:3 讓 brand + streak 先排第一行，tabs 佔滿第二行 */
+  .tabs {
+    order: 3;
+    flex: 0 0 100%;
+    justify-content: center;
+  }
   .focus-track {
     gap: 3px;
   }
@@ -1815,6 +1821,15 @@ button.wk-head:hover {
   .timer-task {
     display: none;
   }
+}
+
+/* 極窄螢幕（≤ 400px）：計時器隱藏浮窗＋展開兩個按鈕，避免溢出；今日段數也縮掉 */
+@media (max-width: 400px) {
+  .timer-bar .pip-action,
+  .timer-bar .expand-action {
+    display: none;
+  }
+  .today-focus { display: none; }
 }
 
 /* 頂欄雲端登入 badge */
@@ -2440,6 +2455,23 @@ button.wk-head:hover {
 .sq-adj button:hover { border-color: var(--gold); color: var(--gold-deep); }
 
 .week-no { color: var(--gold-deep); font-style: italic; }
+
+/* 今日專注段數（頂欄） */
+.today-focus {
+  font-family: var(--eng);
+  font-size: 13px;
+  color: var(--terra);
+  margin-right: 9px;
+  letter-spacing: 0.04em;
+  font-style: italic;
+}
+
+/* 期間總結 section separator */
+.psum {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
 
 /* ---------- 迷你月曆（無印式） ---------- */
 

@@ -137,11 +137,19 @@ export default function PeriodSummary({ title, dayKeys, periodLabel }: Props) {
       </div>
       {s.acts.length > 0 && (
         <table className="act-table">
+          <thead>
+            <tr>
+              <th>活動</th>
+              <th>天</th>
+              <th>專注</th>
+              <th>排程</th>
+            </tr>
+          </thead>
           <tbody>
             {s.acts.map((a) => (
               <tr key={a.name}>
                 <td className="act-name">{a.name}</td>
-                <td>{a.days} 天</td>
+                <td>{a.days}</td>
                 <td>{a.sessions ? `${a.sessions} 段` : '–'}</td>
                 <td>{a.minutes ? `${Math.round((a.minutes / 60) * 10) / 10} 小時` : '–'}</td>
               </tr>

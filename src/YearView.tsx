@@ -22,6 +22,22 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
     setEditing(null)
   }, [year])
 
+  // 點格子外側關閉 popover
+  useEffect(() => {
+    if (!editing) return
+    const dismiss = (e: MouseEvent) => {
+      const pop = document.querySelector('.yr-pop')
+      if (pop && pop.contains(e.target as Node)) return
+      setEditing(null)
+    }
+    // nextTick 避免與開啟 popover 的同一個 click 互相抵消
+    const id = setTimeout(() => document.addEventListener('click', dismiss), 0)
+    return () => {
+      clearTimeout(id)
+      document.removeEventListener('click', dismiss)
+    }
+  }, [editing])
+
   const setNote = (key: string, text: string) => {
     setEntry((prev) => {
       const notes = { ...prev.notes }

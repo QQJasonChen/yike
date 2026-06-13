@@ -9,6 +9,7 @@ import FocusTimer, { TimerState } from './FocusTimer'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
 import {
   currentStreak,
+  loadDay,
   loadSettings,
   mondayOf,
   monthOf,
@@ -80,6 +81,7 @@ export default function App() {
   }
 
   const streak = currentStreak(todayKey)
+  const todayFocusSessions = loadDay(todayKey).tasks.reduce((s, t) => s + t.done, 0)
   // 歷史名稱 → 全域自動完成；刻意在切換分頁時重算（抓到剛新增的名稱）
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const names = useMemo(() => recentNames(), [tab])
@@ -119,6 +121,9 @@ export default function App() {
             >
               {cloudIn ? '☁ 同步中' : '☁ 登入'}
             </button>
+          )}
+          {todayFocusSessions > 0 && (
+            <span className="today-focus">{todayFocusSessions}⊙</span>
           )}
           {streak > 0 ? (
             <>

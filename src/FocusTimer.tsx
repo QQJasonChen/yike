@@ -211,13 +211,14 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
       <div className="timer-actions">
         {pipSupported() && (
           <button
+            className="pip-action"
             title="浮出置頂小窗，去別的分頁也看得到倒數"
             onClick={(e) => { e.stopPropagation(); summonFloating() }}
           >
             ⧉
           </button>
         )}
-        <button title="全螢幕專注" onClick={(e) => { e.stopPropagation(); setZen(true) }}>
+        <button className="expand-action" title="全螢幕專注" onClick={(e) => { e.stopPropagation(); setZen(true) }}>
           ⤢
         </button>
         <button title={paused ? '繼續' : '暫停'} onClick={(e) => { e.stopPropagation(); togglePause() }}>
