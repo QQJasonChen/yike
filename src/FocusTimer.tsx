@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 
+// Document Picture-in-Picture（Chrome/Edge 桌面）：開一個永遠置頂的小浮窗
+interface DocumentPiP {
+  requestWindow(opts?: { width?: number; height?: number }): Promise<Window>
+  window: Window | null
+}
+declare global {
+  interface Window {
+    documentPictureInPicture?: DocumentPiP
+  }
+}
+
 export interface TimerState {
   taskIndex: number
   taskText: string
@@ -91,6 +102,64 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
     }
   }, [remaining, timer.phase])
 
+  // ---- 置頂浮窗（Document Picture-in-Picture）----
+  const pipRef = useRef<Window | null>(null)
+  const timerRef = useRef(timer)
+  timerRef.current = timer
+  const pipSupported = typeof window !== 'undefined' && 'documentPictureInPicture' in window
+
+  const openFloating = async () => {
+    const dpip = window.documentPictureInPicture
+    if (!dpip) return
+    if (pipRef.current) {
+      pipRef.current.focus?.()
+      return
+    }
+    let w: Window
+    try {
+      w = await dpip.requestWindow({ width: 248, height: 148 })
+    } catch {
+      return // 使用者取消或無權限
+    }
+    pipRef.current = w
+    const doc = w.document
+    doc.body.style.cssText =
+      'margin:0;height:100vh;display:flex;align-items:center;justify-content:center;' +
+      'font-family:-apple-system,system-ui,"Noto Serif TC",serif;background:#1e2a40;color:#f5f0e6;user-select:none'
+    const box = doc.createElement('div')
+    box.style.cssText = 'text-align:center;padding:12px'
+    const phase = doc.createElement('div')
+    phase.style.cssText =
+      'font-size:11px;letter-spacing:.28em;text-transform:uppercase;opacity:.65;margin-bottom:6px'
+    const clock = doc.createElement('div')
+    clock.style.cssText = 'font-size:50px;font-weight:300;font-variant-numeric:tabular-nums;line-height:1'
+    const task = doc.createElement('div')
+    task.style.cssText =
+      'font-size:13px;opacity:.85;margin-top:8px;max-width:216px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'
+    box.append(phase, clock, task)
+    doc.body.append(box)
+
+    const render = () => {
+      const t = timerRef.current
+      if (!t) return
+      const rem = t.pausedRemaining !== null ? t.pausedRemaining : t.endsAt - Date.now()
+      const isBreak = t.phase === 'break'
+      clock.textContent = fmtClock(rem)
+      phase.textContent = isBreak ? '休息' : t.pausedRemaining !== null ? '已暫停' : '專注中'
+      task.textContent = isBreak ? '起來走走、喝口水' : t.taskText || '未命名任務'
+      doc.body.style.background = isBreak ? '#3a4a32' : '#1e2a40'
+    }
+    render()
+    const iv = w.setInterval(render, 250)
+    w.addEventListener('pagehide', () => {
+      w.clearInterval(iv)
+      pipRef.current = null
+    })
+  }
+
+  // 計時結束 / 元件卸載時關閉浮窗
+  useEffect(() => () => pipRef.current?.close(), [])
+
   const paused = timer.pausedRemaining !== null
   const progress = Math.max(0, Math.min(1, 1 - remaining / timer.totalMs))
   const R = 23
@@ -153,6 +222,11 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
         <div className="zen-actions">
           <button onClick={togglePause}>{paused ? '▶ 繼續' : '⏸ 暫停'}</button>
           {timer.phase === 'focus' && <button onClick={finishEarly}>✓ 提前完成</button>}
+          {pipSupported && (
+            <button onClick={openFloating} title="浮出置頂小窗，去別的分頁也看得到倒數">
+              ⧉ 浮窗
+            </button>
+          )}
           <button className="zen-stop" onClick={() => onUpdate(null)}>✕ 結束</button>
         </div>
       </div>
@@ -183,6 +257,14 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
       </div>
       {timer.phase === 'focus' && <div className="timer-task">{timer.taskText || '未命名任務'}</div>}
       <div className="timer-actions">
+        {pipSupported && (
+          <button
+            title="浮出置頂小窗，去別的分頁也看得到倒數"
+            onClick={(e) => { e.stopPropagation(); openFloating() }}
+          >
+            ⧉
+          </button>
+        )}
         <button title="全螢幕專注" onClick={(e) => { e.stopPropagation(); setZen(true) }}>
           ⤢
         </button>
