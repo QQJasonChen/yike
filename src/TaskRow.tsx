@@ -9,6 +9,8 @@ interface Props {
   isRunning: boolean
   /** 把任務拖到時間軸：放開時回報座標，由 App 轉交 Timeline */
   onDropToTimeline: (clientX: number, clientY: number) => void
+  /** Enter 鍵按下：由 DayView 決定聚焦下一個輸入框 */
+  onEnterKey?: () => void
 }
 
 export default function TaskRow({
@@ -18,6 +20,7 @@ export default function TaskRow({
   onStartFocus,
   isRunning,
   onDropToTimeline,
+  onEnterKey,
 }: Props) {
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
   const dragging = useRef(false)
@@ -66,6 +69,7 @@ export default function TaskRow({
           placeholder={index === 0 ? '今天就算只做成這一件，也值得了' : ''}
           value={task.text}
           onChange={(e) => onChange({ ...task, text: e.target.value })}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onEnterKey?.() } }}
         />
       </div>
 

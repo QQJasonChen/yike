@@ -103,6 +103,12 @@ export default function DayView({
   }
   const isToday = dateKey === todayKey
   const dropRef = useRef<((x: number, y: number, text: string, taskIndex: number) => boolean) | null>(null)
+  const taskListRef = useRef<HTMLDivElement>(null)
+
+  const focusNextTask = (currentIndex: number) => {
+    const inputs = taskListRef.current?.querySelectorAll<HTMLInputElement>('input[list="yike-names"]')
+    inputs?.[currentIndex + 1]?.focus()
+  }
 
   // 換日期時重新載入
   useEffect(() => {
@@ -300,6 +306,7 @@ export default function DayView({
               </div>
             )}
 
+            <div ref={taskListRef}>
             {entry.tasks.map((t, i) => (
               <span key={i}>
                 {sectionLabel(i)}
@@ -309,6 +316,7 @@ export default function DayView({
                   onChange={(nt) => updateTask(i, nt)}
                   isRunning={timer?.phase === 'focus' && timer.taskIndex === i && isToday}
                   onStartFocus={() => onStartFocus(i, t.text)}
+                  onEnterKey={() => focusNextTask(i)}
                   onDropToTimeline={(x, y) => {
                     const landed = dropRef.current?.(x, y, t.text, i)
                     if (!landed && t.text.trim()) {
@@ -383,6 +391,7 @@ export default function DayView({
                 )}
               </span>
             ))}
+            </div>
 
             {settings.eveningQs.map((q, i) => (
               <span key={`e${i}`}>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
 
 // Document Picture-in-Picture（Chrome/Edge 桌面）：開一個永遠置頂的小浮窗
@@ -117,12 +117,25 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
   const R = 23
   const C = 2 * Math.PI * R
 
-  const togglePause = () =>
+  const togglePause = useCallback(() =>
     onUpdate(
       paused
         ? { ...timer, endsAt: Date.now() + (timer.pausedRemaining ?? 0), pausedRemaining: null }
         : { ...timer, pausedRemaining: Math.max(0, timer.endsAt - Date.now()) }
-    )
+    ), [paused, timer, onUpdate])
+
+  // 空白鍵暫停/繼續（不在輸入框/文字區時）
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (e.code === 'Space' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+        e.preventDefault()
+        togglePause()
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [togglePause])
 
   const finishEarly = () => {
     chime()
