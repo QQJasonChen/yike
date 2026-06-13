@@ -349,8 +349,8 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
               {cloudStage === 'out' && (
                 <>
                   <p className="sync-help">
-                    輸入已開通的 Email＋密碼，登入後所有裝置<b>自動同步</b>——寫完即上雲，換裝置打開就有。
-                    雲端同步採<b>邀請制</b>；本機記錄與全部功能不需帳號、永久免費。
+                    購買後，用<b>購買時填的 Email</b> ＋ 自設密碼登入即可，所有裝置<b>自動同步</b>——寫完即上雲、換裝置打開就有。
+                    本機記錄與全部功能<b>不需帳號、永久免費</b>；雲端同步為付費功能。
                   </p>
                   <div className="line-input sync-token">
                     <input
