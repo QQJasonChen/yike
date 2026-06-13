@@ -2517,10 +2517,18 @@ button.mc-month:disabled { cursor: default; }
   color: var(--ink-soft);
   text-align: center;
   align-self: center;
+  /* 星期字疊在日期上方（一／8），每欄更窄、不會擠成一團 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+  overflow: hidden;
 }
 
-.g-day span { font-family: var(--eng); font-size: 10px; color: var(--ink-faint); margin-left: 3px; }
+.g-day span { font-family: var(--eng); font-size: 9.5px; color: var(--ink-faint); margin-left: 0; }
 .g-day.today { color: var(--gold-deep); font-weight: 700; }
+.g-day.today span { color: var(--gold-deep); }
 
 .g-label {
   font-family: var(--hand);
@@ -2581,10 +2589,10 @@ button.mc-month:disabled { cursor: default; }
 .g-dot.tone-sage { background: #5e7a4e; }
 
 @media (max-width: 640px) {
-  .g-row { grid-template-columns: 84px repeat(7, 1fr); min-height: 38px; }
+  /* 標籤欄隨螢幕寬度縮放（窄機更窄、寬機更寬），不再是死的固定寬 */
+  .g-row { --g-label-w: clamp(88px, 27vw, 134px); min-height: 38px; }
   .g-label { font-size: 12px; padding: 6px 7px; }
   .g-day { font-size: 11px; }
-  .g-day span { margin-left: 2px; }
   .g-bar { height: 22px; line-height: 22px; font-size: 11px; padding: 0 8px; margin: 0 3px; }
   .gantt-head .g-legend { margin-left: 0; }
 }

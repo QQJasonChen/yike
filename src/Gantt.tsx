@@ -31,12 +31,19 @@ export default function Gantt({ title, hint, emptyHint, cols, rows, labelWidth =
   const [drag, setDrag] = useState<{ row: number; a: number; b: number } | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
   const n = cols.length
-  const template = { gridTemplateColumns: `${labelWidth}px repeat(${n}, 1fr)` }
+  // 標籤欄寬度走 CSS 變數（手機用 clamp 隨螢幕縮放），桌機 fallback 用 labelWidth
+  const template = {
+    gridTemplateColumns: `var(--g-label-w, ${labelWidth}px) repeat(${n}, 1fr)`,
+  } as React.CSSProperties
 
   const colFromX = (clientX: number): number => {
-    const r = gridRef.current!.getBoundingClientRect()
-    const colW = (r.width - labelWidth) / n
-    return Math.max(0, Math.min(n - 1, Math.floor((clientX - r.left - labelWidth) / colW)))
+    const grid = gridRef.current!
+    const r = grid.getBoundingClientRect()
+    // 量實際渲染後的標籤欄寬，CSS 縮放後拖拉命中才會準
+    const labelEl = grid.querySelector('.g-label') as HTMLElement | null
+    const lw = labelEl ? labelEl.offsetWidth : labelWidth
+    const colW = (r.width - lw) / n
+    return Math.max(0, Math.min(n - 1, Math.floor((clientX - r.left - lw) / colW)))
   }
 
   const down = (row: number) => (e: React.PointerEvent) => {
