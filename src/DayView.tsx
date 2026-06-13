@@ -50,6 +50,12 @@ export default function DayView({
   // 本週甘特（聚焦：今天對到本週計畫的哪件事）
   const [weekEntry, setWeekEntry] = useState<WeekEntry>(() => loadWeek(mondayOf(dateKey)))
   const [copied, setCopied] = useState(false)
+  // 首次開啟的歡迎引導（純本機旗標，不進同步/匯出）
+  const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem('yike:onboarded'))
+  const dismissWelcome = () => {
+    localStorage.setItem('yike:onboarded', '1')
+    setShowWelcome(false)
+  }
   const [rolloverDone, setRolloverDone] = useState(false)
   const [addingHabit, setAddingHabit] = useState(false)
   const [newHabit, setNewHabit] = useState('')
@@ -232,6 +238,33 @@ export default function DayView({
         <div className="quote">
           「{quote.text}」<span className="author">— {quote.author}</span>
         </div>
+
+        {showWelcome && (
+          <div className="welcome">
+            <button className="welcome-x" onClick={dismissWelcome} title="關閉">
+              ✕
+            </button>
+            <div className="welcome-h">歡迎使用一刻手帳 🌿</div>
+            <p className="welcome-sub">每天兩分鐘：記下最重要的事、專注完成、晚上回顧。</p>
+            <ol className="welcome-steps">
+              <li>
+                <b>✍️ 最重要任務</b>——寫下「今天就算只做成這件，也值得」的那件（最多五件）
+              </li>
+              <li>
+                <b>🍅 番茄鐘</b>——按下專注，時間到自動刻進右邊時間軸、塗滿一格
+              </li>
+              <li>
+                <b>🌙 晚間回顧</b>——記下今天的心情與「生產力」分數
+              </li>
+            </ol>
+            <p className="welcome-foot">
+              上方分頁：<b>本週 / 本月 / 年</b> 看規劃與甘特圖，<b>回顧</b> 看統計與 AI 教練。
+            </p>
+            <button className="welcome-go" onClick={dismissWelcome}>
+              開始使用 →
+            </button>
+          </div>
+        )}
 
         {weekEntry.tasks.some((t) => t.text.trim()) && (
           <Gantt

@@ -146,6 +146,82 @@ textarea::placeholder {
   animation: pageIn 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
+/* ---------- 新手歡迎引導卡 ---------- */
+.welcome {
+  position: relative;
+  margin: 14px 0 6px;
+  padding: 20px 24px 22px;
+  border: 1.5px solid rgba(184, 146, 62, 0.45);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(245, 240, 230, 0.7), rgba(232, 223, 200, 0.45));
+  animation: pageIn 0.4s ease both;
+}
+.welcome-h {
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+.welcome-sub {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.welcome-steps {
+  margin: 14px 0 4px;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.welcome-steps li {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+.welcome-steps b {
+  color: var(--ink);
+}
+.welcome-foot {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink-faint);
+  line-height: 1.5;
+}
+.welcome-go {
+  margin-top: 16px;
+  padding: 9px 22px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #c0633c, #9e4c2c);
+  color: #fff;
+  font-family: var(--serif);
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  box-shadow: 0 5px 14px rgba(158, 76, 44, 0.3);
+  transition: all 0.2s;
+}
+.welcome-go:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(158, 76, 44, 0.4);
+}
+.welcome-x {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--ink-faint);
+  font-size: 13px;
+  line-height: 1;
+}
+.welcome-x:hover {
+  background: rgba(120, 100, 60, 0.12);
+  color: var(--ink);
+}
+
 @keyframes pageIn {
   from {
     opacity: 0;
