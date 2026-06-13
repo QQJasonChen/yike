@@ -52,7 +52,7 @@ export interface MonthEntry {
 }
 
 export interface Settings {
-  focusMinutes: number // Focus Time 長度（預設 30）
+  focusMinutes: number // Focus Time 長度（預設 25，番茄鐘）
   breakMinutes: number // 休息長度（預設 5）
   habitName: string // (legacy v1) 單一習慣名
   habits: string[] // 習慣清單（一週檢視）
@@ -108,7 +108,7 @@ export const emptyMonth = (): MonthEntry => ({
 })
 
 export const defaultSettings = (): Settings => ({
-  focusMinutes: 30,
+  focusMinutes: 25,
   breakMinutes: 5,
   habitName: '',
   habits: [],
