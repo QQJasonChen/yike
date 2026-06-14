@@ -4,6 +4,7 @@ import DayView from './DayView'
 import WeekView from './WeekView'
 import MonthView from './MonthView'
 import YearView from './YearView'
+import LifeView from './LifeView'
 import HistoryView from './HistoryView'
 import FocusTimer, { TimerState } from './FocusTimer'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
@@ -19,7 +20,7 @@ import {
 } from './storage'
 import { Settings } from './types'
 
-type Tab = 'day' | 'week' | 'month' | 'year' | 'history'
+type Tab = 'day' | 'week' | 'month' | 'year' | 'life' | 'history'
 
 export default function App() {
   const todayKey = toDateKey(new Date())
@@ -108,6 +109,9 @@ export default function App() {
           <button className={tab === 'year' ? 'active' : ''} onClick={() => setTab('year')}>
             年
           </button>
+          <button className={tab === 'life' ? 'active' : ''} onClick={() => setTab('life')}>
+            願景
+          </button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
             回顧
           </button>
@@ -178,6 +182,7 @@ export default function App() {
           }}
         />
       )}
+      {tab === 'life' && <LifeView />}
       {tab === 'history' && (
         <HistoryView
           onOpenDay={(k) => {

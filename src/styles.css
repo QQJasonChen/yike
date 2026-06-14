@@ -2759,3 +2759,150 @@ button.mc-month:disabled { cursor: default; }
   .gantt.dense .g-head .g-day.today.tick { color: var(--gold-deep); font-weight: 700; }
   .gantt.dense .g-label { font-size: 11px; }
 }
+
+/* ---------- 願景（北極星 + 十年甘特 + 奧德賽） ---------- */
+
+.northstar-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: linear-gradient(135deg, var(--paper-card), var(--paper));
+  border: 1px solid var(--gold-soft);
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow-page);
+}
+
+.northstar-star {
+  color: var(--gold);
+  font-size: 20px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.northstar-input {
+  font-family: var(--serif);
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--ink);
+  resize: vertical;
+  min-height: 2.4em;
+}
+
+.northstar-input::placeholder {
+  font-style: italic;
+  font-size: 16px;
+}
+
+/* 奧德賽：可收合標題 */
+.odyssey-head {
+  cursor: pointer;
+  user-select: none;
+}
+
+.odyssey-caret {
+  color: var(--gold);
+  font-size: 11px;
+  transition: transform 0.25s ease;
+}
+
+.odyssey-caret.open {
+  transform: rotate(90deg);
+}
+
+/* 奧德賽：三條路並列 */
+.odyssey-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.odyssey-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--ink);
+  border-radius: 8px;
+  padding: 12px 13px 13px;
+}
+
+.odyssey-card:nth-child(2) {
+  border-top-color: var(--gold);
+}
+
+.odyssey-card:nth-child(3) {
+  border-top-color: var(--sage);
+}
+
+.odyssey-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 15.5px;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 6px;
+}
+
+.odyssey-body {
+  font-size: 15px;
+  line-height: 1.8;
+  resize: vertical;
+  min-height: 7em;
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent calc(1.8em - 1px),
+    var(--rule) calc(1.8em - 1px),
+    var(--rule) 1.8em
+  );
+}
+
+.odyssey-rate {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.odyssey-rate-label {
+  font-family: var(--serif);
+  font-size: 11.5px;
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+  margin-right: 5px;
+}
+
+.odyssey-rate .sun {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--rule);
+  transition: color 0.15s, transform 0.15s;
+}
+
+.odyssey-rate .sun.on {
+  color: var(--gold);
+}
+
+.odyssey-rate .sun:hover {
+  transform: scale(1.2);
+}
+
+@media (max-width: 640px) {
+  .odyssey-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 多一個分頁（願景）：手機把分頁鈕縮一點，避免第二排塞不下 */
+@media (max-width: 560px) {
+  .tabs {
+    flex-wrap: wrap;
+  }
+  .tabs button {
+    padding: 6px 11px;
+    letter-spacing: 0.06em;
+  }
+}

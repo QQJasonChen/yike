@@ -9,11 +9,13 @@ import {
   importAll,
   isoWeekOf,
   loadDay,
+  loadLife,
   mondayOf,
   monthOf,
   nameStats,
   recentNames,
   saveDay,
+  saveLife,
   saveWeek,
   toDateKey,
 } from '../storage'
@@ -121,6 +123,44 @@ describe('nameStats — daily + planning aggregation', () => {
     d.tasks[0] = { text: '重訓', target: 1, done: 1, actual: 1, completed: false }
     saveDay('2026-06-13', d)
     expect(recentNames()).toContain('重訓')
+  })
+})
+
+describe('life persistence', () => {
+  it('returns an empty life entry with 3 odyssey paths when nothing saved', () => {
+    const life = loadLife()
+    expect(life.northStar).toBe('')
+    expect(life.odyssey).toHaveLength(3)
+    expect(life.goals.length).toBeGreaterThan(0)
+  })
+
+  it('round-trips north star, goals and odyssey', () => {
+    const life = loadLife()
+    life.northStar = '成為中文界 AI 第二大腦代言人'
+    life.goals[0] = { text: '出一本書', done: false, span: [0, 2] }
+    life.odyssey[2] = { title: '不管錢與面子', body: '環球航海', excitement: 4 }
+    saveLife(life)
+
+    const back = loadLife()
+    expect(back.northStar).toBe('成為中文界 AI 第二大腦代言人')
+    expect(back.goals[0].span).toEqual([0, 2])
+    expect(back.odyssey[2].excitement).toBe(4)
+  })
+
+  it('backfills missing odyssey paths from older saved data', () => {
+    localStorage.setItem('pp:life', JSON.stringify({ northStar: 'x', odyssey: [{ title: 'A', body: '', excitement: 1 }] }))
+    const life = loadLife()
+    expect(life.odyssey).toHaveLength(3)
+    expect(life.odyssey[0].title).toBe('A')
+    expect(life.odyssey[2].title).toBe('不管錢與面子')
+  })
+
+  it('feeds life goals into nameStats planning counts', () => {
+    const life = loadLife()
+    life.goals[0] = { text: '寫小說', done: false }
+    saveLife(life)
+    const stat = nameStats().find((s) => s.name === '寫小說')
+    expect(stat?.plans).toBe(1)
   })
 })
 

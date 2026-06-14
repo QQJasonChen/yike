@@ -68,6 +68,22 @@ export interface YearEntry {
   notes: Record<string, string>
 }
 
+/** 奧德賽計畫的一條路（《做自己的生命設計師》三種五年人生） */
+export interface OdysseyPath {
+  title: string // 路線名（現在這條路／如果它消失了／不管錢與面子）
+  body: string // 這個版本的五年後長什麼樣（自由書寫）
+  excitement: number // 興奮度自評 0–5（幫你看出真正想要的）
+}
+
+/** 願景維度：北極星 + 十年大目標甘特 + 奧德賽三條路。整個 app 只有一份。 */
+export interface LifeEntry {
+  northStar: string // 北極星：願景的方向（一句話）
+  goals: { text: string; done: boolean; span?: [number, number] | null }[] // 願景大目標；span=年 index（0 = startYear）
+  startYear: number // 十年甘特的起始年
+  odyssey: OdysseyPath[] // 固定 3 條路
+  odysseyOpen: boolean // 奧德賽區塊是否展開
+}
+
 export const emptyTask = (): Task => ({
   text: '',
   target: null,
@@ -94,6 +110,19 @@ export const emptyYear = (): YearEntry => ({
   goals: Array.from({ length: 3 }, () => ({ text: '', done: false })),
   monthFocus: Array.from({ length: 12 }, () => ''),
   notes: {},
+})
+
+// 願景大目標預設 5 格（一輩子的畫布，比「年」多一點）
+export const emptyLife = (): LifeEntry => ({
+  northStar: '',
+  goals: Array.from({ length: 5 }, () => ({ text: '', done: false })),
+  startYear: new Date().getFullYear(),
+  odyssey: [
+    { title: '現在這條路', body: '', excitement: 0 },
+    { title: '如果它消失了', body: '', excitement: 0 },
+    { title: '不管錢與面子', body: '', excitement: 0 },
+  ],
+  odysseyOpen: true,
 })
 
 export const emptyWeek = (): WeekEntry => ({

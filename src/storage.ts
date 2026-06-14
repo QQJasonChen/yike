@@ -1,12 +1,14 @@
 import {
   DayEntry,
   LegacyDayFields,
+  LifeEntry,
   MonthEntry,
   Settings,
   WeekEntry,
   YearEntry,
   defaultSettings,
   emptyDay,
+  emptyLife,
   emptyMonth,
   emptyWeek,
   emptyYear,
@@ -16,6 +18,7 @@ const DAY_PREFIX = 'pp:day:'
 const WEEK_PREFIX = 'pp:week:'
 const MONTH_PREFIX = 'pp:month:'
 const SETTINGS_KEY = 'pp:settings'
+const LIFE_KEY = 'pp:life' // 願景維度——整個 app 只有一份
 const SYNC_KEY = 'pp:sync' // 同步設定（含 token）——絕不進匯出檔
 
 // ---- 日期工具（一律使用本地時區） ----
@@ -150,6 +153,20 @@ export const loadYear = (yearKey: string): YearEntry => {
 export const saveYear = (yearKey: string, entry: YearEntry) =>
   write(YEAR_PREFIX + yearKey, entry)
 
+export const loadLife = (): LifeEntry => {
+  const stored = read<Partial<LifeEntry>>(LIFE_KEY)
+  if (!stored) return emptyLife()
+  const base = emptyLife()
+  return {
+    ...base,
+    ...stored,
+    // odyssey 一定要 3 條（防舊資料缺格）
+    odyssey: base.odyssey.map((d, i) => ({ ...d, ...(stored.odyssey?.[i] ?? {}) })),
+  }
+}
+
+export const saveLife = (entry: LifeEntry) => write(LIFE_KEY, entry)
+
 export const loadSettings = (): Settings => {
   const s = { ...defaultSettings(), ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}) }
   // v1 單一習慣 → v2 習慣清單
@@ -240,6 +257,10 @@ export const nameStats = (): NameStat[] => {
       const n = g.text.trim()
       if (n) touch(n).plans++
     }
+  for (const g of loadLife().goals) {
+    const n = g.text.trim()
+    if (n) touch(n).plans++
+  }
   return [...map.entries()]
     .map(([name, e]) => ({
       name,
