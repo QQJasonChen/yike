@@ -12,7 +12,7 @@ import { DayEntry, Settings, Task, WeekEntry } from './types'
 
 const WEEKDAYS_EN = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
 
-/** ISO 週數＋週內進度（週一 .0 → 週日 .9），例：W24.6 */
+/** ISO 週數＋週內日序（週一 .1 → 週日 .7），例：W24.7 */
 const weekDecimal = (d: Date): string => {
   const dow = (d.getDay() + 6) % 7 // Mon=0..Sun=6
   const monday = new Date(d)
@@ -23,7 +23,7 @@ const weekDecimal = (d: Date): string => {
   // 用「天數四捨五入」避免日光節約時間的 1 小時誤差
   let week = Math.round((monday.getTime() - jan4Mon.getTime()) / 86400000) / 7 + 1
   if (week < 1) week = 52
-  return `W${week}.${Math.round((dow / 7) * 10)}`
+  return `W${week}.${dow + 1}`
 }
 const MOODS = ['😖', '🙁', '😐', '🙂', '😄']
 
