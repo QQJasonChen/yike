@@ -204,6 +204,7 @@ export default function App() {
           onUpdate={setTimer}
           breakMinutes={settings.breakMinutes}
           focusMinutes={settings.focusMinutes}
+          autoLoop={settings.autoLoop}
           lockApps={settings.focusLock}
           onSessionDone={(ti, s, e) => sessionSink.current?.(ti, s, e)}
         />

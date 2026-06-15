@@ -30,6 +30,8 @@ interface Props {
   onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void
   breakMinutes: number
   focusMinutes: number
+  /** 連續番茄鐘：休息結束自動接下一段（使用者可在設定開關） */
+  autoLoop: boolean
   /** 專注時鎖住分心 App（僅原生 iOS 生效，其餘平台 no-op） */
   lockApps: boolean
 }
@@ -62,7 +64,7 @@ const chime = () => {
   navigator.vibrate?.([200, 80, 200])
 }
 
-export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, lockApps }: Props) {
+export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, autoLoop, lockApps }: Props) {
   const [, force] = useState(0)
   const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
@@ -93,8 +95,8 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
           endsAt: Date.now() + breakMinutes * 60_000,
           pausedRemaining: null,
         })
-      } else {
-        // 休息結束 → 直接接續下一段專注（保留懸浮窗，連續番茄鐘）
+      } else if (autoLoop) {
+        // 連續番茄鐘：休息結束自動接下一段專注（保留懸浮窗，省去回網頁按開始）
         onUpdate({
           ...timer,
           phase: 'focus',
@@ -103,9 +105,11 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
           pausedRemaining: null,
           startedAt: Date.now(),
         })
+      } else {
+        onUpdate(null)
       }
     }
-  }, [remaining, timer, onUpdate, onSessionDone, breakMinutes, focusMinutes])
+  }, [remaining, timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, autoLoop])
 
   // 頁面標題倒數，切到別的分頁也看得到
   useEffect(() => {

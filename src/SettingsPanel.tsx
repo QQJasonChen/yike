@@ -234,6 +234,17 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
           </div>
 
           <div className="settings-row focuslock-row">
+            <span>連續番茄鐘</span>
+            <button
+              className={`fl-toggle ${settings.autoLoop ? 'on' : ''}`}
+              onClick={() => onSettingsChange({ ...settings, autoLoop: !settings.autoLoop })}
+            >
+              {settings.autoLoop ? '開啟' : '關閉'}
+            </button>
+            <span className="hint fl-hint">休息結束自動接下一段專注，不用回 app 按開始</span>
+          </div>
+
+          <div className="settings-row focuslock-row">
             <span>昨日未完成提醒</span>
             <button
               className={`fl-toggle ${settings.showRollover ? 'on' : ''}`}

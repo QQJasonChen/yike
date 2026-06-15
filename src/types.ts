@@ -87,6 +87,7 @@ export interface Settings {
   focusLock: boolean // 專注時鎖住分心 App（僅原生 iOS 生效）
   showRollover: boolean // 今天頁顯示「昨日未完成 → 帶入今天」提醒（預設開）
   routines: RoutineItem[] // 時間軸快填 routine（可自訂，最多 8）
+  autoLoop: boolean // 連續番茄鐘：休息結束自動接下一段專注（預設關）
 }
 
 // 預設 routine（上班日；使用者可在設定頁改）
@@ -185,4 +186,5 @@ export const defaultSettings = (): Settings => ({
   focusLock: false,
   showRollover: true,
   routines: [...DEFAULT_ROUTINES],
+  autoLoop: false,
 })
