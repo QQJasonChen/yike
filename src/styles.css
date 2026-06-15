@@ -46,8 +46,12 @@ body {
 #root {
   max-width: 1180px;
   margin: 0 auto;
+  /* 四邊安全區：iPhone 動態島/瀏海/home bar/橫向缺角都讓開（桌機 env()=0 不受影響）*/
   padding: clamp(8px, 2vw, 28px);
-  padding-bottom: 120px; /* 留給浮動計時器 */
+  padding-top: calc(clamp(8px, 2vw, 28px) + env(safe-area-inset-top));
+  padding-left: calc(clamp(8px, 2vw, 28px) + env(safe-area-inset-left));
+  padding-right: calc(clamp(8px, 2vw, 28px) + env(safe-area-inset-right));
+  padding-bottom: calc(120px + env(safe-area-inset-bottom)); /* 留給浮動計時器 + home bar */
 }
 
 button {

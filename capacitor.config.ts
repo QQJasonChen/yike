@@ -5,7 +5,8 @@ const config: CapacitorConfig = {
   appName: '一刻手帳 Yike',
   webDir: 'dist',
   ios: {
-    contentInset: 'automatic',
+    // never：WebView 不自動加 inset，安全區改由 CSS env(safe-area-inset-*) 控制（最貼合）
+    contentInset: 'never',
     backgroundColor: '#f5f0e6',
   },
 }
