@@ -14,6 +14,16 @@ export interface Block {
   taskIndex: number | null // 若由任務拖入，連結回任務
 }
 
+// 時間軸「一鍵快填」的 routine（使用者可自訂，最多 8 個）
+export interface RoutineItem {
+  emoji: string
+  label: string
+  start: number // 預設起始（從 00:00 起算的分鐘數）
+  dur: number // 長度（分鐘）
+}
+
+export const MAX_ROUTINES = 8
+
 export interface DayEntry {
   tasks: Task[] // [0] 最重要任務, [1-2] 次要, [3-4] 額外
   blocks: Block[] // 時間軸上的時間塊（Google Calendar 式拖拉）
@@ -60,7 +70,18 @@ export interface Settings {
   eveningQs: string[] // 晚間自訂問題（id 依序為 e0,e1,…）
   focusLock: boolean // 專注時鎖住分心 App（僅原生 iOS 生效）
   showRollover: boolean // 今天頁顯示「昨日未完成 → 帶入今天」提醒（預設開）
+  routines: RoutineItem[] // 時間軸快填 routine（可自訂，最多 8）
 }
+
+// 預設 routine（上班日；使用者可在設定頁改）
+export const DEFAULT_ROUTINES: RoutineItem[] = [
+  { emoji: '🚇', label: '通勤', start: 8 * 60, dur: 60 },
+  { emoji: '🏢', label: '上班', start: 9 * 60, dur: 180 },
+  { emoji: '🍱', label: '午餐', start: 12 * 60, dur: 60 },
+  { emoji: '💼', label: '下午', start: 13 * 60, dur: 300 },
+  { emoji: '🏃', label: '運動', start: 18 * 60 + 30, dur: 60 },
+  { emoji: '📖', label: '閱讀', start: 20 * 60, dur: 60 },
+]
 
 export interface YearEntry {
   goals: { text: string; done: boolean; span?: [number, number] | null }[] // 年度三大目標；span=月 index 0-11
@@ -147,4 +168,5 @@ export const defaultSettings = (): Settings => ({
   eveningQs: [...DEFAULT_EVENING_QS],
   focusLock: false,
   showRollover: true,
+  routines: [...DEFAULT_ROUTINES],
 })

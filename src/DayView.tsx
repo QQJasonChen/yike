@@ -478,6 +478,7 @@ export default function DayView({
             <Timeline
               blocks={entry.blocks}
               isToday={isToday}
+              routines={settings.routines}
               onChange={(blocks) => update({ blocks })}
               dropRef={dropRef}
             />

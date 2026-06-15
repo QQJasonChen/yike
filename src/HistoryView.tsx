@@ -13,7 +13,7 @@ import { useEffect } from 'react'
 import { activateLicense, cloudEnabled, currentEmail, signInOrUp, signOut, startAutoSync, stopAutoSync, syncNow } from './cloud'
 import { dayToMarkdown } from './exportMd'
 import { focusLock } from './focusLock'
-import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, Settings } from './types'
+import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, MAX_ROUTINES, RoutineItem, Settings } from './types'
 
 // Graham Weaver 晨間三問（QQ 的每日框架）
 const WEAVER_MORNING_QS = [
@@ -502,6 +502,11 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
           enabled={settings.focusLock}
           onToggle={(v) => onSettingsChange({ ...settings, focusLock: v })}
         />
+
+        <RoutineEditor
+          routines={settings.routines}
+          onChange={(routines) => onSettingsChange({ ...settings, routines })}
+        />
       </div>
     </div>
   )
@@ -566,6 +571,77 @@ function FocusLockSettings({
       )}
       {enabled && !hasSel && picked === null && (
         <span className="hint fl-hint">先選要鎖哪些 App</span>
+      )}
+    </div>
+  )
+}
+
+// 時間軸快填 routine 編輯器（可自訂 emoji/名稱/時間/長度，最多 8 個）
+const ROUTINE_DURS = [30, 60, 90, 120, 180, 240, 300, 360]
+const toHHMM = (m: number) =>
+  `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+const fromHHMM = (s: string) => {
+  const [h, mm] = s.split(':').map(Number)
+  return (h || 0) * 60 + (mm || 0)
+}
+const durLabel = (d: number) => (d < 60 ? `${d} 分` : `${d / 60} 小時`)
+
+function RoutineEditor({
+  routines,
+  onChange,
+}: {
+  routines: RoutineItem[]
+  onChange: (r: RoutineItem[]) => void
+}) {
+  const set = (i: number, patch: Partial<RoutineItem>) =>
+    onChange(routines.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  const remove = (i: number) => onChange(routines.filter((_, j) => j !== i))
+  const add = () => onChange([...routines, { emoji: '⭐', label: '新項目', start: 9 * 60, dur: 60 }])
+
+  return (
+    <div className="routine-editor">
+      <div className="label">時間軸快填 routine（最多 {MAX_ROUTINES} 個・點時間軸上的鈕即帶入）</div>
+      {routines.map((r, i) => (
+        <div className="routine-row" key={i}>
+          <input
+            className="re-emoji"
+            value={r.emoji}
+            maxLength={2}
+            onChange={(e) => set(i, { emoji: e.target.value })}
+          />
+          <input
+            className="re-label"
+            value={r.label}
+            placeholder="名稱"
+            onChange={(e) => set(i, { label: e.target.value })}
+          />
+          <input
+            className="re-time"
+            type="time"
+            step={1800}
+            value={toHHMM(r.start)}
+            onChange={(e) => set(i, { start: fromHHMM(e.target.value) })}
+          />
+          <select
+            className="re-dur"
+            value={r.dur}
+            onChange={(e) => set(i, { dur: Number(e.target.value) })}
+          >
+            {ROUTINE_DURS.map((d) => (
+              <option key={d} value={d}>
+                {durLabel(d)}
+              </option>
+            ))}
+          </select>
+          <button className="re-del" onClick={() => remove(i)} title="刪除">
+            ✕
+          </button>
+        </div>
+      ))}
+      {routines.length < MAX_ROUTINES && (
+        <button className="re-add" onClick={add}>
+          ＋ 新增 routine
+        </button>
       )}
     </div>
   )

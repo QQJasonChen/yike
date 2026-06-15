@@ -618,6 +618,64 @@ textarea.line-area {
   line-height: 1;
 }
 
+/* 設定頁：routine 編輯器 */
+.routine-editor {
+  margin-top: 14px;
+  width: 100%;
+  max-width: 460px;
+}
+.routine-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.routine-editor input,
+.routine-editor select {
+  font-size: 13px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: transparent;
+  color: var(--ink);
+}
+.routine-editor .re-emoji {
+  width: 38px;
+  text-align: center;
+}
+.routine-editor .re-label {
+  flex: 1;
+  min-width: 0;
+}
+.routine-editor .re-time {
+  font-family: var(--eng);
+}
+.routine-editor .re-del {
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 6px;
+}
+.routine-editor .re-del:hover {
+  color: var(--gold-deep);
+}
+.routine-editor .re-add {
+  margin-top: 8px;
+  font-size: 13px;
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  padding: 5px 12px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.routine-editor .re-add:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
 .timeline {
   position: relative;
   border-top: 1px solid var(--rule);

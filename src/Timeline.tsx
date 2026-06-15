@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Block } from './types'
+import { Block, RoutineItem } from './types'
 
 // 時間軸範圍：06:00 – 23:00，每格 30 分鐘
 const START_MIN = 6 * 60
@@ -16,22 +16,6 @@ const fmt = (min: number) =>
 let blockSeq = 0
 const newId = () => `b${++blockSeq}-${performance.now().toString(36)}`
 
-// 一鍵快填的日常 routine（上班日預設，時間不重疊、鋪好一天）。點了即插入，之後可自由拖拉調整。
-interface Routine {
-  emoji: string
-  label: string
-  start: number // 預設起始（分鐘）
-  dur: number // 長度（分鐘）
-}
-const ROUTINES: Routine[] = [
-  { emoji: '🚇', label: '通勤', start: 8 * 60, dur: 60 },
-  { emoji: '🏢', label: '上班', start: 9 * 60, dur: 180 },
-  { emoji: '🍱', label: '午餐', start: 12 * 60, dur: 60 },
-  { emoji: '💼', label: '下午', start: 13 * 60, dur: 300 },
-  { emoji: '🏃', label: '運動', start: 18 * 60 + 30, dur: 60 },
-  { emoji: '📖', label: '閱讀', start: 20 * 60, dur: 60 },
-]
-
 interface DragState {
   mode: 'create' | 'move' | 'resize'
   blockId?: string
@@ -45,12 +29,13 @@ interface DragState {
 interface Props {
   blocks: Block[]
   isToday: boolean
+  routines: RoutineItem[]
   onChange: (blocks: Block[]) => void
   /** 由 App 注入：任務拖放時呼叫，回傳時間軸的放置資訊 */
   dropRef: React.MutableRefObject<((clientX: number, clientY: number, text: string, taskIndex: number) => boolean) | null>
 }
 
-export default function Timeline({ blocks, isToday, onChange, dropRef }: Props) {
+export default function Timeline({ blocks, isToday, routines, onChange, dropRef }: Props) {
   const gridRef = useRef<HTMLDivElement>(null)
   const suppressClick = useRef(false) // 拖拉結束後瀏覽器補發的 click 要吃掉
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -202,7 +187,7 @@ export default function Timeline({ blocks, isToday, onChange, dropRef }: Props) 
   }
 
   // 一鍵快填 routine：放在預設時間；若與既有塊重疊，往下找最近的空檔
-  const addRoutine = (r: Routine) => {
+  const addRoutine = (r: RoutineItem) => {
     const hit = (s: number, e: number) => blocks.some((b) => s < b.end && e > b.start)
     let start = r.start
     while (start + r.dur <= END_MIN && hit(start, start + r.dur)) start += SLOT
@@ -226,19 +211,21 @@ export default function Timeline({ blocks, isToday, onChange, dropRef }: Props) 
         </div>
       </div>
       <div className="timeline-hint">點空格新增・拖拉移動・拉底部把手調長度</div>
-      <div className="tl-routines">
-        {ROUTINES.map((r) => (
-          <button
-            key={r.label}
-            className="tl-routine"
-            onClick={() => addRoutine(r)}
-            title={`快填「${r.label}」（${fmt(r.start)} 起，可再拖拉）`}
-          >
-            <span className="tl-routine-emoji">{r.emoji}</span>
-            {r.label}
-          </button>
-        ))}
-      </div>
+      {routines.length > 0 && (
+        <div className="tl-routines">
+          {routines.map((r, i) => (
+            <button
+              key={i}
+              className="tl-routine"
+              onClick={() => addRoutine(r)}
+              title={`快填「${r.label}」（${fmt(r.start)} 起，可再拖拉）`}
+            >
+              <span className="tl-routine-emoji">{r.emoji}</span>
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
       <div
         className="timeline"
         ref={gridRef}
