@@ -480,6 +480,7 @@ export default function DayView({
               isToday={isToday}
               routines={settings.routines}
               onChange={(blocks) => update({ blocks })}
+              onRoutinesChange={(routines) => onSettingsChange({ ...settings, routines })}
               dropRef={dropRef}
             />
           </div>

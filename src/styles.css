@@ -618,6 +618,77 @@ textarea.line-area {
   line-height: 1;
 }
 
+/* 長按／右鍵 chip → 就地編輯 routine 的小浮層 */
+.tl-routine-pop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(43, 38, 32, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tl-routine-edit {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 8px 30px rgba(43, 38, 32, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 240px;
+}
+.tl-routine-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tl-routine-edit input,
+.tl-routine-edit select {
+  font-size: 14px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 7px;
+  background: transparent;
+  color: var(--ink);
+}
+.tl-routine-edit .re-emoji {
+  width: 44px;
+  text-align: center;
+}
+.tl-routine-edit .re-label {
+  flex: 1;
+  min-width: 0;
+}
+.tl-routine-edit .re-time {
+  font-family: var(--eng);
+}
+.tl-routine-edit .re-dur {
+  flex: 1;
+}
+.tl-routine-edit-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.tl-routine-edit-actions button {
+  font-size: 13px;
+  border-radius: 6px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.tl-routine-edit-actions .re-del {
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+}
+.tl-routine-edit-actions .re-done {
+  border: 1px solid var(--gold);
+  background: var(--gold);
+  color: #fff;
+}
+
 /* 設定頁：routine 編輯器 */
 .routine-editor {
   margin-top: 14px;

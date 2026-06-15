@@ -31,11 +31,25 @@ interface Props {
   isToday: boolean
   routines: RoutineItem[]
   onChange: (blocks: Block[]) => void
+  /** 長按／右鍵就地編輯 routine（寫回 Settings.routines） */
+  onRoutinesChange: (routines: RoutineItem[]) => void
   /** 由 App 注入：任務拖放時呼叫，回傳時間軸的放置資訊 */
   dropRef: React.MutableRefObject<((clientX: number, clientY: number, text: string, taskIndex: number) => boolean) | null>
 }
 
-export default function Timeline({ blocks, isToday, routines, onChange, dropRef }: Props) {
+const ROUTINE_DURS = [30, 60, 90, 120, 180, 240, 300, 360]
+const hhmm = (m: number) =>
+  `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+const fromHHMM = (s: string) => {
+  const [h, mm] = s.split(':').map(Number)
+  return (h || 0) * 60 + (mm || 0)
+}
+const durLabel = (d: number) => (d < 60 ? `${d} 分` : `${d / 60} 小時`)
+
+export default function Timeline({ blocks, isToday, routines, onChange, onRoutinesChange, dropRef }: Props) {
+  const [editRoutine, setEditRoutine] = useState<number | null>(null)
+  const pressTimer = useRef<number | null>(null)
+  const longPressed = useRef(false)
   const gridRef = useRef<HTMLDivElement>(null)
   const suppressClick = useRef(false) // 拖拉結束後瀏覽器補發的 click 要吃掉
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -198,6 +212,34 @@ export default function Timeline({ blocks, isToday, routines, onChange, dropRef 
     ])
   }
 
+  // chip：點一下帶入、長按（手機）/右鍵（電腦）就地編輯
+  const startPress = (i: number) => {
+    longPressed.current = false
+    pressTimer.current = window.setTimeout(() => {
+      longPressed.current = true
+      setEditRoutine(i)
+    }, 450)
+  }
+  const cancelPress = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current)
+      pressTimer.current = null
+    }
+  }
+  const chipClick = (r: RoutineItem) => {
+    if (longPressed.current) {
+      longPressed.current = false
+      return // 長按已開編輯，不要又帶入
+    }
+    addRoutine(r)
+  }
+  const setRoutine = (i: number, patch: Partial<RoutineItem>) =>
+    onRoutinesChange(routines.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  const delRoutine = (i: number) => {
+    onRoutinesChange(routines.filter((_, j) => j !== i))
+    setEditRoutine(null)
+  }
+
   const rows: number[] = []
   for (let m = START_MIN; m < END_MIN; m += SLOT) rows.push(m)
 
@@ -217,13 +259,70 @@ export default function Timeline({ blocks, isToday, routines, onChange, dropRef 
             <button
               key={i}
               className="tl-routine"
-              onClick={() => addRoutine(r)}
-              title={`快填「${r.label}」（${fmt(r.start)} 起，可再拖拉）`}
+              onClick={() => chipClick(r)}
+              onPointerDown={() => startPress(i)}
+              onPointerUp={cancelPress}
+              onPointerLeave={cancelPress}
+              onPointerMove={cancelPress}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setEditRoutine(i)
+              }}
+              title={`點一下帶入「${r.label}」（${fmt(r.start)} 起）・長按或右鍵編輯`}
             >
               <span className="tl-routine-emoji">{r.emoji}</span>
               {r.label}
             </button>
           ))}
+        </div>
+      )}
+
+      {editRoutine !== null && routines[editRoutine] && (
+        <div className="tl-routine-pop" onClick={() => setEditRoutine(null)}>
+          <div className="tl-routine-edit" onClick={(e) => e.stopPropagation()}>
+            <div className="tl-routine-edit-row">
+              <input
+                className="re-emoji"
+                value={routines[editRoutine].emoji}
+                maxLength={2}
+                onChange={(e) => setRoutine(editRoutine, { emoji: e.target.value })}
+              />
+              <input
+                className="re-label"
+                value={routines[editRoutine].label}
+                placeholder="名稱"
+                onChange={(e) => setRoutine(editRoutine, { label: e.target.value })}
+              />
+            </div>
+            <div className="tl-routine-edit-row">
+              <input
+                className="re-time"
+                type="time"
+                step={1800}
+                value={hhmm(routines[editRoutine].start)}
+                onChange={(e) => setRoutine(editRoutine, { start: fromHHMM(e.target.value) })}
+              />
+              <select
+                className="re-dur"
+                value={routines[editRoutine].dur}
+                onChange={(e) => setRoutine(editRoutine, { dur: Number(e.target.value) })}
+              >
+                {ROUTINE_DURS.map((d) => (
+                  <option key={d} value={d}>
+                    {durLabel(d)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="tl-routine-edit-actions">
+              <button className="re-del" onClick={() => delRoutine(editRoutine)}>
+                刪除
+              </button>
+              <button className="re-done" onClick={() => setEditRoutine(null)}>
+                完成
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <div
