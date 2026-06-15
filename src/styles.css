@@ -589,6 +589,35 @@ textarea.line-area {
   margin-bottom: 8px;
 }
 
+/* 一鍵快填 routine chips */
+.tl-routines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.tl-routine {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 3px 9px 3px 7px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.tl-routine:hover {
+  background: var(--gold-soft);
+  border-color: var(--gold);
+}
+.tl-routine-emoji {
+  font-size: 13px;
+  line-height: 1;
+}
+
 .timeline {
   position: relative;
   border-top: 1px solid var(--rule);

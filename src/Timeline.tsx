@@ -16,6 +16,22 @@ const fmt = (min: number) =>
 let blockSeq = 0
 const newId = () => `b${++blockSeq}-${performance.now().toString(36)}`
 
+// 一鍵快填的日常 routine（上班日預設，時間不重疊、鋪好一天）。點了即插入，之後可自由拖拉調整。
+interface Routine {
+  emoji: string
+  label: string
+  start: number // 預設起始（分鐘）
+  dur: number // 長度（分鐘）
+}
+const ROUTINES: Routine[] = [
+  { emoji: '🚇', label: '通勤', start: 8 * 60, dur: 60 },
+  { emoji: '🏢', label: '上班', start: 9 * 60, dur: 180 },
+  { emoji: '🍱', label: '午餐', start: 12 * 60, dur: 60 },
+  { emoji: '💼', label: '下午', start: 13 * 60, dur: 300 },
+  { emoji: '🏃', label: '運動', start: 18 * 60 + 30, dur: 60 },
+  { emoji: '📖', label: '閱讀', start: 20 * 60, dur: 60 },
+]
+
 interface DragState {
   mode: 'create' | 'move' | 'resize'
   blockId?: string
@@ -185,6 +201,18 @@ export default function Timeline({ blocks, isToday, onChange, dropRef }: Props) 
     setEditId(null)
   }
 
+  // 一鍵快填 routine：放在預設時間；若與既有塊重疊，往下找最近的空檔
+  const addRoutine = (r: Routine) => {
+    const hit = (s: number, e: number) => blocks.some((b) => s < b.end && e > b.start)
+    let start = r.start
+    while (start + r.dur <= END_MIN && hit(start, start + r.dur)) start += SLOT
+    if (start + r.dur > END_MIN) start = r.start // 放不下就回原位，使用者自行調整
+    onChange([
+      ...blocks,
+      { id: newId(), start, end: Math.min(start + r.dur, END_MIN), text: `${r.emoji} ${r.label}`, taskIndex: null },
+    ])
+  }
+
   const rows: number[] = []
   for (let m = START_MIN; m < END_MIN; m += SLOT) rows.push(m)
 
@@ -198,6 +226,19 @@ export default function Timeline({ blocks, isToday, onChange, dropRef }: Props) 
         </div>
       </div>
       <div className="timeline-hint">點空格新增・拖拉移動・拉底部把手調長度</div>
+      <div className="tl-routines">
+        {ROUTINES.map((r) => (
+          <button
+            key={r.label}
+            className="tl-routine"
+            onClick={() => addRoutine(r)}
+            title={`快填「${r.label}」（${fmt(r.start)} 起，可再拖拉）`}
+          >
+            <span className="tl-routine-emoji">{r.emoji}</span>
+            {r.label}
+          </button>
+        ))}
+      </div>
       <div
         className="timeline"
         ref={gridRef}
