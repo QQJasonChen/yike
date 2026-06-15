@@ -29,6 +29,7 @@ interface Props {
   /** 一段專注完成：任務 index ＋ 真實起訖（ms），用來塗圈＋寫進時間軸 */
   onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void
   breakMinutes: number
+  focusMinutes: number
   /** 專注時鎖住分心 App（僅原生 iOS 生效，其餘平台 no-op） */
   lockApps: boolean
 }
@@ -61,7 +62,7 @@ const chime = () => {
   navigator.vibrate?.([200, 80, 200])
 }
 
-export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinutes, lockApps }: Props) {
+export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, lockApps }: Props) {
   const [, force] = useState(0)
   const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
@@ -93,10 +94,18 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
           pausedRemaining: null,
         })
       } else {
-        onUpdate(null)
+        // 休息結束 → 直接接續下一段專注（保留懸浮窗，連續番茄鐘）
+        onUpdate({
+          ...timer,
+          phase: 'focus',
+          totalMs: focusMinutes * 60_000,
+          endsAt: Date.now() + focusMinutes * 60_000,
+          pausedRemaining: null,
+          startedAt: Date.now(),
+        })
       }
     }
-  }, [remaining, timer, onUpdate, onSessionDone, breakMinutes])
+  }, [remaining, timer, onUpdate, onSessionDone, breakMinutes, focusMinutes])
 
   // 頁面標題倒數，切到別的分頁也看得到
   useEffect(() => {
