@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { TextArea, TextField } from './fields'
 import Gantt from './Gantt'
 import { loadLife, saveLife } from './storage'
 import { LifeEntry } from './types'
@@ -47,12 +48,12 @@ export default function LifeView() {
         <div className="label">北極星 · 你想去的方向</div>
         <div className="northstar-box">
           <span className="northstar-star">✦</span>
-          <textarea
+          <TextArea
             className="northstar-input"
             rows={2}
             placeholder="我想成為什麼樣的人？想去哪裡？（寫一句就好，當作所有選擇的北極星）"
             value={entry.northStar}
-            onChange={(e) => update({ northStar: e.target.value })}
+            onValue={(v) => update({ northStar: v })}
           />
         </div>
 
@@ -61,11 +62,11 @@ export default function LifeView() {
         {entry.goals.map((g, i) => (
           <div key={i} className={`week-task-row ${g.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
-            <input
+            <TextField
               list="yike-names"
               value={g.text}
               placeholder={i === 0 ? '如果這十年只完成一件，你會選哪一件？' : ''}
-              onChange={(e) => setGoal(i, { text: e.target.value })}
+              onValue={(v) => setGoal(i, { text: v })}
             />
             <button
               className={`week-check ${g.done ? 'on' : ''}`}
@@ -109,13 +110,13 @@ export default function LifeView() {
           <div className="odyssey-grid">
             {entry.odyssey.map((p, i) => (
               <div key={i} className="odyssey-card">
-                <input
+                <TextField
                   className="odyssey-title"
                   value={p.title}
                   placeholder={['現在這條路', '如果它消失了', '不管錢與面子'][i]}
-                  onChange={(e) => setPath(i, { title: e.target.value })}
+                  onValue={(v) => setPath(i, { title: v })}
                 />
-                <textarea
+                <TextArea
                   className="odyssey-body"
                   rows={6}
                   placeholder={
@@ -126,7 +127,7 @@ export default function LifeView() {
                     ][i]
                   }
                   value={p.body}
-                  onChange={(e) => setPath(i, { body: e.target.value })}
+                  onValue={(v) => setPath(i, { body: v })}
                 />
                 <div className="odyssey-rate" title="這條路讓你多興奮？">
                   <span className="odyssey-rate-label">興奮度</span>

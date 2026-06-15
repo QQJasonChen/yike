@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { TextField } from './fields'
 import { Task } from './types'
 
 interface Props {
@@ -64,11 +65,11 @@ export default function TaskRow({
     <div className={`task-row ${task.completed ? 'done-task' : ''}`}>
       <span className="task-num">{index + 1}.</span>
       <div className="task-text line-input" style={{ borderBottom: 'none' }}>
-        <input
+        <TextField
           list="yike-names"
           placeholder={index === 0 ? '今天就算只做成這一件，也值得了' : ''}
           value={task.text}
-          onChange={(e) => onChange({ ...task, text: e.target.value })}
+          onValue={(v) => onChange({ ...task, text: v })}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onEnterKey?.() } }}
         />
       </div>

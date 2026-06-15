@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { TextArea, TextField } from './fields'
 import MiniCal from './MiniCal'
 import Gantt from './Gantt'
 import PeriodSummary from './PeriodSummary'
@@ -130,12 +131,12 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
         {entry.priorities.map((p, i) => (
           <div key={i} className={`week-task-row ${p.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
-            <input
+            <TextField
               list="yike-names"
               value={p.text}
-              onChange={(e) => {
+              onValue={(v) => {
                 const priorities = entry.priorities.slice()
-                priorities[i] = { ...p, text: e.target.value }
+                priorities[i] = { ...p, text: v }
                 update({ priorities })
               }}
             />
@@ -190,11 +191,11 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
         />
 
         <div className="label">本月亮點</div>
-        <textarea
+        <TextArea
           className="line-area"
           rows={3}
           value={entry.highlights}
-          onChange={(e) => update({ highlights: e.target.value })}
+          onValue={(v) => update({ highlights: v })}
           placeholder="這個月最值得記住的時刻⋯"
         />
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { TextField } from './fields'
 import Gantt from './Gantt'
 import { allDayKeys, loadDay, loadYear, saveYear, toDateKey } from './storage'
 import { YearEntry } from './types'
@@ -92,13 +93,13 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
         {entry.goals.map((g, i) => (
           <div key={i} className={`week-task-row ${g.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
-            <input
+            <TextField
               list="yike-names"
               value={g.text}
               placeholder={i === 0 ? '今年就算只完成這一件，也值得了' : ''}
-              onChange={(e) => {
+              onValue={(v) => {
                 const goals = entry.goals.slice()
-                goals[i] = { ...g, text: e.target.value }
+                goals[i] = { ...g, text: v }
                 update({ goals })
               }}
             />
@@ -176,11 +177,11 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <input
+                      <TextField
                         autoFocus
                         placeholder="這天的一句話（生日、死線、里程碑⋯）"
                         value={entry.notes[editing.key] ?? ''}
-                        onChange={(e) => setNote(editing.key, e.target.value)}
+                        onValue={(v) => setNote(editing.key, v)}
                         onKeyDown={(e) => e.key === 'Enter' && setEditing(null)}
                       />
                       <div className="pop-actions">
@@ -197,14 +198,14 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
                       </div>
                     </div>
                   )}
-                  <input
+                  <TextField
                     className="yr-focus"
                     placeholder="主題"
                     title={`${mName}主題`}
                     value={entry.monthFocus[mi]}
-                    onChange={(e) => {
+                    onValue={(v) => {
                       const monthFocus = entry.monthFocus.slice()
-                      monthFocus[mi] = e.target.value
+                      monthFocus[mi] = v
                       update({ monthFocus })
                     }}
                   />

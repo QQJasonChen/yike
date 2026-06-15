@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { TextField } from './fields'
 import { addDays, fromDateKey, loadDay, saveDay, toDateKey } from './storage'
 import { Block, DayEntry } from './types'
 
@@ -130,12 +131,12 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
                     style={{ top: Math.max(0, minToY(edit.start) - 4) }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <input
+                    <TextField
                       autoFocus
                       list="yike-names"
                       placeholder="做什麼？"
                       value={edit.text}
-                      onChange={(e) => updateBlock(k, edit.id, { text: e.target.value })}
+                      onValue={(v) => updateBlock(k, edit.id, { text: v })}
                       onKeyDown={(e) => e.key === 'Enter' && setEditing(null)}
                     />
                     <div className="pop-actions">

@@ -6,6 +6,7 @@ import TaskRow from './TaskRow'
 import Timeline from './Timeline'
 import { TimerState } from './FocusTimer'
 import { quoteForDate } from './quotes'
+import { TextField } from './fields'
 import { dayToMarkdown } from './exportMd'
 import { addDays, loadDay, loadWeek, mondayOf, saveDay, saveWeek, toDateKey } from './storage'
 import { DayEntry, Settings, Task, WeekEntry } from './types'
@@ -280,9 +281,9 @@ export default function DayView({
                   {q}
                 </div>
                 <div className="line-input">
-                  <input
+                  <TextField
                     value={entry.answers[`m${i}`] ?? ''}
-                    onChange={(e) => setAnswer(`m${i}`, e.target.value)}
+                    onValue={(v) => setAnswer(`m${i}`, v)}
                     placeholder={MORNING_PLACEHOLDERS[i] ?? ''}
                   />
                 </div>
@@ -397,9 +398,9 @@ export default function DayView({
               <span key={`e${i}`}>
                 <div className="label">{q}</div>
                 <div className="line-input">
-                  <input
+                  <TextField
                     value={entry.answers[`e${i}`] ?? ''}
-                    onChange={(e) => setAnswer(`e${i}`, e.target.value)}
+                    onValue={(v) => setAnswer(`e${i}`, v)}
                     placeholder={i === 0 ? '今天最棒的時刻⋯' : ''}
                   />
                 </div>
@@ -422,12 +423,12 @@ export default function DayView({
                   </button>
                 ))}
                 {addingHabit ? (
-                  <input
+                  <TextField
                     autoFocus
                     className="habit-add-input"
                     placeholder="習慣名稱，Enter 確認"
                     value={newHabit}
-                    onChange={(e) => setNewHabit(e.target.value)}
+                    onValue={setNewHabit}
                     onKeyDown={(e) => e.key === 'Enter' && addHabit()}
                     onBlur={addHabit}
                   />

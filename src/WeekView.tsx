@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { TextArea, TextField } from './fields'
 import Gantt from './Gantt'
 import { tierTone } from './ganttTone'
 import HabitWeek from './HabitWeek'
@@ -120,10 +121,10 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
         return (
           <div key={idx} className={`week-task-row ${t.done ? 'done' : ''}`}>
             <span className="task-num">{idx + 1}.</span>
-            <input
+            <TextField
               list="yike-names"
               value={t.text}
-              onChange={(e) => updateTask(idx, { text: e.target.value })}
+              onValue={(v) => updateTask(idx, { text: v })}
             />
             <button
               className={`week-check ${t.done ? 'on' : ''}`}
@@ -202,9 +203,9 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
 
         <div className="label">本週意圖</div>
         <div className="line-input">
-          <input
+          <TextField
             value={week.intention}
-            onChange={(e) => update({ intention: e.target.value })}
+            onValue={(v) => update({ intention: v })}
             placeholder="一句話定調這週：方向、或身分宣言「這週我是一個＿＿的人」"
           />
         </div>
@@ -280,41 +281,41 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
         <div className="label">
           本週的勝利 <span className="hint">什麼進展順利？大小勝利都算</span>
         </div>
-        <textarea
+        <TextArea
           className="line-area"
           rows={3}
           value={week.review.wins}
-          onChange={(e) => updateReview('wins', e.target.value)}
+          onValue={(v) => updateReview('wins', v)}
         />
 
         <div className="label">
           哪些任務沒完成？ <span className="hint">下週重新承諾完成它們</span>
         </div>
-        <textarea
+        <TextArea
           className="line-area"
           rows={3}
           value={week.review.notCompleted}
-          onChange={(e) => updateReview('notCompleted', e.target.value)}
+          onValue={(v) => updateReview('notCompleted', v)}
         />
 
         <div className="label">
           我學到了什麼？ <span className="hint">未來要怎麼運用？</span>
         </div>
-        <textarea
+        <TextArea
           className="line-area"
           rows={3}
           value={week.review.learned}
-          onChange={(e) => updateReview('learned', e.target.value)}
+          onValue={(v) => updateReview('learned', v)}
         />
 
         <div className="label">
           下週 <span className="hint">採取哪些行動確保下週高效？</span>
         </div>
-        <textarea
+        <TextArea
           className="line-area"
           rows={3}
           value={week.review.nextWeek}
-          onChange={(e) => updateReview('nextWeek', e.target.value)}
+          onValue={(v) => updateReview('nextWeek', v)}
         />
       </div>
     </div>

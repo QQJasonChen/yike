@@ -12,6 +12,7 @@ import {
 import { useEffect } from 'react'
 import { activateLicense, cloudEnabled, currentEmail, signInOrUp, signOut, startAutoSync, stopAutoSync, syncNow } from './cloud'
 import { dayToMarkdown } from './exportMd'
+import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
 import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, MAX_ROUTINES, ROUTINE_COLORS, RoutineItem, Settings } from './types'
 
@@ -301,18 +302,18 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
               一行一個問題，存了之後「今天」頁立即生效。把一刻手帳變成<b>你的</b>方法。
             </p>
             <div className="label" style={{ marginTop: 10 }}>晨間問題</div>
-            <textarea
+            <TextArea
               className="line-area"
               rows={4}
               value={mDraft}
-              onChange={(e) => setMDraft(e.target.value)}
+              onValue={setMDraft}
             />
             <div className="label">晚間問題</div>
-            <textarea
+            <TextArea
               className="line-area"
               rows={4}
               value={eDraft}
-              onChange={(e) => setEDraft(e.target.value)}
+              onValue={setEDraft}
             />
             <div className="data-actions" style={{ marginTop: 12 }}>
               <button onClick={() => saveQs(mDraft, eDraft)}>儲存問題</button>
@@ -611,11 +612,11 @@ function RoutineEditor({
               maxLength={2}
               onChange={(e) => set(i, { emoji: e.target.value })}
             />
-            <input
+            <TextField
               className="re-label"
               value={r.label}
               placeholder="名稱"
-              onChange={(e) => set(i, { label: e.target.value })}
+              onValue={(v) => set(i, { label: v })}
             />
             <button className="re-del" onClick={() => remove(i)} title="刪除">
               ✕

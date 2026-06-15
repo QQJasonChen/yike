@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { TextField } from './fields'
 import { addDays, allDayKeys, loadDay, saveDay, toDateKey } from './storage'
 import { DayEntry, Settings } from './types'
 
@@ -122,10 +123,10 @@ export default function HabitWeek({ mondayKey, settings, onSettingsChange }: Pro
 
       <div className="hw-add">
         <div className="line-input" style={{ flex: 1 }}>
-          <input
+          <TextField
             value={newHabit}
             placeholder="新增習慣（例如：運動、閱讀、冥想）"
-            onChange={(e) => setNewHabit(e.target.value)}
+            onValue={setNewHabit}
             onKeyDown={(e) => e.key === 'Enter' && addHabit()}
           />
         </div>

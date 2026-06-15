@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { TextField } from './fields'
 import { Block, ROUTINE_COLORS, RoutineItem, colorHex } from './types'
 
 // 時間軸範圍：06:00 – 23:00，每格 30 分鐘
@@ -295,11 +296,11 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                 maxLength={2}
                 onChange={(e) => setRoutine(editRoutine, { emoji: e.target.value })}
               />
-              <input
+              <TextField
                 className="re-label"
                 value={routines[editRoutine].label}
                 placeholder="名稱"
-                onChange={(e) => setRoutine(editRoutine, { label: e.target.value })}
+                onValue={(v) => setRoutine(editRoutine, { label: v })}
               />
             </div>
             <div className="tl-routine-edit-row">
