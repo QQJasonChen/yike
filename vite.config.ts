@@ -2,9 +2,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// GitHub Pages serves from /productivity-planner/；Capacitor (iOS) 需要相對路徑
+// 自訂網域 yikeday.com 從根目錄服務；Capacitor (iOS) 需要相對路徑
 export default defineConfig({
-  base: process.env.CAP_BUILD ? './' : '/yike/',
+  base: process.env.CAP_BUILD ? './' : '/',
   plugins: [react()],
   test: {
     environment: 'jsdom',
