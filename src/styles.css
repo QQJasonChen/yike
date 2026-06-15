@@ -780,6 +780,36 @@ textarea.line-area {
   box-shadow: 0 0 0 2px var(--ink);
 }
 
+/* Markdown 區間匯出 */
+.md-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.md-range input[type='date'] {
+  font-family: var(--eng);
+  font-size: 14px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: transparent;
+  color: var(--ink);
+}
+.md-range-sep {
+  color: var(--ink-faint);
+}
+.md-range-btn {
+  font-size: 13px;
+  border: 1px solid var(--gold);
+  background: var(--gold);
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
 .timeline {
   position: relative;
   border-top: 1px solid var(--rule);

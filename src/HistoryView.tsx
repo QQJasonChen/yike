@@ -50,6 +50,10 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
   const todayKey = toDateKey(new Date())
   const [coachCopied, setCoachCopied] = useState(false)
   const [showQEditor, setShowQEditor] = useState(false)
+  // Markdown 區間匯出
+  const [mdFrom, setMdFrom] = useState(() => addDays(toDateKey(new Date()), -6))
+  const [mdTo, setMdTo] = useState(() => toDateKey(new Date()))
+  const [mdCopied, setMdCopied] = useState(false)
   const [mDraft, setMDraft] = useState(() => settings.morningQs.join('\n'))
   const [eDraft, setEDraft] = useState(() => settings.eveningQs.join('\n'))
 
@@ -134,6 +138,29 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
 
   // 近 14 天評分長條圖
   const chartDays = Array.from({ length: 14 }, (_, i) => addDays(todayKey, i - 13))
+
+  // 區間 MD：把 from→to 之間「有記錄」的每天串成一份 Markdown 複製
+  const copyRangeMD = async () => {
+    const lo = mdFrom <= mdTo ? mdFrom : mdTo
+    const hi = mdFrom <= mdTo ? mdTo : mdFrom
+    const inRange = allDayKeys()
+      .filter((k) => k >= lo && k <= hi)
+      .sort()
+    if (inRange.length === 0) {
+      alert('這段日期內沒有任何記錄。')
+      return
+    }
+    const md = inRange
+      .map((k) => dayToMarkdown(k, loadDay(k), settings.morningQs, settings.eveningQs))
+      .join('\n\n---\n\n')
+    try {
+      await navigator.clipboard.writeText(md)
+      setMdCopied(true)
+      setTimeout(() => setMdCopied(false), 2500)
+    } catch {
+      alert('複製失敗')
+    }
+  }
 
   const doExport = () => {
     const blob = new Blob([exportAll()], { type: 'application/json' })
@@ -294,6 +321,18 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
             />
           </label>
           <button onClick={() => setShowQEditor((v) => !v)}>✎ 自訂每日問題</button>
+        </div>
+
+        <div className="label" style={{ marginTop: 18 }}>
+          Markdown 區間匯出 <span className="hint">選一段日期，一次複製多天（貼 Heptabase / Notion / 週月報）</span>
+        </div>
+        <div className="md-range">
+          <input type="date" value={mdFrom} max={mdTo} onChange={(e) => setMdFrom(e.target.value)} />
+          <span className="md-range-sep">→</span>
+          <input type="date" value={mdTo} min={mdFrom} onChange={(e) => setMdTo(e.target.value)} />
+          <button className="md-range-btn" onClick={copyRangeMD}>
+            {mdCopied ? '✓ 已複製' : '⧉ 複製這段 MD'}
+          </button>
         </div>
 
         {showQEditor && (
