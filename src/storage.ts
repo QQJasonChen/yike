@@ -218,13 +218,18 @@ const keysWithPrefix = (prefix: string): string[] => {
   return keys
 }
 
-export const nameStats = (): NameStat[] => {
+/** from/to 為 YYYY-MM-DD（含），省略 = 全部時間 */
+export const nameStats = (from?: string, to?: string): NameStat[] => {
+  const inDay = (k: string) => (!from || k >= from) && (!to || k <= to)
+  const inMonth = (k: string) => (!from || k >= from.slice(0, 7)) && (!to || k <= to.slice(0, 7))
+  const inYear = (k: string) => (!from || k >= from.slice(0, 4)) && (!to || k <= to.slice(0, 4))
   const map = new Map<string, { days: Set<string>; sessions: number; minutes: number; plans: number }>()
   const touch = (n: string) => {
     if (!map.has(n)) map.set(n, { days: new Set(), sessions: 0, minutes: 0, plans: 0 })
     return map.get(n)!
   }
   for (const k of allDayKeys()) {
+    if (!inDay(k)) continue
     const d = loadDay(k)
     for (const task of d.tasks) {
       const n = task.text.trim()
@@ -242,25 +247,33 @@ export const nameStats = (): NameStat[] => {
     }
   }
   // 週/月/年計畫項目也納入同一份名稱統計（讓計畫與每日記錄用同一套詞）
-  for (const k of keysWithPrefix(WEEK_PREFIX))
+  for (const k of keysWithPrefix(WEEK_PREFIX)) {
+    if (!inDay(k)) continue // 週 key 是週一日期
     for (const t of loadWeek(k).tasks) {
       const n = t.text.trim()
       if (n) touch(n).plans++
     }
-  for (const k of keysWithPrefix(MONTH_PREFIX))
+  }
+  for (const k of keysWithPrefix(MONTH_PREFIX)) {
+    if (!inMonth(k)) continue
     for (const p of loadMonth(k).priorities) {
       const n = p.text.trim()
       if (n) touch(n).plans++
     }
-  for (const k of keysWithPrefix(YEAR_PREFIX))
+  }
+  for (const k of keysWithPrefix(YEAR_PREFIX)) {
+    if (!inYear(k)) continue
     for (const g of loadYear(k).goals) {
       const n = g.text.trim()
       if (n) touch(n).plans++
     }
-  for (const g of loadLife().goals) {
-    const n = g.text.trim()
-    if (n) touch(n).plans++
   }
+  // 願景大目標是長期、無日期；只在「全部」時納入計畫
+  if (!from)
+    for (const g of loadLife().goals) {
+      const n = g.text.trim()
+      if (n) touch(n).plans++
+    }
   return [...map.entries()]
     .map(([name, e]) => ({
       name,

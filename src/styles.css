@@ -784,6 +784,28 @@ textarea.line-area {
   box-shadow: 0 0 0 2px var(--ink);
 }
 
+/* 活動統計期間選擇 */
+.period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 4px 0 12px;
+}
+.period-tab {
+  font-size: 12.5px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 3px 12px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.period-tab.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+}
+
 /* Markdown 區間匯出 */
 .md-range {
   display: flex;
