@@ -362,7 +362,7 @@ function FocusLockSettings({ enabled, onToggle }: { enabled: boolean; onToggle: 
 }
 
 // 時間軸快填 routine 編輯器（可自訂 emoji/名稱/時間/長度/顏色，最多 8 個）
-const ROUTINE_DURS = [30, 60, 90, 120, 180, 240, 300, 360]
+const ROUTINE_DURS = [30, 60, 90, 120, 180, 240, 300, 360, 420, 480, 540, 600]
 const toHHMM = (m: number) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 const fromHHMM = (s: string) => {

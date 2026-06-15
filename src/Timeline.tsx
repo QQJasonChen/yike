@@ -38,7 +38,7 @@ interface Props {
   dropRef: React.MutableRefObject<((clientX: number, clientY: number, text: string, taskIndex: number) => boolean) | null>
 }
 
-const ROUTINE_DURS = [30, 60, 90, 120, 180, 240, 300, 360]
+const ROUTINE_DURS = [30, 60, 90, 120, 180, 240, 300, 360, 420, 480, 540, 600]
 const hhmm = (m: number) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 const fromHHMM = (s: string) => {
