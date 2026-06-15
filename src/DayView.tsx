@@ -289,7 +289,7 @@ export default function DayView({
               </span>
             ))}
 
-            {yesterdayUnfinished.length > 0 && (
+            {settings.showRollover && yesterdayUnfinished.length > 0 && (
               <div className="rollover">
                 <span>
                   昨天有 <b>{yesterdayUnfinished.length}</b> 件未完成：

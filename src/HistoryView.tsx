@@ -12,6 +12,7 @@ import {
 import { useEffect } from 'react'
 import { activateLicense, cloudEnabled, currentEmail, signInOrUp, signOut, startAutoSync, stopAutoSync, syncNow } from './cloud'
 import { dayToMarkdown } from './exportMd'
+import { focusLock } from './focusLock'
 import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, Settings } from './types'
 
 // Graham Weaver 晨間三問（QQ 的每日框架）
@@ -485,7 +486,87 @@ export default function HistoryView({ onOpenDay, settings, onSettingsChange }: P
             ))}
           </select>
         </div>
+
+        <div className="settings-row focuslock-row">
+          <span>昨日未完成提醒</span>
+          <button
+            className={`fl-toggle ${settings.showRollover ? 'on' : ''}`}
+            onClick={() => onSettingsChange({ ...settings, showRollover: !settings.showRollover })}
+          >
+            {settings.showRollover ? '顯示中' : '已關閉'}
+          </button>
+          <span className="hint fl-hint">今天頁「昨天有 N 件未完成 → 帶入今天」的橫幅</span>
+        </div>
+
+        <FocusLockSettings
+          enabled={settings.focusLock}
+          onToggle={(v) => onSettingsChange({ ...settings, focusLock: v })}
+        />
       </div>
+    </div>
+  )
+}
+
+// 專注鎖設定（僅原生 iOS 顯示）：開關 + 選要鎖哪些 App
+function FocusLockSettings({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean
+  onToggle: (v: boolean) => void
+}) {
+  const [supported, setSupported] = useState(false)
+  const [authorized, setAuthorized] = useState(false)
+  const [hasSel, setHasSel] = useState(false)
+  const [picked, setPicked] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!focusLock.available()) return
+    focusLock.getState().then((s) => {
+      setSupported(s.supported)
+      setAuthorized(s.authorized)
+      setHasSel(s.hasSelection)
+    })
+  }, [])
+
+  // 只有原生外掛確實回報支援才顯示（web/PWA、未含外掛的 build 一律隱藏）
+  if (!supported) return null
+
+  const turnOn = async () => {
+    const ok = authorized || (await focusLock.requestAuthorization())
+    setAuthorized(ok)
+    if (ok) {
+      onToggle(true)
+      if (!hasSel) await pick()
+    }
+  }
+
+  const pick = async () => {
+    const n = await focusLock.pickApps()
+    setPicked(n)
+    setHasSel(n > 0)
+  }
+
+  const pickLabel =
+    picked && picked > 0 ? `已選 ${picked} 個・重選` : hasSel ? '重選要鎖的 App' : '選擇要鎖的 App'
+
+  return (
+    <div className="settings-row focuslock-row">
+      <span>專注時鎖住分心 App</span>
+      <button
+        className={`fl-toggle ${enabled ? 'on' : ''}`}
+        onClick={() => (enabled ? onToggle(false) : turnOn())}
+      >
+        {enabled ? '已開啟' : '開啟'}
+      </button>
+      {enabled && (
+        <button className="fl-pick" onClick={pick}>
+          {pickLabel}
+        </button>
+      )}
+      {enabled && !hasSel && picked === null && (
+        <span className="hint fl-hint">先選要鎖哪些 App</span>
+      )}
     </div>
   )
 }

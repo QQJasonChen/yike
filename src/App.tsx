@@ -7,6 +7,7 @@ import YearView from './YearView'
 import LifeView from './LifeView'
 import HistoryView from './HistoryView'
 import FocusTimer, { TimerState } from './FocusTimer'
+import { focusLock } from './focusLock'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
 import {
   currentStreak,
@@ -37,6 +38,10 @@ export default function App() {
   const timerRef = useRef<TimerState | null>(timer)
   timerRef.current = timer
   useEffect(() => setPipTimerSource(() => timerRef.current), [])
+  // 安全網：每次開 App 若沒有進行中的計時，確保專注鎖已解除（避免殘留鎖死）
+  useEffect(() => {
+    if (!timerRef.current) focusLock.stop()
+  }, [])
 
   const updateSettings = (s: Settings) => {
     setSettings(s)
@@ -199,6 +204,7 @@ export default function App() {
           timer={timer}
           onUpdate={setTimer}
           breakMinutes={settings.breakMinutes}
+          lockApps={settings.focusLock}
           onSessionDone={(ti, s, e) => sessionSink.current?.(ti, s, e)}
         />
       )}

@@ -1755,6 +1755,26 @@ button.wk-head:hover {
   color: var(--ink);
 }
 
+/* 專注鎖（僅原生 iOS 顯示）*/
+.focuslock-row .fl-toggle,
+.focuslock-row .fl-pick {
+  font-size: 13px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 4px 12px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.focuslock-row .fl-toggle.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+}
+.focuslock-row .fl-hint {
+  font-size: 12px;
+}
+
 /* 完成慶祝 */
 @keyframes celebrate {
   0% {

@@ -58,6 +58,8 @@ export interface Settings {
   habits: string[] // 習慣清單（一週檢視）
   morningQs: string[] // 晨間自訂問題（id 依序為 m0,m1,…）
   eveningQs: string[] // 晚間自訂問題（id 依序為 e0,e1,…）
+  focusLock: boolean // 專注時鎖住分心 App（僅原生 iOS 生效）
+  showRollover: boolean // 今天頁顯示「昨日未完成 → 帶入今天」提醒（預設開）
 }
 
 export interface YearEntry {
@@ -143,4 +145,6 @@ export const defaultSettings = (): Settings => ({
   habits: [],
   morningQs: [...DEFAULT_MORNING_QS],
   eveningQs: [...DEFAULT_EVENING_QS],
+  focusLock: false,
+  showRollover: true,
 })

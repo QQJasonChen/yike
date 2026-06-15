@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { focusLock } from './focusLock'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
 
 // Document Picture-in-Picture（Chrome/Edge 桌面）：開一個永遠置頂的小浮窗
@@ -28,6 +29,8 @@ interface Props {
   /** 一段專注完成：任務 index ＋ 真實起訖（ms），用來塗圈＋寫進時間軸 */
   onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void
   breakMinutes: number
+  /** 專注時鎖住分心 App（僅原生 iOS 生效，其餘平台 no-op） */
+  lockApps: boolean
 }
 
 const fmtClock = (ms: number) => {
@@ -58,7 +61,7 @@ const chime = () => {
   navigator.vibrate?.([200, 80, 200])
 }
 
-export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinutes }: Props) {
+export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinutes, lockApps }: Props) {
   const [, force] = useState(0)
   const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
@@ -102,6 +105,14 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
       document.title = '一刻手帳 Yike'
     }
   }, [remaining, timer.phase])
+
+  // ---- 專注鎖：focus 階段鎖住分心 App，休息/結束自動解（僅原生 iOS 生效）----
+  useEffect(() => {
+    if (lockApps && timer.phase === 'focus') focusLock.start()
+    else focusLock.stop()
+  }, [lockApps, timer.phase])
+  // 計時元件卸載（結束計時）一定解盾，避免殘留
+  useEffect(() => () => { focusLock.stop() }, [])
 
   // ---- 置頂浮窗（Document Picture-in-Picture）----
   // 開窗：記住「要自動跳」偏好（手動關窗會在 pip.ts 內記成關閉）

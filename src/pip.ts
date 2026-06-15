@@ -47,7 +47,7 @@ export async function openFloating(): Promise<void> {
   }
   let w: Window
   try {
-    w = await dpip.requestWindow({ width: 248, height: 148 })
+    w = await dpip.requestWindow({ width: 184, height: 108 })
   } catch {
     return // 沒有使用者手勢或被取消
   }
@@ -57,15 +57,15 @@ export async function openFloating(): Promise<void> {
     'margin:0;height:100vh;display:flex;align-items:center;justify-content:center;' +
     'font-family:-apple-system,system-ui,"Noto Serif TC",serif;background:#1e2a40;color:#f5f0e6;user-select:none'
   const box = doc.createElement('div')
-  box.style.cssText = 'text-align:center;padding:12px'
+  box.style.cssText = 'text-align:center;padding:8px'
   const phase = doc.createElement('div')
   phase.style.cssText =
-    'font-size:11px;letter-spacing:.28em;text-transform:uppercase;opacity:.65;margin-bottom:6px'
+    'font-size:9px;letter-spacing:.24em;text-transform:uppercase;opacity:.65;margin-bottom:4px'
   const clock = doc.createElement('div')
-  clock.style.cssText = 'font-size:50px;font-weight:300;font-variant-numeric:tabular-nums;line-height:1'
+  clock.style.cssText = 'font-size:38px;font-weight:300;font-variant-numeric:tabular-nums;line-height:1'
   const task = doc.createElement('div')
   task.style.cssText =
-    'font-size:13px;opacity:.85;margin-top:8px;max-width:216px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'
+    'font-size:11px;opacity:.85;margin-top:5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'
   box.append(phase, clock, task)
   doc.body.append(box)
 
