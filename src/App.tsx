@@ -6,6 +6,7 @@ import MonthView from './MonthView'
 import YearView from './YearView'
 import LifeView from './LifeView'
 import HistoryView from './HistoryView'
+import SettingsPanel from './SettingsPanel'
 import FocusTimer, { TimerState } from './FocusTimer'
 import { focusLock } from './focusLock'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
@@ -32,6 +33,7 @@ export default function App() {
   const [yearNum, setYearNum] = useState(() => Number(todayKey.slice(0, 4)))
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [timer, setTimer] = useState<TimerState | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
   const sessionSink = useRef<((taskIndex: number, startMs: number, endMs: number) => void) | null>(null)
 
   // 浮窗讀「目前計時狀態」的即時來源（用 ref 避免每次 render 重註冊）
@@ -81,11 +83,6 @@ export default function App() {
     startAutoSync()
   }, [])
 
-  const goCloudLogin = () => {
-    setTab('history')
-    setTimeout(() => document.getElementById('cloud-sync')?.scrollIntoView({ behavior: 'smooth' }), 150)
-  }
-
   const streak = currentStreak(todayKey)
   const todayFocusSessions = loadDay(todayKey).tasks.reduce((s, t) => s + t.done, 0)
   // 歷史名稱 → 全域自動完成；刻意在切換分頁時重算（抓到剛新增的名稱）
@@ -125,12 +122,15 @@ export default function App() {
           {cloudEnabled() && (
             <button
               className={`cloud-badge ${cloudIn ? 'on' : ''}`}
-              onClick={goCloudLogin}
+              onClick={() => setShowSettings(true)}
               title={cloudIn ? '雲端同步中，點擊管理' : '登入帳號，啟用全裝置自動同步'}
             >
               {cloudIn ? '☁ 同步中' : '☁ 登入'}
             </button>
           )}
+          <button className="gear-btn" onClick={() => setShowSettings(true)} title="設定">
+            ⚙
+          </button>
           {todayFocusSessions > 0 && (
             <span className="today-focus">{todayFocusSessions}⊙</span>
           )}
@@ -195,7 +195,6 @@ export default function App() {
             setTab('day')
           }}
           settings={settings}
-          onSettingsChange={updateSettings}
         />
       )}
 
@@ -206,6 +205,14 @@ export default function App() {
           breakMinutes={settings.breakMinutes}
           lockApps={settings.focusLock}
           onSessionDone={(ti, s, e) => sessionSink.current?.(ti, s, e)}
+        />
+      )}
+
+      {showSettings && (
+        <SettingsPanel
+          settings={settings}
+          onSettingsChange={updateSettings}
+          onClose={() => setShowSettings(false)}
         />
       )}
     </>

@@ -810,6 +810,69 @@ textarea.line-area {
   cursor: pointer;
 }
 
+/* 右上齒輪 + 設定面板（右側滑出抽屜）*/
+.gear-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--ink-soft);
+  padding: 2px 4px;
+}
+.gear-btn:hover {
+  color: var(--gold-deep);
+}
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(43, 38, 32, 0.28);
+  display: flex;
+  justify-content: flex-end;
+}
+.settings-panel {
+  width: min(440px, 92vw);
+  height: 100%;
+  background: var(--paper);
+  border-left: 1px solid var(--rule);
+  box-shadow: -12px 0 40px rgba(43, 38, 32, 0.22);
+  display: flex;
+  flex-direction: column;
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(14px + env(safe-area-inset-top)) 18px 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.settings-title {
+  font-size: 18px;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+}
+.settings-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--ink-soft);
+  padding: 4px 8px;
+}
+.settings-close:hover {
+  color: var(--gold-deep);
+}
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 18px calc(28px + env(safe-area-inset-bottom));
+}
+.settings-body .settings-row:first-child {
+  margin-top: 0;
+}
+
 .timeline {
   position: relative;
   border-top: 1px solid var(--rule);
