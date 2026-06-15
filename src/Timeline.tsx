@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Block, RoutineItem } from './types'
+import { Block, ROUTINE_COLORS, RoutineItem, colorHex } from './types'
 
 // 時間軸範圍：06:00 – 23:00，每格 30 分鐘
 const START_MIN = 6 * 60
@@ -208,7 +208,14 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
     if (start + r.dur > END_MIN) start = r.start // 放不下就回原位，使用者自行調整
     onChange([
       ...blocks,
-      { id: newId(), start, end: Math.min(start + r.dur, END_MIN), text: `${r.emoji} ${r.label}`, taskIndex: null },
+      {
+        id: newId(),
+        start,
+        end: Math.min(start + r.dur, END_MIN),
+        text: `${r.emoji} ${r.label}`,
+        taskIndex: null,
+        color: r.color,
+      },
     ])
   }
 
@@ -259,6 +266,7 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
             <button
               key={i}
               className="tl-routine"
+              style={{ borderColor: colorHex(r.color) + '99', background: colorHex(r.color) + '14' }}
               onClick={() => chipClick(r)}
               onPointerDown={() => startPress(i)}
               onPointerUp={cancelPress}
@@ -314,6 +322,17 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                 ))}
               </select>
             </div>
+            <div className="tl-swatches">
+              {ROUTINE_COLORS.map((c) => (
+                <button
+                  key={c.key}
+                  className={`tl-swatch ${routines[editRoutine].color === c.key ? 'on' : ''}`}
+                  style={{ background: c.hex }}
+                  onClick={() => setRoutine(editRoutine, { color: c.key })}
+                  title={c.key}
+                />
+              ))}
+            </div>
             <div className="tl-routine-edit-actions">
               <button className="re-del" onClick={() => delRoutine(editRoutine)}>
                 刪除
@@ -351,7 +370,13 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                 className={`tl-block ${b.taskIndex !== null ? 'linked' : ''} ${isDragging ? 'dragging' : ''} ${
                   end - start <= SLOT ? 'slim' : ''
                 }`}
-                style={{ top: minToY(start), height: minToY(end) - minToY(start) - 2 }}
+                style={{
+                  top: minToY(start),
+                  height: minToY(end) - minToY(start) - 2,
+                  ...(b.color
+                    ? { background: colorHex(b.color) + '26', borderLeft: `3px solid ${colorHex(b.color)}` }
+                    : {}),
+                }}
                 onPointerDown={(e) => startBlockDrag(e, b, 'move')}
                 onPointerMove={onPointerMove}
                 onPointerUp={(e) => {

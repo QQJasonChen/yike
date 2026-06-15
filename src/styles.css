@@ -689,34 +689,44 @@ textarea.line-area {
   color: #fff;
 }
 
-/* 設定頁：routine 編輯器 */
+/* 設定頁：routine 編輯器（每條兩行：emoji+名稱 / 時間+長度+顏色）*/
 .routine-editor {
   margin-top: 14px;
   width: 100%;
   max-width: 460px;
 }
-.routine-row {
+.routine-card {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 8px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.routine-line {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
+  flex-wrap: wrap;
 }
 .routine-editor input,
 .routine-editor select {
-  font-size: 13px;
+  font-size: 14px;
   border: 1px solid var(--rule);
   border-radius: 6px;
-  padding: 4px 6px;
+  padding: 5px 7px;
   background: transparent;
   color: var(--ink);
 }
 .routine-editor .re-emoji {
-  width: 38px;
+  width: 44px;
   text-align: center;
+  flex: 0 0 auto;
 }
 .routine-editor .re-label {
   flex: 1;
-  min-width: 0;
+  min-width: 120px;
 }
 .routine-editor .re-time {
   font-family: var(--eng);
@@ -726,14 +736,15 @@ textarea.line-area {
   background: transparent;
   color: var(--ink-faint);
   cursor: pointer;
-  font-size: 14px;
-  padding: 4px 6px;
+  font-size: 15px;
+  padding: 4px 8px;
+  flex: 0 0 auto;
 }
 .routine-editor .re-del:hover {
   color: var(--gold-deep);
 }
 .routine-editor .re-add {
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 13px;
   border: 1px dashed var(--rule);
   border-radius: 6px;
@@ -745,6 +756,28 @@ textarea.line-area {
 .routine-editor .re-add:hover {
   border-color: var(--gold);
   color: var(--gold-deep);
+}
+
+/* 色票（設定編輯器與長按浮層共用）*/
+.re-swatches,
+.tl-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+.tl-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 0 0 1px rgba(43, 38, 32, 0.15);
+}
+.tl-swatch.on {
+  border-color: var(--paper);
+  box-shadow: 0 0 0 2px var(--ink);
 }
 
 .timeline {

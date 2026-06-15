@@ -12,6 +12,7 @@ export interface Block {
   end: number
   text: string
   taskIndex: number | null // 若由任務拖入，連結回任務
+  color?: string // 色彩編碼（routine 帶入時帶上；palette key，見 ROUTINE_COLORS）
 }
 
 // 時間軸「一鍵快填」的 routine（使用者可自訂，最多 8 個）
@@ -20,9 +21,24 @@ export interface RoutineItem {
   label: string
   start: number // 預設起始（從 00:00 起算的分鐘數）
   dur: number // 長度（分鐘）
+  color: string // palette key（見 ROUTINE_COLORS）
 }
 
 export const MAX_ROUTINES = 8
+
+// 時間軸色票（存 key、hex 在這裡查；與紙質感調性一致）
+export const ROUTINE_COLORS: { key: string; hex: string }[] = [
+  { key: 'gold', hex: '#b8923e' },
+  { key: 'terra', hex: '#c1632f' },
+  { key: 'sage', hex: '#6f8f6a' },
+  { key: 'indigo', hex: '#3d5a73' },
+  { key: 'plum', hex: '#8a5a7a' },
+  { key: 'slate', hex: '#5f6b76' },
+  { key: 'rose', hex: '#c2708a' },
+  { key: 'teal', hex: '#3f8a86' },
+]
+export const colorHex = (key?: string): string =>
+  ROUTINE_COLORS.find((c) => c.key === key)?.hex ?? '#b8923e'
 
 export interface DayEntry {
   tasks: Task[] // [0] 最重要任務, [1-2] 次要, [3-4] 額外
@@ -75,12 +91,12 @@ export interface Settings {
 
 // 預設 routine（上班日；使用者可在設定頁改）
 export const DEFAULT_ROUTINES: RoutineItem[] = [
-  { emoji: '🚇', label: '通勤', start: 8 * 60, dur: 60 },
-  { emoji: '🏢', label: '上班', start: 9 * 60, dur: 180 },
-  { emoji: '🍱', label: '午餐', start: 12 * 60, dur: 60 },
-  { emoji: '💼', label: '下午', start: 13 * 60, dur: 300 },
-  { emoji: '🏃', label: '運動', start: 18 * 60 + 30, dur: 60 },
-  { emoji: '📖', label: '閱讀', start: 20 * 60, dur: 60 },
+  { emoji: '🚇', label: '通勤', start: 8 * 60, dur: 60, color: 'slate' },
+  { emoji: '🏢', label: '上班', start: 9 * 60, dur: 180, color: 'indigo' },
+  { emoji: '🍱', label: '午餐', start: 12 * 60, dur: 60, color: 'terra' },
+  { emoji: '💼', label: '下午', start: 13 * 60, dur: 300, color: 'gold' },
+  { emoji: '🏃', label: '運動', start: 18 * 60 + 30, dur: 60, color: 'sage' },
+  { emoji: '📖', label: '閱讀', start: 20 * 60, dur: 60, color: 'plum' },
 ]
 
 export interface YearEntry {

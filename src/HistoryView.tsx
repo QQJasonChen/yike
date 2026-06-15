@@ -13,7 +13,7 @@ import { useEffect } from 'react'
 import { activateLicense, cloudEnabled, currentEmail, signInOrUp, signOut, startAutoSync, stopAutoSync, syncNow } from './cloud'
 import { dayToMarkdown } from './exportMd'
 import { focusLock } from './focusLock'
-import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, MAX_ROUTINES, RoutineItem, Settings } from './types'
+import { DEFAULT_EVENING_QS, DEFAULT_MORNING_QS, MAX_ROUTINES, ROUTINE_COLORS, RoutineItem, Settings } from './types'
 
 // Graham Weaver 晨間三問（QQ 的每日框架）
 const WEAVER_MORNING_QS = [
@@ -596,46 +596,62 @@ function RoutineEditor({
   const set = (i: number, patch: Partial<RoutineItem>) =>
     onChange(routines.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   const remove = (i: number) => onChange(routines.filter((_, j) => j !== i))
-  const add = () => onChange([...routines, { emoji: '⭐', label: '新項目', start: 9 * 60, dur: 60 }])
+  const add = () =>
+    onChange([...routines, { emoji: '⭐', label: '新項目', start: 9 * 60, dur: 60, color: 'gold' }])
 
   return (
     <div className="routine-editor">
       <div className="label">時間軸快填 routine（最多 {MAX_ROUTINES} 個・點時間軸上的鈕即帶入）</div>
       {routines.map((r, i) => (
-        <div className="routine-row" key={i}>
-          <input
-            className="re-emoji"
-            value={r.emoji}
-            maxLength={2}
-            onChange={(e) => set(i, { emoji: e.target.value })}
-          />
-          <input
-            className="re-label"
-            value={r.label}
-            placeholder="名稱"
-            onChange={(e) => set(i, { label: e.target.value })}
-          />
-          <input
-            className="re-time"
-            type="time"
-            step={1800}
-            value={toHHMM(r.start)}
-            onChange={(e) => set(i, { start: fromHHMM(e.target.value) })}
-          />
-          <select
-            className="re-dur"
-            value={r.dur}
-            onChange={(e) => set(i, { dur: Number(e.target.value) })}
-          >
-            {ROUTINE_DURS.map((d) => (
-              <option key={d} value={d}>
-                {durLabel(d)}
-              </option>
-            ))}
-          </select>
-          <button className="re-del" onClick={() => remove(i)} title="刪除">
-            ✕
-          </button>
+        <div className="routine-card" key={i}>
+          <div className="routine-line">
+            <input
+              className="re-emoji"
+              value={r.emoji}
+              maxLength={2}
+              onChange={(e) => set(i, { emoji: e.target.value })}
+            />
+            <input
+              className="re-label"
+              value={r.label}
+              placeholder="名稱"
+              onChange={(e) => set(i, { label: e.target.value })}
+            />
+            <button className="re-del" onClick={() => remove(i)} title="刪除">
+              ✕
+            </button>
+          </div>
+          <div className="routine-line">
+            <input
+              className="re-time"
+              type="time"
+              step={1800}
+              value={toHHMM(r.start)}
+              onChange={(e) => set(i, { start: fromHHMM(e.target.value) })}
+            />
+            <select
+              className="re-dur"
+              value={r.dur}
+              onChange={(e) => set(i, { dur: Number(e.target.value) })}
+            >
+              {ROUTINE_DURS.map((d) => (
+                <option key={d} value={d}>
+                  {durLabel(d)}
+                </option>
+              ))}
+            </select>
+            <div className="re-swatches">
+              {ROUTINE_COLORS.map((c) => (
+                <button
+                  key={c.key}
+                  className={`tl-swatch ${r.color === c.key ? 'on' : ''}`}
+                  style={{ background: c.hex }}
+                  onClick={() => set(i, { color: c.key })}
+                  title={c.key}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       ))}
       {routines.length < MAX_ROUTINES && (
