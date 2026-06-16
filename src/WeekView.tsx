@@ -212,7 +212,7 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
 
         <Gantt
           title="本週甘特"
-          hint="在任務的列上拖出起訖・雙擊橫條清除"
+          hint="點一天＝選/取消（可挑不連續如一·三·五）・拖曳＝一次選連續多天・雙擊橫條清那段"
           emptyHint="先在下方「本週五大任務」寫下任務，這裡就會出現可拖拉的時程列"
           legend={[
             { tone: 'ink', label: '五大' },

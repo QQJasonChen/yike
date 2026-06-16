@@ -118,7 +118,7 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
 
         <Gantt
           title="年度甘特"
-          hint="在目標的列上拖出起訖月・雙擊清除"
+          hint="點一月＝選/取消（可挑不連續）・拖曳＝一次選連續多月・雙擊橫條清那段"
           emptyHint="先寫下年度三大目標，這裡就會出現可拖拉的時程列"
           cols={Array.from({ length: 12 }, (_, mi) => ({
             label: `${mi + 1}月`,

@@ -81,7 +81,7 @@ export default function LifeView() {
         {/* 十年甘特：把每個目標拖到它該發生的年份 */}
         <Gantt
           title="十年甘特"
-          hint="在目標的列上拖出起訖年・雙擊清除"
+          hint="點一年＝選/取消（可挑不連續）・拖曳＝一次選連續多年・雙擊橫條清那段"
           emptyHint="先寫下想完成的大事，這裡就會出現可拖拉的十年時程"
           cols={Array.from({ length: HORIZON }, (_, i) => ({
             label: `'${String((start + i) % 100).padStart(2, '0')}`,

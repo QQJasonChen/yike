@@ -155,7 +155,7 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
 
         <Gantt
           title="本月甘特"
-          hint="在事項的列上拖出起訖日・雙擊清除"
+          hint="點一天＝選/取消（可挑不連續）・拖曳＝一次選連續多天・雙擊橫條清那段"
           emptyHint="先寫下本月優先事項，這裡就會出現可拖拉的時程列"
           labelWidth={130}
           cols={Array.from({ length: daysInMonth }, (_, d) => ({

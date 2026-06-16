@@ -244,7 +244,7 @@ export default function DayView({
         {weekEntry.tasks.some((t) => t.text.trim()) && (
           <Gantt
             title="本週甘特"
-            hint="今天該推進哪件事？金色欄＝今天・可直接拖拉調整"
+            hint="點一天＝選/取消・拖曳＝連續多天・金色欄＝今天"
             emptyHint=""
             legend={[
               { tone: 'ink', label: '五大' },
