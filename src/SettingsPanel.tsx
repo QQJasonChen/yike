@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
 import {
   activateLicense,
   cloudEnabled,
@@ -50,7 +51,9 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
   const [cloudEmail, setCloudEmail] = useState('')
   const [cloudPw, setCloudPw] = useState('')
   const [license, setLicense] = useState('')
-  const [authMode, setAuthMode] = useState<'activate' | 'login'>('activate')
+  // iOS App Store 合規：原生版不得提及外部購買（Gumroad）。原生 → 只走登入；網頁 → 完整購買/序號流程。
+  const isNative = Capacitor.isNativePlatform()
+  const [authMode, setAuthMode] = useState<'activate' | 'login'>(isNative ? 'login' : 'activate')
   const [cloudStage, setCloudStage] = useState<'out' | 'in'>('out')
   const [cloudUser, setCloudUser] = useState<string | null>(null)
   const [cloudMsg, setCloudMsg] = useState('')
@@ -93,7 +96,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
               <div className="sync-box">
                 {cloudStage === 'out' && (
                   <>
-                    {authMode === 'activate' ? (
+                    {!isNative && authMode === 'activate' ? (
                       <>
                         <p className="sync-help">
                           雲端同步是<b>付費功能</b>：購買後會拿到<b>序號</b>，在這裡啟用即可全裝置自動同步。
@@ -195,9 +198,11 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                           >
                             登入
                           </button>
-                          <button className="link-btn" onClick={() => setAuthMode('activate')}>
-                            ← 還沒帳號？用序號開通
-                          </button>
+                          {!isNative && (
+                            <button className="link-btn" onClick={() => setAuthMode('activate')}>
+                              ← 還沒帳號？用序號開通
+                            </button>
+                          )}
                         </div>
                       </>
                     )}

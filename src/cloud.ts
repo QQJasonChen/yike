@@ -2,6 +2,7 @@
 // - Email 驗證碼登入（免密碼）
 // - journal 資料表：每個 localStorage key 一列，Row Level Security 隔離每個用戶
 // - 同步策略：逐 key 比時間戳，新的贏（pull 先、push 後）
+import { Capacitor } from '@capacitor/core'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL, cloudEnabled } from './cloudConfig'
 import { allDataKeys, loadMeta, setOnDataWrite, writeFromCloud } from './storage'
@@ -55,7 +56,9 @@ export const signInOrUp = async (email: string, password: string): Promise<'in' 
         const msg = e instanceof Error ? e.message : ''
         if (msg !== 'not-entitled') throw e
         throw new Error(
-          '此 Email 尚未開通。請改用「購買時填的那個 Email」登入即可自動開通（Gumroad / Portaly 皆同）。購買後若隔幾分鐘仍無法登入，或想用序號開通，請點下方「我有購買序號」。'
+          Capacitor.isNativePlatform()
+            ? '此 Email 尚未開通帳號。雲端同步目前開放給既有帳號，請確認 Email 與密碼是否正確。'
+            : '此 Email 尚未開通。請改用「購買時填的那個 Email」登入即可自動開通（Gumroad / Portaly 皆同）。購買後若隔幾分鐘仍無法登入，或想用序號開通，請點下方「我有購買序號」。'
         )
       }
     }
