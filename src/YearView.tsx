@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TextField } from './fields'
-import Gantt from './Gantt'
+import Gantt, { spanToCells } from './Gantt'
 import { allDayKeys, loadDay, loadYear, saveYear, toDateKey } from './storage'
 import { YearEntry } from './types'
 
@@ -124,10 +124,12 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
             label: `${mi + 1}月`,
             today: year === new Date().getFullYear() && mi === new Date().getMonth(),
           }))}
-          rows={entry.goals.map((g, i) => ({ ...g, i })).filter((g) => g.text.trim())}
-          onSpan={(i, span) => {
+          rows={entry.goals
+            .map((g, i) => ({ ...g, i, cells: g.cells ?? spanToCells(g.span) }))
+            .filter((g) => g.text.trim())}
+          onCells={(i, cells) => {
             const goals = entry.goals.slice()
-            goals[i] = { ...goals[i], span }
+            goals[i] = { ...goals[i], cells, span: null }
             update({ goals })
           }}
         />

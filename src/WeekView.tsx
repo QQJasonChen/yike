@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TextArea, TextField } from './fields'
-import Gantt from './Gantt'
+import Gantt, { spanToCells } from './Gantt'
 import { tierTone } from './ganttTone'
 import HabitWeek from './HabitWeek'
 import MiniCal from './MiniCal'
@@ -228,11 +228,11 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
             }
           })}
           rows={week.tasks
-            .map((t, i) => ({ ...t, i, tone: tierTone(i) }))
+            .map((t, i) => ({ ...t, i, tone: tierTone(i), cells: t.cells ?? spanToCells(t.span) }))
             .filter((t) => t.text.trim())}
-          onSpan={(i, span) => {
+          onCells={(i, cells) => {
             const tasks = week.tasks.slice()
-            tasks[i] = { ...tasks[i], span }
+            tasks[i] = { ...tasks[i], cells, span: null }
             update({ tasks })
           }}
         />
@@ -253,10 +253,12 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
               }
             }
           )}
-          rows={month.priorities.map((p, i) => ({ ...p, i })).filter((p) => p.text.trim())}
-          onSpan={(i, span) => {
+          rows={month.priorities
+            .map((p, i) => ({ ...p, i, cells: p.cells ?? spanToCells(p.span) }))
+            .filter((p) => p.text.trim())}
+          onCells={(i, cells) => {
             const priorities = month.priorities.slice()
-            priorities[i] = { ...priorities[i], span }
+            priorities[i] = { ...priorities[i], cells, span: null }
             const next = { ...month, priorities }
             saveMonth(monthKey, next)
             setMonth(next)

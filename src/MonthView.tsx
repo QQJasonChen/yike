@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TextArea, TextField } from './fields'
 import MiniCal from './MiniCal'
-import Gantt from './Gantt'
+import Gantt, { spanToCells } from './Gantt'
 import PeriodSummary from './PeriodSummary'
 import { addMonths, loadDay, loadMonth, loadYear, saveMonth, saveYear, toDateKey } from './storage'
 import { DayEntry, MonthEntry, YearEntry } from './types'
@@ -162,10 +162,12 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
             label: String(d + 1),
             today: `${monthKey}-${String(d + 1).padStart(2, '0')}` === todayKey,
           }))}
-          rows={entry.priorities.map((p, i) => ({ ...p, i })).filter((p) => p.text.trim())}
-          onSpan={(i, span) => {
+          rows={entry.priorities
+            .map((p, i) => ({ ...p, i, cells: p.cells ?? spanToCells(p.span) }))
+            .filter((p) => p.text.trim())}
+          onCells={(i, cells) => {
             const priorities = entry.priorities.slice()
-            priorities[i] = { ...priorities[i], span }
+            priorities[i] = { ...priorities[i], cells, span: null }
             update({ priorities })
           }}
         />
@@ -180,10 +182,12 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
             today: `${y}-${String(mi + 1).padStart(2, '0')}` === todayKey.slice(0, 7),
             active: mi + 1 === m,
           }))}
-          rows={yearEntry.goals.map((g, i) => ({ ...g, i })).filter((g) => g.text.trim())}
-          onSpan={(i, span) => {
+          rows={yearEntry.goals
+            .map((g, i) => ({ ...g, i, cells: g.cells ?? spanToCells(g.span) }))
+            .filter((g) => g.text.trim())}
+          onCells={(i, cells) => {
             const goals = yearEntry.goals.slice()
-            goals[i] = { ...goals[i], span }
+            goals[i] = { ...goals[i], cells, span: null }
             const next = { ...yearEntry, goals }
             saveYear(monthKey.slice(0, 4), next)
             setYearEntry(next)

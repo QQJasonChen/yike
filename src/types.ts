@@ -63,7 +63,7 @@ export interface LegacyDayFields {
 export interface WeekEntry {
   intention: string
   /** 15 格：5 最重要 + 5 次要 + 5 額外；span = 甘特橫條的起訖日（週一=0 … 週日=6） */
-  tasks: { text: string; done: boolean; span?: [number, number] | null }[]
+  tasks: { text: string; done: boolean; span?: [number, number] | null; cells?: number[] }[]
   review: {
     wins: string
     notCompleted: string
@@ -73,7 +73,7 @@ export interface WeekEntry {
 }
 
 export interface MonthEntry {
-  priorities: { text: string; done: boolean; span?: [number, number] | null }[] // 本月優先事項（6 格）；span=日 index
+  priorities: { text: string; done: boolean; span?: [number, number] | null; cells?: number[] }[] // 本月優先事項（6 格）；span=日 index
   highlights: string // 本月亮點
 }
 
@@ -101,7 +101,7 @@ export const DEFAULT_ROUTINES: RoutineItem[] = [
 ]
 
 export interface YearEntry {
-  goals: { text: string; done: boolean; span?: [number, number] | null }[] // 年度三大目標；span=月 index 0-11
+  goals: { text: string; done: boolean; span?: [number, number] | null; cells?: number[] }[] // 年度三大目標；span=月 index 0-11
   monthFocus: string[] // 12 個月，每月一個主題
   /** 年曆上的一句話（生日/死線/里程碑），key = YYYY-MM-DD。
    *  存在 year entry 而非 day entry：未來日期寫事件不會「污染」記錄天數統計 */
@@ -118,7 +118,7 @@ export interface OdysseyPath {
 /** 願景維度：北極星 + 十年大目標甘特 + 奧德賽三條路。整個 app 只有一份。 */
 export interface LifeEntry {
   northStar: string // 北極星：願景的方向（一句話）
-  goals: { text: string; done: boolean; span?: [number, number] | null }[] // 願景大目標；span=年 index（0 = startYear）
+  goals: { text: string; done: boolean; span?: [number, number] | null; cells?: number[] }[] // 願景大目標；span=年 index（0 = startYear）
   startYear: number // 十年甘特的起始年
   odyssey: OdysseyPath[] // 固定 3 條路
   odysseyOpen: boolean // 奧德賽區塊是否展開

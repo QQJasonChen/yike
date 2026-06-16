@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TextArea, TextField } from './fields'
-import Gantt from './Gantt'
+import Gantt, { spanToCells } from './Gantt'
 import { loadLife, saveLife } from './storage'
 import { LifeEntry } from './types'
 
@@ -90,9 +90,9 @@ export default function LifeView() {
             active: i === 4 || i === 9,
           }))}
           rows={entry.goals
-            .map((g, i) => ({ ...g, i }))
+            .map((g, i) => ({ ...g, i, cells: g.cells ?? spanToCells(g.span) }))
             .filter((g) => g.text.trim())}
-          onSpan={(i, span) => setGoal(i, { span })}
+          onCells={(i, cells) => setGoal(i, { cells, span: null })}
         />
 
         {/* 奧德賽計畫：三個五年後的我 */}

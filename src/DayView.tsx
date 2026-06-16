@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Gantt from './Gantt'
+import Gantt, { spanToCells } from './Gantt'
 import { tierTone } from './ganttTone'
 import MiniCal from './MiniCal'
 import TaskRow from './TaskRow'
@@ -261,11 +261,11 @@ export default function DayView({
               }
             })}
             rows={weekEntry.tasks
-              .map((t, i) => ({ ...t, i, tone: tierTone(i) }))
+              .map((t, i) => ({ ...t, i, tone: tierTone(i), cells: t.cells ?? spanToCells(t.span) }))
               .filter((t) => t.text.trim())}
-            onSpan={(i, span) => {
+            onCells={(i, cells) => {
               const tasks = weekEntry.tasks.slice()
-              tasks[i] = { ...tasks[i], span }
+              tasks[i] = { ...tasks[i], cells, span: null }
               const next = { ...weekEntry, tasks }
               saveWeek(mondayOf(dateKey), next)
               setWeekEntry(next)
