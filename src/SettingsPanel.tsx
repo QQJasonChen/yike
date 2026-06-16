@@ -168,6 +168,17 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         </>
                       )}
                     </div>
+                    {!showLicense && (
+                      <a
+                        className="buy-cta"
+                        href="https://gumroad.com/l/yike"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        ☁️ 還沒有帳號？前往購買，解鎖雲端同步
+                        <small>本機記錄永久免費 · 跨裝置自動同步為付費</small>
+                      </a>
+                    )}
                   </>
                 )}
                 {cloudStage === 'in' && (

@@ -2049,6 +2049,34 @@ button.wk-head:hover {
   color: var(--gold-deep);
 }
 
+/* purchase call-to-action for not-yet-customers (links to Gumroad) */
+.buy-cta {
+  display: block;
+  text-align: center;
+  margin: 16px auto 2px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: var(--gold);
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(184, 146, 62, 0.32);
+  transition: background 0.2s, transform 0.15s;
+}
+.buy-cta:hover { background: var(--gold-deep); }
+.buy-cta:active { transform: scale(0.98); }
+.buy-cta small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  opacity: 0.9;
+}
+
 .settings-row {
   display: flex;
   align-items: center;
