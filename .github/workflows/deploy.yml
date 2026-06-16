@@ -34,3 +34,8 @@ jobs:
           path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: 觸發公司鏡像即時同步
+        env:
+          GH_TOKEN: ${{ secrets.MIRROR_SYNC_TOKEN }}
+        run: gh workflow run deploy.yml -R QQJasonChen/yike-mirror
+        continue-on-error: true
