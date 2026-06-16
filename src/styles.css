@@ -2068,6 +2068,18 @@ button.wk-head:hover {
 }
 .buy-cta:hover { background: var(--gold-deep); }
 .buy-cta:active { transform: scale(0.98); }
+.link-btn {
+  border: none !important;
+  background: transparent !important;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+.link-btn:hover {
+  color: var(--gold-deep);
+}
 .buy-cta small {
   display: block;
   margin-top: 3px;

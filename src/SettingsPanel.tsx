@@ -50,7 +50,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
   const [cloudEmail, setCloudEmail] = useState('')
   const [cloudPw, setCloudPw] = useState('')
   const [license, setLicense] = useState('')
-  const [showLicense, setShowLicense] = useState(false)
+  const [authMode, setAuthMode] = useState<'activate' | 'login'>('activate')
   const [cloudStage, setCloudStage] = useState<'out' | 'in'>('out')
   const [cloudUser, setCloudUser] = useState<string | null>(null)
   const [cloudMsg, setCloudMsg] = useState('')
@@ -93,38 +93,90 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
               <div className="sync-box">
                 {cloudStage === 'out' && (
                   <>
-                    <p className="sync-help">
-                      購買後，用<b>購買時填的 Email</b> ＋ 自設密碼登入即可，所有裝置<b>自動同步</b>——寫完即上雲、換裝置打開就有。
-                      本機記錄與全部功能<b>不需帳號、永久免費</b>；雲端同步為付費功能。
-                    </p>
-                    <div className="line-input sync-token">
-                      <input
-                        type="email"
-                        placeholder="你的 Email"
-                        value={cloudEmail}
-                        onChange={(e) => setCloudEmail(e.target.value.trim())}
-                      />
-                    </div>
-                    <div className="line-input sync-token">
-                      <input
-                        type="password"
-                        placeholder="密碼（至少 8 碼，請記好）"
-                        value={cloudPw}
-                        onChange={(e) => setCloudPw(e.target.value)}
-                      />
-                    </div>
-                    {showLicense && (
-                      <div className="line-input sync-token">
-                        <input
-                          placeholder="購買序號（Gumroad License Key）"
-                          value={license}
-                          onChange={(e) => setLicense(e.target.value.trim())}
-                        />
-                      </div>
-                    )}
-                    <div className="data-actions" style={{ marginTop: 12 }}>
-                      {!showLicense ? (
-                        <>
+                    {authMode === 'activate' ? (
+                      <>
+                        <p className="sync-help">
+                          雲端同步是<b>付費功能</b>：購買後會拿到<b>序號</b>，在這裡啟用即可全裝置自動同步。
+                          本機記錄與全部功能<b>永久免費</b>。
+                        </p>
+                        <a
+                          className="buy-cta"
+                          href="https://qqleveragelearning.gumroad.com/l/yike"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          ☁️ 還沒購買？前往 Gumroad 取得序號
+                          <small>本機永久免費 · 跨裝置同步為付費</small>
+                        </a>
+                        <div className="label" style={{ marginTop: 14 }}>已購買？輸入序號啟用</div>
+                        <div className="line-input sync-token">
+                          <input
+                            placeholder="購買序號（Gumroad License Key）"
+                            value={license}
+                            onChange={(e) => setLicense(e.target.value.trim())}
+                          />
+                        </div>
+                        <div className="line-input sync-token">
+                          <input
+                            type="email"
+                            placeholder="Email（請用購買時填的）"
+                            value={cloudEmail}
+                            onChange={(e) => setCloudEmail(e.target.value.trim())}
+                          />
+                        </div>
+                        <div className="line-input sync-token">
+                          <input
+                            type="password"
+                            placeholder="自設密碼（至少 8 碼，請記好）"
+                            value={cloudPw}
+                            onChange={(e) => setCloudPw(e.target.value)}
+                          />
+                        </div>
+                        <div className="data-actions" style={{ marginTop: 12 }}>
+                          <button
+                            disabled={
+                              !cloudEmail.includes('@') || cloudPw.length < 8 || license.length < 8
+                            }
+                            onClick={() =>
+                              cloudAct(async () => {
+                                await activateLicense(license, cloudEmail, cloudPw)
+                                setCloudUser(cloudEmail)
+                                setCloudStage('in')
+                                const r = await syncNow()
+                                await startAutoSync()
+                                setCloudMsg(`✓ 序號啟用成功，已同步（↓${r.pulled} ↑${r.pushed}）`)
+                              })
+                            }
+                          >
+                            啟用並登入
+                          </button>
+                          <button className="link-btn" onClick={() => setAuthMode('login')}>
+                            已經有帳號？直接登入
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="sync-help">
+                          用你的 <b>Email ＋ 密碼</b> 登入，所有裝置自動同步——寫完即上雲、換裝置打開就有。
+                        </p>
+                        <div className="line-input sync-token">
+                          <input
+                            type="email"
+                            placeholder="你的 Email"
+                            value={cloudEmail}
+                            onChange={(e) => setCloudEmail(e.target.value.trim())}
+                          />
+                        </div>
+                        <div className="line-input sync-token">
+                          <input
+                            type="password"
+                            placeholder="密碼"
+                            value={cloudPw}
+                            onChange={(e) => setCloudPw(e.target.value)}
+                          />
+                        </div>
+                        <div className="data-actions" style={{ marginTop: 12 }}>
                           <button
                             disabled={!cloudEmail.includes('@') || cloudPw.length < 8}
                             onClick={() =>
@@ -143,41 +195,11 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                           >
                             登入
                           </button>
-                          <button onClick={() => setShowLicense(true)}>🛒 我有購買序號</button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            disabled={
-                              !cloudEmail.includes('@') || cloudPw.length < 8 || license.length < 8
-                            }
-                            onClick={() =>
-                              cloudAct(async () => {
-                                await activateLicense(license, cloudEmail, cloudPw)
-                                setCloudUser(cloudEmail)
-                                setCloudStage('in')
-                                const r = await syncNow()
-                                await startAutoSync()
-                                setCloudMsg(`✓ 序號啟用成功，已同步（↓${r.pulled} ↑${r.pushed}）`)
-                              })
-                            }
-                          >
-                            啟用並登入
+                          <button className="link-btn" onClick={() => setAuthMode('activate')}>
+                            ← 還沒帳號？用序號開通
                           </button>
-                          <button onClick={() => setShowLicense(false)}>返回登入</button>
-                        </>
-                      )}
-                    </div>
-                    {!showLicense && (
-                      <a
-                        className="buy-cta"
-                        href="https://gumroad.com/l/yike"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        ☁️ 還沒有帳號？前往購買，解鎖雲端同步
-                        <small>本機記錄永久免費 · 跨裝置自動同步為付費</small>
-                      </a>
+                        </div>
+                      </>
                     )}
                   </>
                 )}
