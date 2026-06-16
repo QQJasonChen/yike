@@ -51,6 +51,7 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
   const [editRoutine, setEditRoutine] = useState<number | null>(null)
   const pressTimer = useRef<number | null>(null)
   const longPressed = useRef(false)
+  const pressStart = useRef<{ x: number; y: number } | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
   const suppressClick = useRef(false) // 拖拉結束後瀏覽器補發的 click 要吃掉
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -221,8 +222,9 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
   }
 
   // chip：點一下帶入、長按（手機）/右鍵（電腦）就地編輯
-  const startPress = (i: number) => {
+  const startPress = (i: number, e: React.PointerEvent) => {
     longPressed.current = false
+    pressStart.current = { x: e.clientX, y: e.clientY }
     pressTimer.current = window.setTimeout(() => {
       longPressed.current = true
       setEditRoutine(i)
@@ -233,6 +235,13 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
       clearTimeout(pressTimer.current)
       pressTimer.current = null
     }
+  }
+  // 只在移動超過門檻才取消（touch 長壓難免微抖，不能一動就取消）
+  const movePress = (e: React.PointerEvent) => {
+    if (!pressTimer.current || !pressStart.current) return
+    const dx = e.clientX - pressStart.current.x
+    const dy = e.clientY - pressStart.current.y
+    if (dx * dx + dy * dy > 100) cancelPress() // >10px
   }
   const chipClick = (r: RoutineItem) => {
     if (longPressed.current) {
@@ -269,10 +278,10 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
               className="tl-routine"
               style={{ borderColor: colorHex(r.color) + '99', background: colorHex(r.color) + '14' }}
               onClick={() => chipClick(r)}
-              onPointerDown={() => startPress(i)}
+              onPointerDown={(e) => startPress(i, e)}
               onPointerUp={cancelPress}
               onPointerLeave={cancelPress}
-              onPointerMove={cancelPress}
+              onPointerMove={movePress}
               onContextMenu={(e) => {
                 e.preventDefault()
                 setEditRoutine(i)

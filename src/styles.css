@@ -612,6 +612,11 @@ textarea.line-area {
   padding: 3px 9px 3px 7px;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
+  /* iOS 長壓不要跳原生選單/選字放大鏡，讓長壓編輯能完成 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 .tl-routine:hover {
   background: var(--gold-soft);
