@@ -1100,6 +1100,12 @@ textarea.line-area {
   justify-content: space-between;
   align-items: center;
 }
+.block-pop .pop-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 8px 0;
+}
 
 .block-pop .pop-time {
   font-family: var(--eng);
@@ -1157,6 +1163,44 @@ textarea.line-area {
   border-radius: 999px;
   padding: 1px 8px;
   flex-shrink: 0;
+}
+
+.wk-grid-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.wk-grid-nav > button {
+  font-size: 18px;
+  color: var(--ink-soft);
+  padding: 2px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.wk-grid-nav > button:hover {
+  background: var(--gold-soft);
+  color: var(--gold-deep);
+}
+.wk-grid-range {
+  font-family: var(--eng);
+  font-size: 13px;
+  color: var(--ink-soft);
+  min-width: 96px;
+  text-align: center;
+}
+.wk-today-jump {
+  font-size: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 2px 10px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.wk-today-jump:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
 }
 
 .wk-scroll {

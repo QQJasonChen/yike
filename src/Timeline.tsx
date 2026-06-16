@@ -404,6 +404,11 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                   }
                   setEditId(b.id)
                 }}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setEditId(b.id)
+                }}
               >
                 <span className="tl-block-time">
                   {fmt(start)} – {fmt(end)}
@@ -483,6 +488,17 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                     </option>
                   ))}
               </select>
+            </div>
+            <div className="pop-swatches">
+              {ROUTINE_COLORS.map((c) => (
+                <button
+                  key={c.key}
+                  className={`tl-swatch ${editing.color === c.key ? 'on' : ''}`}
+                  style={{ background: c.hex }}
+                  onClick={() => updateBlock(editing.id, { color: c.key })}
+                  title={c.key}
+                />
+              ))}
             </div>
             <div className="pop-actions">
               <span />
