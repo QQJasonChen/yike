@@ -3,6 +3,7 @@ import { cloudEnabled, currentEmail, startAutoSync } from './cloud'
 import DayView from './DayView'
 import WeekView from './WeekView'
 import MonthView from './MonthView'
+import QuarterView from './QuarterView'
 import YearView from './YearView'
 import LifeView from './LifeView'
 import HistoryView from './HistoryView'
@@ -16,13 +17,14 @@ import {
   loadSettings,
   mondayOf,
   monthOf,
+  quarterOf,
   recentNames,
   saveSettings,
   toDateKey,
 } from './storage'
 import { Settings } from './types'
 
-type Tab = 'day' | 'week' | 'month' | 'year' | 'life' | 'history'
+type Tab = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'life' | 'history'
 
 export default function App() {
   const todayKey = toDateKey(new Date())
@@ -30,6 +32,7 @@ export default function App() {
   const [dateKey, setDateKey] = useState(todayKey)
   const [mondayKey, setMondayKey] = useState(() => mondayOf(todayKey))
   const [monthKey, setMonthKey] = useState(() => monthOf(todayKey))
+  const [quarterKey, setQuarterKey] = useState(() => quarterOf(todayKey))
   const [yearNum, setYearNum] = useState(() => Number(todayKey.slice(0, 4)))
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [timer, setTimer] = useState<TimerState | null>(null)
@@ -108,6 +111,9 @@ export default function App() {
           <button className={tab === 'month' ? 'active' : ''} onClick={() => setTab('month')}>
             本月
           </button>
+          <button className={tab === 'quarter' ? 'active' : ''} onClick={() => setTab('quarter')}>
+            季
+          </button>
           <button className={tab === 'year' ? 'active' : ''} onClick={() => setTab('year')}>
             年
           </button>
@@ -171,16 +177,25 @@ export default function App() {
         <MonthView
           monthKey={monthKey}
           onMonthChange={setMonthKey}
+          settings={settings}
           onOpenDay={(k) => {
             setDateKey(k)
             setTab('day')
           }}
         />
       )}
+      {tab === 'quarter' && (
+        <QuarterView
+          quarterKey={quarterKey}
+          onQuarterChange={setQuarterKey}
+          settings={settings}
+        />
+      )}
       {tab === 'year' && (
         <YearView
           year={yearNum}
           onYearChange={setYearNum}
+          settings={settings}
           onOpenDay={(k) => {
             setDateKey(k)
             setTab('day')

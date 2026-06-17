@@ -2,9 +2,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { TextArea, TextField } from './fields'
 import MiniCal from './MiniCal'
 import Gantt, { spanToCells } from './Gantt'
+import HabitHeatmap from './HabitHeatmap'
 import PeriodSummary from './PeriodSummary'
-import { addMonths, loadDay, loadMonth, loadYear, saveMonth, saveYear, toDateKey } from './storage'
-import { DayEntry, MonthEntry, YearEntry } from './types'
+import {
+  addMonths,
+  loadDay,
+  loadMonth,
+  loadYear,
+  mondayOf,
+  saveMonth,
+  saveYear,
+  toDateKey,
+} from './storage'
+import { DayEntry, MonthEntry, Settings, YearEntry } from './types'
 
 const MOODS = ['😖', '🙁', '😐', '🙂', '😄']
 const MONTHS_EN = [
@@ -16,10 +26,11 @@ const WD = ['一', '二', '三', '四', '五', '六', '日']
 interface Props {
   monthKey: string // YYYY-MM
   onMonthChange: (k: string) => void
+  settings: Settings
   onOpenDay: (dateKey: string) => void
 }
 
-export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props) {
+export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay }: Props) {
   const [entry, setEntry] = useState<MonthEntry>(() => loadMonth(monthKey))
   // 年度目標（向上對齊：這個月的優先事項是否推進年度目標）
   const [yearEntry, setYearEntry] = useState<YearEntry>(() => loadYear(monthKey.slice(0, 4)))
@@ -193,6 +204,19 @@ export default function MonthView({ monthKey, onMonthChange, onOpenDay }: Props)
             setYearEntry(next)
           }}
         />
+
+        {settings.habits.length > 0 && (
+          <>
+            <div className="label" style={{ marginTop: 22 }}>
+              習慣熱力圖 <span className="hint">近一季・一格一天・愈深愈完整</span>
+            </div>
+            <HabitHeatmap
+              endMonday={mondayOf(`${monthKey}-${String(daysInMonth).padStart(2, '0')}`)}
+              weeks={13}
+              habits={settings.habits}
+            />
+          </>
+        )}
 
         <div className="label">本月亮點</div>
         <TextArea

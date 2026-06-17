@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TextField } from './fields'
 import Gantt, { spanToCells } from './Gantt'
-import { allDayKeys, loadDay, loadYear, saveYear, toDateKey } from './storage'
-import { YearEntry } from './types'
+import HabitHeatmap from './HabitHeatmap'
+import { allDayKeys, loadDay, loadYear, mondayOf, saveYear, toDateKey } from './storage'
+import { Settings, YearEntry } from './types'
 
 // Year at a Glance：一頁看整年（12 欄 × 31 列熱力格 + 年度目標 + 每月主題）
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -10,10 +11,11 @@ const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', 
 interface Props {
   year: number
   onYearChange: (y: number) => void
+  settings: Settings
   onOpenDay: (dateKey: string) => void
 }
 
-export default function YearView({ year, onYearChange, onOpenDay }: Props) {
+export default function YearView({ year, onYearChange, settings, onOpenDay }: Props) {
   const [entry, setEntry] = useState<YearEntry>(() => loadYear(String(year)))
   const [editing, setEditing] = useState<{ key: string; mi: number; top: number } | null>(null)
   const todayKey = toDateKey(new Date())
@@ -216,6 +218,15 @@ export default function YearView({ year, onYearChange, onOpenDay }: Props) {
             })}
           </div>
         </div>
+
+        {settings.habits.length > 0 && (
+          <>
+            <div className="label" style={{ marginTop: 22 }}>
+              習慣熱力圖 <span className="hint">整年・一格一天・愈深愈完整</span>
+            </div>
+            <HabitHeatmap endMonday={mondayOf(`${year}-12-31`)} weeks={53} habits={settings.habits} />
+          </>
+        )}
 
         <div className="yr-legend">
           <span>無記錄</span>

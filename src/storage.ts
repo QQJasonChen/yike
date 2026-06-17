@@ -3,6 +3,7 @@ import {
   LegacyDayFields,
   LifeEntry,
   MonthEntry,
+  QuarterEntry,
   Settings,
   WeekEntry,
   YearEntry,
@@ -10,6 +11,7 @@ import {
   emptyDay,
   emptyLife,
   emptyMonth,
+  emptyQuarter,
   emptyWeek,
   emptyYear,
 } from './types'
@@ -143,6 +145,26 @@ export const loadMonth = (monthKey: string): MonthEntry =>
 export const saveMonth = (monthKey: string, entry: MonthEntry) =>
   write(MONTH_PREFIX + monthKey, entry)
 
+const QUARTER_PREFIX = 'pp:quarter:'
+
+/** 該日期所屬季 key（YYYY-Qn） */
+export const quarterOf = (dateKey: string): string => {
+  const [y, m] = dateKey.split('-').map(Number)
+  return `${y}-Q${Math.ceil(m / 3)}`
+}
+
+export const addQuarters = (quarterKey: string, n: number): string => {
+  const [y, q] = quarterKey.split('-Q').map(Number)
+  const total = y * 4 + (q - 1) + n
+  return `${Math.floor(total / 4)}-Q${(((total % 4) + 4) % 4) + 1}`
+}
+
+export const loadQuarter = (quarterKey: string): QuarterEntry =>
+  read<QuarterEntry>(QUARTER_PREFIX + quarterKey) ?? emptyQuarter()
+
+export const saveQuarter = (quarterKey: string, entry: QuarterEntry) =>
+  write(QUARTER_PREFIX + quarterKey, entry)
+
 const YEAR_PREFIX = 'pp:year:'
 
 export const loadYear = (yearKey: string): YearEntry => {
@@ -257,6 +279,13 @@ export const nameStats = (from?: string, to?: string): NameStat[] => {
   for (const k of keysWithPrefix(MONTH_PREFIX)) {
     if (!inMonth(k)) continue
     for (const p of loadMonth(k).priorities) {
+      const n = p.text.trim()
+      if (n) touch(n).plans++
+    }
+  }
+  for (const k of keysWithPrefix(QUARTER_PREFIX)) {
+    if (!inYear(k.slice(0, 4))) continue // quarter key = YYYY-Qn
+    for (const p of loadQuarter(k).priorities) {
       const n = p.text.trim()
       if (n) touch(n).plans++
     }

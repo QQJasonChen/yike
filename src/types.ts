@@ -77,6 +77,11 @@ export interface MonthEntry {
   highlights: string // 本月亮點
 }
 
+export interface QuarterEntry {
+  priorities: { text: string; done: boolean; span?: [number, number] | null; cells?: number[] }[] // 本季優先事項（6 格）；span=季內月 index 0-2
+  highlights: string // 本季亮點
+}
+
 export interface Settings {
   focusMinutes: number // Focus Time 長度（預設 25，番茄鐘）
   breakMinutes: number // 休息長度（預設 5）
@@ -172,6 +177,11 @@ export const emptyWeek = (): WeekEntry => ({
 })
 
 export const emptyMonth = (): MonthEntry => ({
+  priorities: Array.from({ length: 6 }, () => ({ text: '', done: false })),
+  highlights: '',
+})
+
+export const emptyQuarter = (): QuarterEntry => ({
   priorities: Array.from({ length: 6 }, () => ({ text: '', done: false })),
   highlights: '',
 })
