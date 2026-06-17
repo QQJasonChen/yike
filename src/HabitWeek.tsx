@@ -114,9 +114,9 @@ export default function HabitWeek({ mondayKey, settings, onSettingsChange }: Pro
       {settings.habits.length > 0 && (
         <>
           <div className="label" style={{ marginTop: 22 }}>
-            習慣熱力圖 <span className="hint">近一個月・一格一天・愈深愈完整</span>
+            習慣熱力圖 <span className="hint">近一季・一格一天・愈深愈完整</span>
           </div>
-          <HabitHeatmap endMonday={mondayKey} weeks={5} habits={settings.habits} />
+          <HabitHeatmap endMonday={mondayKey} weeks={13} habits={settings.habits} />
         </>
       )}
     </div>

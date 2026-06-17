@@ -52,9 +52,8 @@ export default function QuarterView({ quarterKey, onQuarterChange, settings }: P
     const dim = new Date(y, mm, 0).getDate()
     for (let d = 1; d <= dim; d++) dayKeys.push(`${y}-${pad(mm)}-${pad(d)}`)
   }
-  // 熱力圖：到本季最後一天的那一週，回看一季（~13 週）
-  const lastDayKey = `${y}-${pad(lastMonth)}-${pad(new Date(y, lastMonth, 0).getDate())}`
-  const endMonday = mondayOf(lastDayKey)
+  // 熱力圖：顯示整年（到年底那一週，回看 53 週）
+  const endMonday = mondayOf(`${y}-12-31`)
 
   return (
     <div className="page">
@@ -151,9 +150,9 @@ export default function QuarterView({ quarterKey, onQuarterChange, settings }: P
         {settings.habits.length > 0 && (
           <>
             <div className="label" style={{ marginTop: 22 }}>
-              習慣熱力圖 <span className="hint">本季・一格一天・愈深愈完整</span>
+              習慣熱力圖 <span className="hint">整年・一格一天・愈深愈完整</span>
             </div>
-            <HabitHeatmap endMonday={endMonday} weeks={13} habits={settings.habits} />
+            <HabitHeatmap endMonday={endMonday} weeks={53} habits={settings.habits} />
           </>
         )}
 
