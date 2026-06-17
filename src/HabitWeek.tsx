@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { TextField } from './fields'
-import { addDays, allDayKeys, loadDay, saveDay, toDateKey } from './storage'
+import HabitHeatmap from './HabitHeatmap'
+import { addDays, loadDay, saveDay, toDateKey } from './storage'
 import { DayEntry, Settings } from './types'
 
 // 一週檢視：習慣 × 7 天勾選表 + 近半年熱力圖
@@ -48,31 +49,6 @@ export default function HabitWeek({ mondayKey, settings, onSettingsChange }: Pro
     if (!confirm(`移除習慣「${name}」？（過去的打勾記錄會保留在資料裡）`)) return
     onSettingsChange({ ...settings, habits: settings.habits.filter((h) => h !== name) })
   }
-
-  // 近半年熱力圖：每天完成數 / 習慣數
-  const heat = useMemo(() => {
-    if (settings.habits.length === 0) return []
-    const recorded = new Set(allDayKeys())
-    // 從 25 週前的週一開始，到本週日，按欄（週）排
-    const start = addDays(mondayKey, -25 * 7)
-    const weeks: { key: string; ratio: number | null }[][] = []
-    for (let w = 0; w < 26; w++) {
-      const col: { key: string; ratio: number | null }[] = []
-      for (let d = 0; d < 7; d++) {
-        const k = addDays(start, w * 7 + d)
-        if (!recorded.has(k)) {
-          col.push({ key: k, ratio: null })
-        } else {
-          const e = loadDay(k)
-          const done = settings.habits.filter((h) => e.habitsDone[h]).length
-          col.push({ key: k, ratio: done / settings.habits.length })
-        }
-      }
-      weeks.push(col)
-    }
-    return weeks
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mondayKey, settings.habits, entries])
 
   return (
     <div className="hw">
@@ -135,65 +111,12 @@ export default function HabitWeek({ mondayKey, settings, onSettingsChange }: Pro
         </button>
       </div>
 
-      {settings.habits.length > 0 && heat.length > 0 && (
+      {settings.habits.length > 0 && (
         <>
           <div className="label" style={{ marginTop: 22 }}>
-            習慣熱力圖 <span className="hint">近半年・一格一天・愈深愈完整</span>
+            習慣熱力圖 <span className="hint">近一個月・一格一天・愈深愈完整</span>
           </div>
-          <div className="hw-heat-scroll">
-            <div className="hw-heat-wrap">
-              <div className="hw-heat-months">
-                {heat.map((col, wi) => {
-                  const m = Number(col[0].key.slice(5, 7))
-                  const prev = wi > 0 ? Number(heat[wi - 1][0].key.slice(5, 7)) : 0
-                  return (
-                    <span key={wi} className="hw-heat-month">
-                      {m !== prev ? `${m}月` : ''}
-                    </span>
-                  )
-                })}
-              </div>
-              <div className="hw-heat-body">
-                <div className="hw-heat-days">
-                  <span>一</span>
-                  <span />
-                  <span>三</span>
-                  <span />
-                  <span>五</span>
-                  <span />
-                  <span />
-                </div>
-                <div className="hw-heat">
-                  {heat.map((col, wi) => (
-                    <div key={wi} className="hw-heat-col">
-                      {col.map((c) => (
-                        <span
-                          key={c.key}
-                          className={`hw-heat-cell ${
-                            c.ratio === null ? 'none' : `h${Math.ceil(c.ratio * 4)}`
-                          } ${c.key === todayKey ? 'today' : ''}`}
-                          title={`${c.key.slice(5).replace('-', '/')}${
-                            c.ratio !== null
-                              ? `：完成 ${Math.round(c.ratio * settings.habits.length)}/${settings.habits.length} 個習慣`
-                              : '（未記錄）'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="hw-heat-legend">
-                <span>少</span>
-                <span className="hw-heat-cell none" />
-                <span className="hw-heat-cell h1" />
-                <span className="hw-heat-cell h2" />
-                <span className="hw-heat-cell h3" />
-                <span className="hw-heat-cell h4" />
-                <span>多</span>
-              </div>
-            </div>
-          </div>
+          <HabitHeatmap endMonday={mondayKey} weeks={5} habits={settings.habits} />
         </>
       )}
     </div>
