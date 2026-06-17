@@ -2402,6 +2402,56 @@ button.wk-head:hover {
 .hw-heat-cell.h4 { background: var(--gold-deep); }
 .hw-heat-cell.today { outline: 1.5px solid var(--terra); }
 
+/* GitHub 式：月份標籤(上) + 星期(左) + 少→多 圖例 */
+.hw-heat-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.hw-heat-months {
+  display: flex;
+  gap: 3px;
+  padding-left: 25px; /* = 星期欄寬 22 + body gap 3，對齊格子欄 */
+  font-size: 10px;
+  color: var(--ink-faint);
+  font-family: var(--eng);
+  height: 12px;
+}
+.hw-heat-month {
+  flex: 0 0 13px;
+  white-space: nowrap;
+  overflow: visible;
+}
+.hw-heat-body {
+  display: flex;
+  gap: 3px;
+}
+.hw-heat-days {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 22px;
+}
+.hw-heat-days span {
+  height: 13px;
+  line-height: 13px;
+  font-size: 10px;
+  color: var(--ink-faint);
+  text-align: right;
+}
+.hw-heat-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+.hw-heat-legend .hw-heat-cell {
+  width: 11px;
+  height: 11px;
+}
+
 .habit-hint {
   font-family: var(--hand);
   font-size: 12.5px;

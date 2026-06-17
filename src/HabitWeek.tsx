@@ -141,22 +141,57 @@ export default function HabitWeek({ mondayKey, settings, onSettingsChange }: Pro
             習慣熱力圖 <span className="hint">近半年・一格一天・愈深愈完整</span>
           </div>
           <div className="hw-heat-scroll">
-            <div className="hw-heat">
-              {heat.map((col, wi) => (
-                <div key={wi} className="hw-heat-col">
-                  {col.map((c) => (
-                    <span
-                      key={c.key}
-                      className={`hw-heat-cell ${
-                        c.ratio === null ? 'none' : `h${Math.ceil(c.ratio * 4)}`
-                      } ${c.key === todayKey ? 'today' : ''}`}
-                      title={`${c.key.slice(5).replace('-', '/')}${
-                        c.ratio !== null ? `：${Math.round(c.ratio * 100)}%` : ''
-                      }`}
-                    />
+            <div className="hw-heat-wrap">
+              <div className="hw-heat-months">
+                {heat.map((col, wi) => {
+                  const m = Number(col[0].key.slice(5, 7))
+                  const prev = wi > 0 ? Number(heat[wi - 1][0].key.slice(5, 7)) : 0
+                  return (
+                    <span key={wi} className="hw-heat-month">
+                      {m !== prev ? `${m}月` : ''}
+                    </span>
+                  )
+                })}
+              </div>
+              <div className="hw-heat-body">
+                <div className="hw-heat-days">
+                  <span>一</span>
+                  <span />
+                  <span>三</span>
+                  <span />
+                  <span>五</span>
+                  <span />
+                  <span />
+                </div>
+                <div className="hw-heat">
+                  {heat.map((col, wi) => (
+                    <div key={wi} className="hw-heat-col">
+                      {col.map((c) => (
+                        <span
+                          key={c.key}
+                          className={`hw-heat-cell ${
+                            c.ratio === null ? 'none' : `h${Math.ceil(c.ratio * 4)}`
+                          } ${c.key === todayKey ? 'today' : ''}`}
+                          title={`${c.key.slice(5).replace('-', '/')}${
+                            c.ratio !== null
+                              ? `：完成 ${Math.round(c.ratio * settings.habits.length)}/${settings.habits.length} 個習慣`
+                              : '（未記錄）'
+                          }`}
+                        />
+                      ))}
+                    </div>
                   ))}
                 </div>
-              ))}
+              </div>
+              <div className="hw-heat-legend">
+                <span>少</span>
+                <span className="hw-heat-cell none" />
+                <span className="hw-heat-cell h1" />
+                <span className="hw-heat-cell h2" />
+                <span className="hw-heat-cell h3" />
+                <span className="hw-heat-cell h4" />
+                <span>多</span>
+              </div>
             </div>
           </div>
         </>
