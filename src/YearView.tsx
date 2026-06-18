@@ -91,7 +91,7 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
         <h2 className="section-title">{year}</h2>
         <p className="section-sub">One Year at a Glance — 一頁，看見一整年</p>
 
-        <div className="label">年度三大目標</div>
+        <div className="label">年度目標</div>
         {entry.goals.map((g, i) => (
           <div key={i} className={`week-task-row ${g.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
@@ -115,8 +115,28 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
             >
               ✓
             </button>
+            {entry.goals.length > 1 && (
+              <button
+                className="goal-del"
+                title="移除這個目標"
+                onClick={() => {
+                  if (g.text.trim() && !confirm(`移除目標「${g.text.trim()}」？（甘特上的這條也會一起移除）`)) return
+                  update({ goals: entry.goals.filter((_, j) => j !== i) })
+                }}
+              >
+                ✕
+              </button>
+            )}
           </div>
         ))}
+        <div className="data-actions" style={{ marginTop: 6 }}>
+          <button
+            className="rollover-btn"
+            onClick={() => update({ goals: [...entry.goals, { text: '', done: false }] })}
+          >
+            ＋ 新增目標
+          </button>
+        </div>
 
         <Gantt
           title="年度甘特"

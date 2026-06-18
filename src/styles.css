@@ -2353,6 +2353,21 @@ button.wk-head:hover {
 
 .hw-table tr:hover .hw-del { opacity: 1; }
 
+/* 目標列的移除鈕（年度目標可增可減）：平時淡，hover 才明顯 */
+.goal-del {
+  flex-shrink: 0;
+  width: 26px;
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  font-size: 12px;
+  opacity: 0.35;
+  cursor: pointer;
+  transition: opacity 0.2s, color 0.2s;
+}
+.week-task-row:hover .goal-del { opacity: 0.8; }
+.goal-del:hover { opacity: 1; color: var(--terra); }
+
 .hw-check {
   width: 26px;
   height: 26px;
