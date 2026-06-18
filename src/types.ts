@@ -95,14 +95,12 @@ export interface Settings {
   autoLoop: boolean // 連續番茄鐘：休息結束自動接下一段專注（預設關）
 }
 
-// 預設 routine（上班日；使用者可在設定頁改）
+// 預設 routine：精簡 4 個一日骨架（一行剛好放得下；可在設定頁增到 8 個）
 export const DEFAULT_ROUTINES: RoutineItem[] = [
   { emoji: '🚇', label: '通勤', start: 8 * 60, dur: 60, color: 'slate' },
   { emoji: '🏢', label: '上班', start: 9 * 60, dur: 180, color: 'indigo' },
   { emoji: '🍱', label: '午餐', start: 12 * 60, dur: 60, color: 'terra' },
-  { emoji: '💼', label: '下午', start: 13 * 60, dur: 300, color: 'gold' },
   { emoji: '🏃', label: '運動', start: 18 * 60 + 30, dur: 60, color: 'sage' },
-  { emoji: '📖', label: '閱讀', start: 20 * 60, dur: 60, color: 'plum' },
 ]
 
 export interface YearEntry {
