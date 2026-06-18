@@ -539,8 +539,14 @@ textarea.line-area {
   transition: all 0.2s;
 }
 
-.task-play:hover {
+.task-play:hover:not(:disabled) {
   border-color: var(--terra);
+}
+
+/* 還沒寫任務時：淡化 + 禁用游標，讓人一眼看出「先寫任務才能按」而不是壞掉 */
+.task-play:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
 }
 
 .task-play.running {

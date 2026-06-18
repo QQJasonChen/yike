@@ -125,7 +125,7 @@ export default function TaskRow({
       <button
         className={`task-play ${isRunning ? 'running' : ''}`}
         onClick={onStartFocus}
-        title="開始 Focus Time"
+        title={task.text.trim() ? '開始番茄鐘專注' : '先寫下這格任務，才能開始番茄鐘'}
         disabled={!task.text.trim()}
       >
         {isRunning ? '◉' : '▶'}
