@@ -24,7 +24,7 @@ export interface RoutineItem {
   color: string // palette key（見 ROUTINE_COLORS）
 }
 
-export const MAX_ROUTINES = 8
+export const MAX_ROUTINES = 4
 
 // 時間軸色票（存 key、hex 在這裡查；與紙質感調性一致）
 export const ROUTINE_COLORS: { key: string; hex: string }[] = [

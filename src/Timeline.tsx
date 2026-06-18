@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TextField } from './fields'
-import { Block, ROUTINE_COLORS, RoutineItem, colorHex } from './types'
+import { Block, MAX_ROUTINES, ROUTINE_COLORS, RoutineItem, colorHex } from './types'
 
 // 時間軸範圍：06:00 – 23:00，每格 30 分鐘
 const START_MIN = 6 * 60
@@ -272,7 +272,7 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
       <div className="timeline-hint">點空格新增・拖拉移動・拉底部把手調長度</div>
       {routines.length > 0 && (
         <div className="tl-routines">
-          {routines.map((r, i) => (
+          {routines.slice(0, MAX_ROUTINES).map((r, i) => (
             <button
               key={i}
               className="tl-routine"
