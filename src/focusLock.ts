@@ -22,9 +22,13 @@ const native = registerPlugin<FocusLockNative>('FocusLock')
 
 const OFF: FocusLockState = { supported: false, authorized: false, hasSelection: false, locked: false }
 
-/** 只有原生 iOS 才有專注鎖；桌機/Android/PWA 都回 false */
+// Family Controls 散布權限（Distribution）核准前，App-lock 在 TestFlight/正式版一律關閉，
+// 避免出現按了沒反應的死開關。核准 + 把 entitlement 接回 pbxproj 後，改成 true 即整套復活。
+export const APPLOCK_ENABLED = false
+
+/** 只有原生 iOS 且功能已啟用才有專注鎖；桌機/Android/PWA/未啟用一律回 false */
 export const focusLockAvailable = (): boolean =>
-  Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios'
+  APPLOCK_ENABLED && Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios'
 
 export const focusLock = {
   available: focusLockAvailable,
