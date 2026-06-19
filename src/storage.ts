@@ -322,6 +322,17 @@ export const recentNames = (): string[] => nameStats().slice(0, 40).map((s) => s
 
 // ---- 匯出 / 匯入 ----
 
+/** 清掉這台裝置上所有本機資料（pp:*，含 settings/meta/sync）。
+ *  登出時用：雲端帳號的資料不受影響，重新登入即可從雲端還原。 */
+export const clearAllLocalData = () => {
+  const keys: string[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (k?.startsWith('pp:')) keys.push(k)
+  }
+  for (const k of keys) localStorage.removeItem(k)
+}
+
 /** 所有要同步/備份的資料 key（排除裝置本地的 sync 設定與 meta） */
 export const allDataKeys = (): string[] => {
   const keys: string[] = []

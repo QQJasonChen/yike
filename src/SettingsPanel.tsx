@@ -12,6 +12,7 @@ import {
 } from './cloud'
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
+import { clearAllLocalData } from './storage'
 import {
   DEFAULT_EVENING_QS,
   DEFAULT_MORNING_QS,
@@ -226,15 +227,26 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         ⟳ 立即同步
                       </button>
                       <button
-                        onClick={() =>
+                        onClick={() => {
+                          if (
+                            !confirm(
+                              '登出會清除這台裝置上的本機資料，回到空白頁面。\n\n你的資料都在雲端帳號裡，重新登入（這台或任何裝置）就會完整還原。確定登出？'
+                            )
+                          )
+                            return
                           cloudAct(async () => {
+                            // 先把未同步的推上雲，連不上就中止以免遺失
+                            try {
+                              await syncNow()
+                            } catch {
+                              throw new Error('目前連不上雲端，為避免資料遺失，請連網後再登出')
+                            }
                             await signOut()
                             stopAutoSync()
-                            setCloudUser(null)
-                            setCloudStage('out')
-                            setCloudMsg('已登出（本機資料保留）')
+                            clearAllLocalData()
+                            location.reload() // 回到全空白狀態
                           })
-                        }
+                        }}
                       >
                         登出
                       </button>
