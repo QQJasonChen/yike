@@ -155,12 +155,11 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         <a
                           className="buy-cta"
                           style={{ marginTop: 14 }}
-                          href="https://qqleveragelearning.gumroad.com/l/yike"
+                          href="https://qqleverage.gumroad.com/l/Yike?layout=profile"
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          ☁️ 不認識我、想支持購買？前往 Gumroad
-                          <small>朋友用邀請碼即可 · 這裡給想付費支持的人</small>
+                          ☁️ 支持，前往 Gumroad
                         </a>
                       </>
                     ) : (
