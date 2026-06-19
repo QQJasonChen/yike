@@ -22,6 +22,12 @@ const MONTH_PREFIX = 'pp:month:'
 const SETTINGS_KEY = 'pp:settings'
 const LIFE_KEY = 'pp:life' // 願景維度——整個 app 只有一份
 const SYNC_KEY = 'pp:sync' // 同步設定（含 token）——絕不進匯出檔
+const CLOUD_BOUND_KEY = 'pp:cloudBound' // 此裝置曾登入雲端帳號的標記（裝置本地，不同步）
+
+/** 標記此裝置曾綁定雲端帳號（登入成功時呼叫） */
+export const markCloudBound = () => localStorage.setItem(CLOUD_BOUND_KEY, '1')
+/** 此裝置是否曾登入過雲端帳號 */
+export const isCloudBound = (): boolean => localStorage.getItem(CLOUD_BOUND_KEY) === '1'
 
 // ---- 日期工具（一律使用本地時區） ----
 
@@ -338,7 +344,8 @@ export const allDataKeys = (): string[] => {
   const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)
-    if (k?.startsWith('pp:') && k !== SYNC_KEY && k !== META_KEY) keys.push(k)
+    if (k?.startsWith('pp:') && k !== SYNC_KEY && k !== META_KEY && k !== CLOUD_BOUND_KEY)
+      keys.push(k)
   }
   return keys
 }

@@ -100,13 +100,13 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                     {!isNative && authMode === 'activate' ? (
                       <>
                         <p className="sync-help">
-                          想跨裝置用同一份資料？<b>朋友直接輸入邀請碼 <code>QQ</code></b> 就能開通——
-                          邀請碼大家共用，下面的 Email＋密碼是<b>你自己的</b>（換裝置用它登入）。本機與全部功能<b>永久免費</b>。
+                          想跨裝置用同一份資料？<b>輸入邀請碼</b>（朋友跟我拿），再設一組<b>你自己的</b> Email＋密碼就開通——
+                          換裝置用這組登入即可。本機與全部功能<b>永久免費</b>。
                         </p>
                         <div className="label" style={{ marginTop: 6 }}>邀請碼或購買序號</div>
                         <div className="line-input sync-token">
                           <input
-                            placeholder="朋友填邀請碼 QQ／購買者填序號"
+                            placeholder="邀請碼或購買序號"
                             value={license}
                             onChange={(e) => setLicense(e.target.value.trim())}
                           />
@@ -129,11 +129,11 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         </div>
                         <div className="data-actions" style={{ marginTop: 12 }}>
                           <button
-                            disabled={
-                              !cloudEmail.includes('@') || cloudPw.length < 8 || license.trim().length < 2
-                            }
                             onClick={() =>
                               cloudAct(async () => {
+                                if (license.trim().length < 2) throw new Error('請先填邀請碼或購買序號')
+                                if (!cloudEmail.includes('@')) throw new Error('請填你的 Email')
+                                if (cloudPw.length < 8) throw new Error('密碼至少 8 碼')
                                 const mode = await activateWithCode(license, cloudEmail, cloudPw)
                                 setCloudUser(cloudEmail)
                                 setCloudStage('in')

@@ -5,7 +5,15 @@
 import { Capacitor } from '@capacitor/core'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL, cloudEnabled } from './cloudConfig'
-import { allDataKeys, loadMeta, setOnDataWrite, writeFromCloud } from './storage'
+import {
+  allDataKeys,
+  clearAllLocalData,
+  isCloudBound,
+  loadMeta,
+  markCloudBound,
+  setOnDataWrite,
+  writeFromCloud,
+} from './storage'
 
 let client: SupabaseClient | null = null
 
@@ -148,7 +156,17 @@ let pushTimer: ReturnType<typeof setTimeout> | null = null
 export const startAutoSync = async (onChange?: (msg: string) => void): Promise<void> => {
   if (!cloudEnabled()) return
   const email = await currentEmail()
-  if (!email) return
+  if (!email) {
+    // 此裝置曾登入雲端帳號、但現在沒有有效 session（登出或過期）→
+    // 清掉殘留的雲端資料、回到空白。資料都在雲端，重新登入即還原。
+    // 從沒登入過的純本機使用者（無此標記）不受影響。
+    if (isCloudBound()) {
+      clearAllLocalData()
+      location.reload()
+    }
+    return
+  }
+  markCloudBound()
 
   try {
     const { pulled } = await syncNow()
