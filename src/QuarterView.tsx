@@ -73,12 +73,6 @@ export default function QuarterView({ quarterKey, onQuarterChange, settings }: P
         <h2 className="section-title">Q{q}</h2>
         <p className="section-sub">{y} 年・{Q_CN[q - 1]}（{startMonth}–{lastMonth} 月）</p>
 
-        <PeriodSummary
-          title="本季總結"
-          periodLabel={`${y} 年 ${Q_CN[q - 1]}`}
-          dayKeys={dayKeys}
-        />
-
         <div className="label">本季優先事項</div>
         {entry.priorities.map((p, i) => (
           <div key={i} className={`week-task-row ${p.done ? 'done' : ''}`}>
@@ -163,6 +157,12 @@ export default function QuarterView({ quarterKey, onQuarterChange, settings }: P
           value={entry.highlights}
           onValue={(v) => update({ highlights: v })}
           placeholder="這一季最值得記住的時刻⋯"
+        />
+
+        <PeriodSummary
+          title="本季總結"
+          periodLabel={`${y} 年 ${Q_CN[q - 1]}`}
+          dayKeys={dayKeys}
         />
       </div>
     </div>

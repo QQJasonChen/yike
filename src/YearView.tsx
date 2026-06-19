@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { TextField } from './fields'
 import Gantt, { spanToCells } from './Gantt'
 import HabitHeatmap from './HabitHeatmap'
+import PeriodSummary from './PeriodSummary'
 import { allDayKeys, loadDay, loadYear, mondayOf, saveYear, toDateKey } from './storage'
 import { Settings, YearEntry } from './types'
 
@@ -259,6 +260,19 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
           <i className="yr-swatch lv5" />
           <span>5 分</span>
         </div>
+
+        <PeriodSummary
+          title="本年總結"
+          periodLabel={`${year} 年`}
+          dayKeys={Array.from({ length: 12 }, (_, mi) => {
+            const m = mi + 1
+            const dim = new Date(year, m, 0).getDate()
+            return Array.from(
+              { length: dim },
+              (_, di) => `${year}-${String(m).padStart(2, '0')}-${String(di + 1).padStart(2, '0')}`
+            )
+          }).flat()}
+        />
       </div>
     </div>
   )

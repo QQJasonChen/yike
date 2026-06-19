@@ -130,14 +130,6 @@ export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay
           })}
         </div>
 
-        <PeriodSummary
-          title="本月總結"
-          periodLabel={`${y} 年 ${m} 月`}
-          dayKeys={Array.from({ length: daysInMonth }, (_, i) =>
-            `${monthKey}-${String(i + 1).padStart(2, '0')}`
-          )}
-        />
-
         <div className="label">本月優先事項</div>
         {entry.priorities.map((p, i) => (
           <div key={i} className={`week-task-row ${p.done ? 'done' : ''}`}>
@@ -225,6 +217,14 @@ export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay
           value={entry.highlights}
           onValue={(v) => update({ highlights: v })}
           placeholder="這個月最值得記住的時刻⋯"
+        />
+
+        <PeriodSummary
+          title="本月總結"
+          periodLabel={`${y} 年 ${m} 月`}
+          dayKeys={Array.from({ length: daysInMonth }, (_, i) =>
+            `${monthKey}-${String(i + 1).padStart(2, '0')}`
+          )}
         />
       </div>
     </div>
