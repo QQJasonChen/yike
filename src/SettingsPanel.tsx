@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import {
-  activateLicense,
+  activateWithCode,
   cloudEnabled,
   currentEmail,
   signInOrUp,
@@ -100,22 +100,13 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                     {!isNative && authMode === 'activate' ? (
                       <>
                         <p className="sync-help">
-                          雲端同步是<b>付費功能</b>：購買後會拿到<b>序號</b>，在這裡啟用即可全裝置自動同步。
-                          本機記錄與全部功能<b>永久免費</b>。
+                          想跨裝置用同一份資料？<b>朋友直接輸入邀請碼 <code>QQ</code></b> 就能開通——
+                          邀請碼大家共用，下面的 Email＋密碼是<b>你自己的</b>（換裝置用它登入）。本機與全部功能<b>永久免費</b>。
                         </p>
-                        <a
-                          className="buy-cta"
-                          href="https://qqleveragelearning.gumroad.com/l/yike"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          ☁️ 還沒購買？前往 Gumroad 取得序號
-                          <small>本機永久免費 · 跨裝置同步為付費</small>
-                        </a>
-                        <div className="label" style={{ marginTop: 14 }}>已購買？輸入序號啟用</div>
+                        <div className="label" style={{ marginTop: 6 }}>邀請碼或購買序號</div>
                         <div className="line-input sync-token">
                           <input
-                            placeholder="購買序號（Gumroad License Key）"
+                            placeholder="朋友填邀請碼 QQ／購買者填序號"
                             value={license}
                             onChange={(e) => setLicense(e.target.value.trim())}
                           />
@@ -123,7 +114,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         <div className="line-input sync-token">
                           <input
                             type="email"
-                            placeholder="Email（請用購買時填的）"
+                            placeholder="你的 Email"
                             value={cloudEmail}
                             onChange={(e) => setCloudEmail(e.target.value.trim())}
                           />
@@ -139,25 +130,38 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         <div className="data-actions" style={{ marginTop: 12 }}>
                           <button
                             disabled={
-                              !cloudEmail.includes('@') || cloudPw.length < 8 || license.length < 8
+                              !cloudEmail.includes('@') || cloudPw.length < 8 || license.trim().length < 2
                             }
                             onClick={() =>
                               cloudAct(async () => {
-                                await activateLicense(license, cloudEmail, cloudPw)
+                                const mode = await activateWithCode(license, cloudEmail, cloudPw)
                                 setCloudUser(cloudEmail)
                                 setCloudStage('in')
                                 const r = await syncNow()
                                 await startAutoSync()
-                                setCloudMsg(`✓ 序號啟用成功，已同步（↓${r.pulled} ↑${r.pushed}）`)
+                                setCloudMsg(
+                                  `✓ ${mode === 'up' ? '開通成功' : '登入成功'}，已同步（↓${r.pulled} ↑${r.pushed}）`
+                                )
+                                if (r.pulled > 0) setTimeout(() => location.reload(), 1000)
                               })
                             }
                           >
-                            啟用並登入
+                            開通並登入
                           </button>
                           <button className="link-btn" onClick={() => setAuthMode('login')}>
                             已經有帳號？直接登入
                           </button>
                         </div>
+                        <a
+                          className="buy-cta"
+                          style={{ marginTop: 14 }}
+                          href="https://qqleveragelearning.gumroad.com/l/yike"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          ☁️ 不認識我、想支持購買？前往 Gumroad
+                          <small>朋友用邀請碼即可 · 這裡給想付費支持的人</small>
+                        </a>
                       </>
                     ) : (
                       <>

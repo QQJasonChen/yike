@@ -71,6 +71,21 @@ export const signInOrUp = async (email: string, password: string): Promise<'in' 
   return 'up'
 }
 
+// 朋友共用邀請碼（軟性 gate）。Beta 期間 Supabase 已開放註冊，輸入此碼＝直接建免費帳號。
+// Beta 結束把 Supabase 註冊關掉，這條路自然失效，已建好的朋友帳號照常。
+export const FRIEND_CODE = 'QQ'
+
+/** 開通：邀請碼 → 直接建免費帳號；其他字串 → 當作 Gumroad 購買序號 */
+export const activateWithCode = async (
+  code: string,
+  email: string,
+  password: string
+): Promise<'in' | 'up'> => {
+  if (code.trim().toUpperCase() === FRIEND_CODE) return signInOrUp(email, password)
+  await activateLicense(code, email, password)
+  return 'up'
+}
+
 export const currentEmail = async (): Promise<string | null> => {
   const { data } = await (await supa()).auth.getSession()
   return data.session?.user.email ?? null
