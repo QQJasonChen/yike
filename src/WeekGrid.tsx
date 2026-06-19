@@ -36,6 +36,7 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
   const [act, setAct] = useState<Act | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
   const bodyRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const suppressClick = useRef(false) // 滑鼠拖完別誤觸開編輯
   const todayKey = toDateKey(new Date())
   const dayKeys = Array.from({ length: 7 }, (_, i) => addDays(mondayKey, i))
 
@@ -85,14 +86,16 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
 
   const bodyDown = (dayKey: string) => (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('.wk-block, .block-pop')) return
+    setEditing(null)
+    if (e.pointerType === 'touch') return // 手機：放手讓頁面滑動，不建立
     e.preventDefault()
     capture(e)
-    setEditing(null)
     const m = yToMin(dayKey, e.clientY)
     setAct({ kind: 'create', dayKey, a: m, b: m + SLOT, moved: false })
   }
 
   const blockDown = (dayKey: string, b: Block) => (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') return // 手機：交給 onClick 開編輯，不拖曳
     e.preventDefault()
     e.stopPropagation()
     capture(e)
@@ -109,6 +112,7 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
   }
 
   const resizeDown = (dayKey: string, b: Block) => (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') return // 手機：不縮放（用編輯框的 ＋／− 改長度）
     e.preventDefault()
     e.stopPropagation()
     capture(e)
@@ -142,10 +146,16 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
       }
       // 純單點空白＝不建立（避免誤觸）
     } else if (act.kind === 'move') {
-      if (act.moved) updateBlock(act.dayKey, act.id, { start: act.cur, end: act.cur + act.dur })
-      else setEditing({ dayKey: act.dayKey, blockId: act.id }) // 單點＝編輯
+      if (act.moved) {
+        updateBlock(act.dayKey, act.id, { start: act.cur, end: act.cur + act.dur })
+        suppressClick.current = true // 拖過了，別讓接下來的 click 開編輯
+      }
+      // 沒拖＝單點，交給 onClick 開編輯
     } else if (act.kind === 'resize') {
-      if (act.moved) updateBlock(act.dayKey, act.id, { end: act.cur })
+      if (act.moved) {
+        updateBlock(act.dayKey, act.id, { end: act.cur })
+        suppressClick.current = true
+      }
     }
     setAct(null)
   }
@@ -206,6 +216,13 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
                       }`}
                       style={{ top: minToY(top), height: minToY(bottom) - minToY(top) - 1 }}
                       onPointerDown={blockDown(k, b)}
+                      onClick={() => {
+                        if (suppressClick.current) {
+                          suppressClick.current = false
+                          return
+                        }
+                        setEditing({ dayKey: k, blockId: b.id })
+                      }}
                       title={`${fmt(b.start)}–${fmt(b.end)} ${b.text}`}
                     >
                       {b.text || '·'}

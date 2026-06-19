@@ -1282,7 +1282,7 @@ button.wk-head:hover {
 .wk-body {
   position: relative;
   cursor: crosshair;
-  touch-action: none; /* 讓觸控拖曳建立/移動，不被頁面捲動吃掉 */
+  /* 不設 touch-action:none — 手機要能正常滑動頁面（拖曳建立僅限桌機滑鼠） */
 }
 
 .wk-cell {
@@ -1307,7 +1307,6 @@ button.wk-head:hover {
   padding: 1px 5px;
   overflow: hidden;
   cursor: grab;
-  touch-action: none;
   z-index: 2;
   transition: opacity 0.2s, box-shadow 0.2s;
 }
@@ -1339,7 +1338,6 @@ button.wk-head:hover {
   bottom: 0;
   height: 8px;
   cursor: ns-resize;
-  touch-action: none;
 }
 .wk-resize::after {
   content: '';
