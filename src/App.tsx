@@ -107,10 +107,10 @@ export default function App() {
             今天
           </button>
           <button className={tab === 'week' ? 'active' : ''} onClick={() => setTab('week')}>
-            本週
+            週
           </button>
           <button className={tab === 'month' ? 'active' : ''} onClick={() => setTab('month')}>
-            本月
+            月
           </button>
           <button className={tab === 'quarter' ? 'active' : ''} onClick={() => setTab('quarter')}>
             季
