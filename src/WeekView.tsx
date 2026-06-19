@@ -216,10 +216,6 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
           />
         </div>
 
-        <p className="sched-pointer hint">
-          時程規劃（甘特）已移到上方「<b>時程</b>」分頁，畫面更清爽。
-        </p>
-
         {section('本週五大最重要任務', '如果這週只完成這五件事，你會滿意', 0, 5)}
         {section('次要任務', '完成上面的才做這些', 5, 10)}
         {section('額外任務', '行有餘力再做', 10, 15)}
