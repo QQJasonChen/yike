@@ -1,20 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TextArea, TextField } from './fields'
 import MiniCal from './MiniCal'
-import Gantt, { spanToCells } from './Gantt'
 import HabitHeatmap from './HabitHeatmap'
 import PeriodSummary from './PeriodSummary'
-import {
-  addMonths,
-  loadDay,
-  loadMonth,
-  loadYear,
-  mondayOf,
-  saveMonth,
-  saveYear,
-  toDateKey,
-} from './storage'
-import { DayEntry, MonthEntry, Settings, YearEntry } from './types'
+import { addMonths, loadDay, loadMonth, mondayOf, saveMonth, toDateKey } from './storage'
+import { DayEntry, MonthEntry, Settings } from './types'
 
 const MOODS = ['😖', '🙁', '😐', '🙂', '😄']
 const MONTHS_EN = [
@@ -32,13 +22,10 @@ interface Props {
 
 export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay }: Props) {
   const [entry, setEntry] = useState<MonthEntry>(() => loadMonth(monthKey))
-  // 年度目標（向上對齊：這個月的優先事項是否推進年度目標）
-  const [yearEntry, setYearEntry] = useState<YearEntry>(() => loadYear(monthKey.slice(0, 4)))
   const todayKey = toDateKey(new Date())
 
   useEffect(() => {
     setEntry(loadMonth(monthKey))
-    setYearEntry(loadYear(monthKey.slice(0, 4)))
   }, [monthKey])
 
   const update = (patch: Partial<MonthEntry>) => {
@@ -155,47 +142,6 @@ export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay
             </button>
           </div>
         ))}
-
-        <Gantt
-          title="本月甘特"
-          hint="點一天＝選/取消（可挑不連續）・拖曳＝一次選連續多天・雙擊橫條清那段"
-          emptyHint="先寫下本月優先事項，這裡就會出現可拖拉的時程列"
-          labelWidth={130}
-          cols={Array.from({ length: daysInMonth }, (_, d) => ({
-            label: String(d + 1),
-            today: `${monthKey}-${String(d + 1).padStart(2, '0')}` === todayKey,
-          }))}
-          rows={entry.priorities
-            .map((p, i) => ({ ...p, i, cells: p.cells ?? spanToCells(p.span) }))
-            .filter((p) => p.text.trim())}
-          onCells={(i, cells) => {
-            const priorities = entry.priorities.slice()
-            priorities[i] = { ...priorities[i], cells, span: null }
-            update({ priorities })
-          }}
-        />
-
-        <Gantt
-          title="年度目標進度"
-          hint="這個月在推進哪個年度目標？金色帶＝本月"
-          emptyHint="到「年」頁寫下年度三大目標並拖出起訖月，這裡就能對照本月與年目標"
-          labelWidth={130}
-          cols={Array.from({ length: 12 }, (_, mi) => ({
-            label: `${mi + 1}月`,
-            today: `${y}-${String(mi + 1).padStart(2, '0')}` === todayKey.slice(0, 7),
-            active: mi + 1 === m,
-          }))}
-          rows={yearEntry.goals
-            .map((g, i) => ({ ...g, i, cells: g.cells ?? spanToCells(g.span) }))
-            .filter((g) => g.text.trim())}
-          onCells={(i, cells) => {
-            const goals = yearEntry.goals.slice()
-            goals[i] = { ...goals[i], cells, span: null }
-            const next = { ...yearEntry, goals }
-            saveYear(monthKey.slice(0, 4), next)
-            setYearEntry(next)
-          }}
-        />
 
         {settings.habits.length > 0 && (
           <>

@@ -3199,6 +3199,53 @@ button.mc-month:disabled { cursor: default; }
 /* 甘特標題列：標題＋圖例同一行（圖例靠右），說明文字自動換到下一行，永不擠在一起 */
 .gantt-head { flex-wrap: wrap; gap: 6px 10px; }
 .gantt-head .g-title { white-space: nowrap; }
+/* 時程 tab 的週期切換（週/月/季/年） */
+.sched-tabs {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 4px 0 2px;
+}
+.sched-tabs button {
+  font-family: var(--hand);
+  font-size: 15px;
+  color: var(--ink-soft);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sched-tabs button:hover { color: var(--ink); }
+.sched-tabs button.active {
+  color: var(--gold-deep);
+  background: rgba(184, 146, 62, 0.1);
+  border-color: rgba(184, 146, 62, 0.35);
+  font-weight: 700;
+}
+
+/* 可收合甘特：標題列變成點擊按鈕 */
+.g-collapse {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.g-collapse .g-caret { font-size: 10px; color: var(--ink-faint); width: 12px; }
+.g-collapse .g-count {
+  font-family: var(--eng);
+  font-size: 11px;
+  color: var(--ink-faint);
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  padding: 0 7px;
+}
 .gantt-head .g-legend { margin-left: auto; }
 .gantt-head .hint { flex-basis: 100%; margin: 0; }
 

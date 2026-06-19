@@ -5,6 +5,7 @@ import WeekView from './WeekView'
 import MonthView from './MonthView'
 import QuarterView from './QuarterView'
 import YearView from './YearView'
+import ScheduleView from './ScheduleView'
 import LifeView from './LifeView'
 import HistoryView from './HistoryView'
 import SettingsPanel from './SettingsPanel'
@@ -24,7 +25,7 @@ import {
 } from './storage'
 import { Settings } from './types'
 
-type Tab = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'life' | 'history'
+type Tab = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'schedule' | 'life' | 'history'
 
 export default function App() {
   const todayKey = toDateKey(new Date())
@@ -117,6 +118,9 @@ export default function App() {
           <button className={tab === 'year' ? 'active' : ''} onClick={() => setTab('year')}>
             年
           </button>
+          <button className={tab === 'schedule' ? 'active' : ''} onClick={() => setTab('schedule')}>
+            時程
+          </button>
           <button className={tab === 'life' ? 'active' : ''} onClick={() => setTab('life')}>
             願景
           </button>
@@ -202,6 +206,7 @@ export default function App() {
           }}
         />
       )}
+      {tab === 'schedule' && <ScheduleView />}
       {tab === 'life' && <LifeView />}
       {tab === 'history' && (
         <HistoryView

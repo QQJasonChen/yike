@@ -19,6 +19,8 @@ interface Props {
   rows: GanttRow[]
   labelWidth?: number
   legend?: { tone: GanttTone; label: string }[]
+  collapsible?: boolean // 標題可點擊收合（時程 tab 用）
+  defaultOpen?: boolean // collapsible 時的預設展開狀態
   onCells: (rowIndex: number, cells: number[]) => void
 }
 
@@ -38,7 +40,19 @@ const toRuns = (cells: number[]): [number, number][] => {
   return runs
 }
 
-export default function Gantt({ title, hint, emptyHint, cols, rows, labelWidth = 150, legend, onCells }: Props) {
+export default function Gantt({
+  title,
+  hint,
+  emptyHint,
+  cols,
+  rows,
+  labelWidth = 150,
+  legend,
+  collapsible = false,
+  defaultOpen = true,
+  onCells,
+}: Props) {
+  const [open, setOpen] = useState(collapsible ? defaultOpen : true)
   const [drag, setDrag] = useState<{ row: number; a: number; b: number; moved: boolean } | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
   const n = cols.length
@@ -96,8 +110,16 @@ export default function Gantt({ title, hint, emptyHint, cols, rows, labelWidth =
   return (
     <div className="gantt-wrap">
       <div className="label gantt-head">
-        <span className="g-title">{title}</span>
-        {legend && rows.length > 0 && (
+        {collapsible ? (
+          <button className="g-collapse" onClick={() => setOpen((o) => !o)}>
+            <span className="g-caret">{open ? '▾' : '▸'}</span>
+            <span className="g-title">{title}</span>
+            {!open && rows.length > 0 && <span className="g-count">{rows.length}</span>}
+          </button>
+        ) : (
+          <span className="g-title">{title}</span>
+        )}
+        {open && legend && rows.length > 0 && (
           <span className="g-legend">
             {legend.map((l) => (
               <span key={l.tone}>
@@ -107,11 +129,11 @@ export default function Gantt({ title, hint, emptyHint, cols, rows, labelWidth =
             ))}
           </span>
         )}
-        {(rows.length ? hint : emptyHint) && (
+        {open && (rows.length ? hint : emptyHint) && (
           <span className="hint">{rows.length ? hint : emptyHint}</span>
         )}
       </div>
-      {rows.length === 0 ? (
+      {!open ? null : rows.length === 0 ? (
         <div className="gantt g-empty">
           點格子選／取消・拖一段一次選多天 →　像這樣
           <span className="g-demo" />
@@ -147,7 +169,7 @@ export default function Gantt({ title, hint, emptyHint, cols, rows, labelWidth =
                 {cols.map((c, d) => (
                   <div key={d} className={`g-cell ${c.today ? 'today' : ''} ${c.active ? 'active' : ''}`} />
                 ))}
-                {runs.map(([s, e], ri) => (
+                {runs.map(([s, e]) => (
                   <div
                     key={`${s}-${e}`}
                     className={`g-bar tone-${t.tone ?? 'ink'} ${t.done ? 'done' : ''}`}
@@ -157,9 +179,7 @@ export default function Gantt({ title, hint, emptyHint, cols, rows, labelWidth =
                       onCells(t.i, cells.filter((c) => c < s || c > e))
                     }}
                     title={`${t.text}（雙擊清除這段）`}
-                  >
-                    {ri === 0 ? t.text : ''}
-                  </div>
+                  />
                 ))}
                 {dragOnThis && (
                   <div

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TextField } from './fields'
-import Gantt, { spanToCells } from './Gantt'
 import HabitHeatmap from './HabitHeatmap'
 import PeriodSummary from './PeriodSummary'
 import { allDayKeys, loadDay, loadYear, mondayOf, saveYear, toDateKey } from './storage'
@@ -138,24 +137,6 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
             ＋ 新增目標
           </button>
         </div>
-
-        <Gantt
-          title="年度甘特"
-          hint="點一月＝選/取消（可挑不連續）・拖曳＝一次選連續多月・雙擊橫條清那段"
-          emptyHint="先寫下年度三大目標，這裡就會出現可拖拉的時程列"
-          cols={Array.from({ length: 12 }, (_, mi) => ({
-            label: `${mi + 1}月`,
-            today: year === new Date().getFullYear() && mi === new Date().getMonth(),
-          }))}
-          rows={entry.goals
-            .map((g, i) => ({ ...g, i, cells: g.cells ?? spanToCells(g.span) }))
-            .filter((g) => g.text.trim())}
-          onCells={(i, cells) => {
-            const goals = entry.goals.slice()
-            goals[i] = { ...goals[i], cells, span: null }
-            update({ goals })
-          }}
-        />
 
         <div className="label">
           整年一覽{' '}
