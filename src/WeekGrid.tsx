@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TextField } from './fields'
 import { addDays, fromDateKey, loadDay, saveDay, toDateKey } from './storage'
 import { Block, DayEntry } from './types'
 
 // 無印良品週間バーチカル式：7 天直欄 × 06:00–23:00 時間格
+// 互動：空白拖曳＝建立（拖多長就多長）、拖橫條＝移動、拖底部把手＝改長度、單點橫條＝編輯。
 const START_MIN = 6 * 60
 const END_MIN = 23 * 60
 const SLOT = 30
@@ -18,6 +19,11 @@ const newId = () => `wb${++seq}-${performance.now().toString(36)}`
 
 const WD_EN = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 
+type Act =
+  | { kind: 'create'; dayKey: string; a: number; b: number; moved: boolean }
+  | { kind: 'move'; dayKey: string; id: string; downMin: number; origStart: number; dur: number; cur: number; moved: boolean }
+  | { kind: 'resize'; dayKey: string; id: string; start: number; cur: number; moved: boolean }
+
 interface Props {
   mondayKey: string
   query: string
@@ -27,6 +33,9 @@ interface Props {
 export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
   const [entries, setEntries] = useState<Record<string, DayEntry>>({})
   const [editing, setEditing] = useState<{ dayKey: string; blockId: string } | null>(null)
+  const [act, setAct] = useState<Act | null>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const bodyRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const todayKey = toDateKey(new Date())
   const dayKeys = Array.from({ length: 7 }, (_, i) => addDays(mondayKey, i))
 
@@ -46,17 +55,6 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
     })
   }
 
-  const addBlock = (dayKey: string, e: React.MouseEvent<HTMLDivElement>) => {
-    const col = e.currentTarget.getBoundingClientRect()
-    const min = Math.min(
-      END_MIN - SLOT,
-      Math.max(START_MIN, START_MIN + Math.floor((e.clientY - col.top) / SLOT_PX) * SLOT)
-    )
-    const b: Block = { id: newId(), start: min, end: min + SLOT, text: '', taskIndex: null }
-    saveBlocks(dayKey, [...(entries[dayKey]?.blocks ?? []), b])
-    setEditing({ dayKey, blockId: b.id })
-  }
-
   const updateBlock = (dayKey: string, id: string, patch: Partial<Block>) =>
     saveBlocks(
       dayKey,
@@ -68,6 +66,90 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
     setEditing(null)
   }
 
+  // 滑鼠/觸控 Y → 對齊 30 分鐘的分鐘數
+  const yToMin = (dayKey: string, clientY: number): number => {
+    const el = bodyRefs.current[dayKey]
+    if (!el) return START_MIN
+    const r = el.getBoundingClientRect()
+    const raw = START_MIN + ((clientY - r.top) / SLOT_PX) * SLOT
+    return Math.max(START_MIN, Math.min(END_MIN, Math.round(raw / SLOT) * SLOT))
+  }
+
+  const capture = (e: React.PointerEvent) => {
+    try {
+      gridRef.current?.setPointerCapture(e.pointerId)
+    } catch {
+      /* 合成事件略過 */
+    }
+  }
+
+  const bodyDown = (dayKey: string) => (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('.wk-block, .block-pop')) return
+    e.preventDefault()
+    capture(e)
+    setEditing(null)
+    const m = yToMin(dayKey, e.clientY)
+    setAct({ kind: 'create', dayKey, a: m, b: m + SLOT, moved: false })
+  }
+
+  const blockDown = (dayKey: string, b: Block) => (e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    capture(e)
+    setAct({
+      kind: 'move',
+      dayKey,
+      id: b.id,
+      downMin: yToMin(dayKey, e.clientY),
+      origStart: b.start,
+      dur: b.end - b.start,
+      cur: b.start,
+      moved: false,
+    })
+  }
+
+  const resizeDown = (dayKey: string, b: Block) => (e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    capture(e)
+    setAct({ kind: 'resize', dayKey, id: b.id, start: b.start, cur: b.end, moved: false })
+  }
+
+  const onMove = (e: React.PointerEvent) => {
+    if (!act) return
+    const m = yToMin(act.dayKey, e.clientY)
+    if (act.kind === 'create') {
+      setAct({ ...act, b: m, moved: act.moved || m !== act.a })
+    } else if (act.kind === 'move') {
+      const delta = m - act.downMin
+      const ns = Math.max(START_MIN, Math.min(END_MIN - act.dur, act.origStart + delta))
+      setAct({ ...act, cur: ns, moved: act.moved || ns !== act.origStart })
+    } else {
+      const ne = Math.max(act.start + SLOT, m)
+      setAct({ ...act, cur: ne, moved: act.moved || ne !== act.cur })
+    }
+  }
+
+  const onUp = () => {
+    if (!act) return
+    if (act.kind === 'create') {
+      if (act.moved) {
+        const lo = Math.min(act.a, act.b)
+        const hi = Math.max(act.a, act.b)
+        const nb: Block = { id: newId(), start: lo, end: Math.max(hi, lo + SLOT), text: '', taskIndex: null }
+        saveBlocks(act.dayKey, [...(entries[act.dayKey]?.blocks ?? []), nb])
+        setEditing({ dayKey: act.dayKey, blockId: nb.id })
+      }
+      // 純單點空白＝不建立（避免誤觸）
+    } else if (act.kind === 'move') {
+      if (act.moved) updateBlock(act.dayKey, act.id, { start: act.cur, end: act.cur + act.dur })
+      else setEditing({ dayKey: act.dayKey, blockId: act.id }) // 單點＝編輯
+    } else if (act.kind === 'resize') {
+      if (act.moved) updateBlock(act.dayKey, act.id, { end: act.cur })
+    }
+    setAct(null)
+  }
+
   const hours: number[] = []
   for (let m = START_MIN; m < END_MIN; m += 60) hours.push(m)
 
@@ -76,7 +158,7 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
 
   return (
     <div className="wk-scroll">
-      <div className="wk-grid">
+      <div className="wk-grid" ref={gridRef} onPointerMove={onMove} onPointerUp={onUp}>
         <div className="wk-gutter">
           <div className="wk-head" />
           {hours.map((m) => (
@@ -91,35 +173,55 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
           const isToday = k === todayKey
           const blocks = entries[k]?.blocks ?? []
           const edit = editing?.dayKey === k ? blocks.find((b) => b.id === editing.blockId) : null
+          const ghost =
+            act?.kind === 'create' && act.dayKey === k && act.moved
+              ? [Math.min(act.a, act.b), Math.max(act.a, act.b)]
+              : null
           return (
             <div key={k} className={`wk-col ${isToday ? 'today' : ''}`}>
               <button className="wk-head" onClick={() => onOpenDay(k)} title="打開這一天">
                 <span className="wk-daynum">{d.getDate()}</span> {WD_EN[di]}
               </button>
-              <div className="wk-body" onClick={(e) => {
-                if ((e.target as HTMLElement).closest('.wk-block, .block-pop')) return
-                addBlock(k, e as React.MouseEvent<HTMLDivElement>)
-              }}>
+              <div
+                className="wk-body"
+                ref={(el) => (bodyRefs.current[k] = el)}
+                onPointerDown={bodyDown(k)}
+              >
                 {Array.from({ length: (END_MIN - START_MIN) / SLOT }, (_, i) => (
                   <div key={i} className={`wk-cell ${i % 2 === 1 ? 'hour-end' : ''}`} />
                 ))}
 
-                {blocks.map((b) => (
+                {blocks.map((b) => {
+                  const moving = act?.kind === 'move' && act.id === b.id
+                  const resizing = act?.kind === 'resize' && act.id === b.id
+                  const top = moving ? act.cur : b.start
+                  const bottom = resizing ? act.cur : moving ? act.cur + act.dur : b.end
+                  return (
+                    <div
+                      key={b.id}
+                      className={`wk-block ${b.taskIndex !== null ? 'linked' : ''} ${
+                        q && b.text.toLowerCase().includes(q) ? 'hit' : ''
+                      } ${q && !b.text.toLowerCase().includes(q) ? 'dim' : ''} ${
+                        moving || resizing ? 'dragging' : ''
+                      }`}
+                      style={{ top: minToY(top), height: minToY(bottom) - minToY(top) - 1 }}
+                      onPointerDown={blockDown(k, b)}
+                      title={`${fmt(b.start)}–${fmt(b.end)} ${b.text}`}
+                    >
+                      {b.text || '·'}
+                      <span className="wk-resize" onPointerDown={resizeDown(k, b)} />
+                    </div>
+                  )
+                })}
+
+                {ghost && (
                   <div
-                    key={b.id}
-                    className={`wk-block ${b.taskIndex !== null ? 'linked' : ''} ${
-                      q && b.text.toLowerCase().includes(q) ? 'hit' : ''
-                    } ${q && !b.text.toLowerCase().includes(q) ? 'dim' : ''}`}
-                    style={{ top: minToY(b.start), height: minToY(b.end) - minToY(b.start) - 1 }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditing({ dayKey: k, blockId: b.id })
-                    }}
-                    title={`${fmt(b.start)}–${fmt(b.end)} ${b.text}`}
+                    className="wk-block dragging ghost"
+                    style={{ top: minToY(ghost[0]), height: Math.max(SLOT_PX, minToY(ghost[1]) - minToY(ghost[0])) }}
                   >
-                    {b.text || '·'}
+                    {fmt(ghost[0])}
                   </div>
-                ))}
+                )}
 
                 {isToday && nowMin >= START_MIN && nowMin <= END_MIN && (
                   <div className="now-line wk-now" style={{ top: minToY(nowMin) }} />
@@ -129,7 +231,7 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
                   <div
                     className="block-pop wk-pop"
                     style={{ top: Math.max(0, minToY(edit.start) - 4) }}
-                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
                   >
                     <TextField
                       autoFocus
