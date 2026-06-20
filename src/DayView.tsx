@@ -53,6 +53,10 @@ export default function DayView({
   const [weekEntry, setWeekEntry] = useState<WeekEntry>(() => loadWeek(mondayOf(dateKey)))
   const [copied, setCopied] = useState(false)
   const [rolloverDone, setRolloverDone] = useState(false)
+  // 今日時間軸：手機預設收起（桌機永遠展開、不顯示切換鈕）
+  const [showTimeline, setShowTimeline] = useState(
+    () => !(typeof window !== 'undefined' && window.matchMedia('(max-width: 560px)').matches)
+  )
   const [addingHabit, setAddingHabit] = useState(false)
   const [newHabit, setNewHabit] = useState('')
 
@@ -476,14 +480,24 @@ export default function DayView({
               selectedDay={dateKey}
               onPick={onDateChange}
             />
-            <Timeline
-              blocks={entry.blocks}
-              isToday={isToday}
-              routines={settings.routines}
-              onChange={(blocks) => update({ blocks })}
-              onRoutinesChange={(routines) => onSettingsChange({ ...settings, routines })}
-              dropRef={dropRef}
-            />
+            <button
+              className="wk-grid-toggle day-tl-toggle"
+              onClick={() => setShowTimeline((v) => !v)}
+            >
+              <span className="g-caret">{showTimeline ? '▾' : '▸'}</span>
+              今日時間軸
+              <span className="hint">{showTimeline ? '' : '點開排時間'}</span>
+            </button>
+            {showTimeline && (
+              <Timeline
+                blocks={entry.blocks}
+                isToday={isToday}
+                routines={settings.routines}
+                onChange={(blocks) => update({ blocks })}
+                onRoutinesChange={(routines) => onSettingsChange({ ...settings, routines })}
+                dropRef={dropRef}
+              />
+            )}
           </div>
         </div>
       </div>

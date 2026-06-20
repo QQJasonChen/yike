@@ -3119,6 +3119,12 @@ button.wk-head:hover {
 @media (max-width: 560px) {
   .mc-strip,
   .yr-strip { display: none; }
+  .day-side > .mc { display: none; } /* 今天頁的小月曆，手機用上方 ‹ › 切日期就好 */
+}
+/* 收合切換鈕（本週時程表／今日時間軸）只在手機出現；
+   桌機維持原本體驗：永遠展開、不顯示切換鈕 */
+@media (min-width: 561px) {
+  .wk-grid-toggle { display: none; }
 }
 
 /* 週時程表的收合切換（手機預設收起，避免 2D 滑動陷阱） */
