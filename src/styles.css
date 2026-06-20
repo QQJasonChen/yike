@@ -3115,6 +3115,30 @@ button.wk-head:hover {
 
 @media (max-width: 1024px) { .yr-strip { grid-template-columns: repeat(4, max-content); } }
 @media (max-width: 700px) { .yr-strip { grid-template-columns: repeat(3, max-content); } }
+/* 手機：擠成一團的多月小日曆收掉，改用 ‹ › 導覽就好，畫面乾淨 */
+@media (max-width: 560px) {
+  .mc-strip,
+  .yr-strip { display: none; }
+}
+
+/* 週時程表的收合切換（手機預設收起，避免 2D 滑動陷阱） */
+.wk-grid-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--rule);
+  padding: 12px 2px;
+  margin-top: 8px;
+  cursor: pointer;
+  font-family: var(--hand);
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+.wk-grid-toggle .g-caret { font-size: 11px; color: var(--ink-faint); }
+.wk-grid-toggle .hint { margin-left: auto; }
 
 .mc-month { /* 預設大版維持原樣式 */ }
 

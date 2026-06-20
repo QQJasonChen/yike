@@ -78,6 +78,10 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
   const [week, setWeek] = useState<WeekEntry>(() => loadWeek(mondayKey))
   const [query, setQuery] = useState('')
   const hits = useMemo(() => searchAll(query), [query])
+  // 本週時程表：手機預設收起（避免又長又難滑），桌機展開
+  const [showGrid, setShowGrid] = useState(
+    () => !(typeof window !== 'undefined' && window.matchMedia('(max-width: 560px)').matches)
+  )
 
   useEffect(() => {
     setWeek(loadWeek(mondayKey))
@@ -181,24 +185,33 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
           </div>
         )}
 
-        <div className="wk-grid-nav">
-          <button onClick={() => onWeekChange(addDays(mondayKey, -7))} title="上一週">
-            ‹
-          </button>
-          <span className="wk-grid-range">{fmtRange(mondayKey)}</span>
-          {mondayKey !== mondayOf(toDateKey(new Date())) && (
-            <button
-              className="wk-today-jump"
-              onClick={() => onWeekChange(mondayOf(toDateKey(new Date())))}
-            >
-              本週
-            </button>
-          )}
-          <button onClick={() => onWeekChange(addDays(mondayKey, 7))} title="下一週">
-            ›
-          </button>
-        </div>
-        <WeekGrid mondayKey={mondayKey} query={query} onOpenDay={onOpenDay} />
+        <button className="wk-grid-toggle" onClick={() => setShowGrid((v) => !v)}>
+          <span className="g-caret">{showGrid ? '▾' : '▸'}</span>
+          本週時程表
+          <span className="hint">{showGrid ? '' : '點開排時間塊'}</span>
+        </button>
+        {showGrid && (
+          <>
+            <div className="wk-grid-nav">
+              <button onClick={() => onWeekChange(addDays(mondayKey, -7))} title="上一週">
+                ‹
+              </button>
+              <span className="wk-grid-range">{fmtRange(mondayKey)}</span>
+              {mondayKey !== mondayOf(toDateKey(new Date())) && (
+                <button
+                  className="wk-today-jump"
+                  onClick={() => onWeekChange(mondayOf(toDateKey(new Date())))}
+                >
+                  本週
+                </button>
+              )}
+              <button onClick={() => onWeekChange(addDays(mondayKey, 7))} title="下一週">
+                ›
+              </button>
+            </div>
+            <WeekGrid mondayKey={mondayKey} query={query} onOpenDay={onOpenDay} />
+          </>
+        )}
 
         <HabitWeek mondayKey={mondayKey} settings={settings} onSettingsChange={onSettingsChange} />
 
