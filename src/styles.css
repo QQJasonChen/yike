@@ -101,6 +101,90 @@ textarea::placeholder {
   white-space: nowrap;
 }
 
+/* ---------- 手機底部 tab bar（桌機隱藏） ---------- */
+.tab-bar { display: none; }
+@media (max-width: 560px) {
+  .tab-bar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    background: rgba(247, 243, 231, 0.94);
+    backdrop-filter: saturate(1.2) blur(10px);
+    -webkit-backdrop-filter: saturate(1.2) blur(10px);
+    border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .tab-bar > button {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 9px 0 7px;
+    font-family: var(--hand);
+    font-size: 14px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    position: relative;
+  }
+  .tab-bar > button.active {
+    color: var(--gold-deep);
+    font-weight: 700;
+  }
+  .tab-bar > button.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 2.5px;
+    border-radius: 0 0 3px 3px;
+    background: var(--gold-deep);
+  }
+  /* 「更多」彈出層 */
+  .tab-more-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+  }
+  .tab-more {
+    position: fixed;
+    right: 8px;
+    bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+    z-index: 61;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    padding: 10px;
+    background: var(--paper, #faf6ee);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(60, 48, 30, 0.22);
+  }
+  .tab-more > button {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid transparent;
+    border-radius: 9px;
+    padding: 10px 22px;
+    font-family: var(--hand);
+    font-size: 15px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .tab-more > button.active {
+    color: var(--gold-deep);
+    background: rgba(184, 146, 62, 0.12);
+    border-color: rgba(184, 146, 62, 0.35);
+    font-weight: 700;
+  }
+  /* 內容讓出底部 bar 的高度，避免被遮住 */
+  .page-inner {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
 .tabs {
   display: flex;
   gap: 4px;
@@ -2269,11 +2353,9 @@ button.wk-head:hover {
   .topbar {
     flex-wrap: wrap;
   }
-  /* tabs 移到第二行：order:3 讓 brand + streak 先排第一行，tabs 佔滿第二行 */
+  /* 手機：頂部 tabs 隱藏，改用底部原生 tab bar */
   .tabs {
-    order: 3;
-    flex: 0 0 100%;
-    justify-content: center;
+    display: none;
   }
   .focus-track {
     gap: 3px;

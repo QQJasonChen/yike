@@ -38,6 +38,7 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [timer, setTimer] = useState<TimerState | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const sessionSink = useRef<((taskIndex: number, startMs: number, endMs: number) => void) | null>(null)
 
   // 浮窗讀「目前計時狀態」的即時來源（用 ref 避免每次 render 重註冊）
@@ -217,6 +218,57 @@ export default function App() {
           settings={settings}
         />
       )}
+
+      {/* 手機底部原生式 tab bar（桌機隱藏，見 CSS） */}
+      <nav className="tab-bar">
+        {([
+          ['day', '今天'],
+          ['week', '週'],
+          ['month', '月'],
+          ['schedule', '時程'],
+        ] as [Tab, string][]).map(([t, label]) => (
+          <button
+            key={t}
+            className={tab === t ? 'active' : ''}
+            onClick={() => {
+              setTab(t)
+              setMoreOpen(false)
+            }}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          className={['quarter', 'year', 'life', 'history'].includes(tab) ? 'active' : ''}
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          更多
+        </button>
+        {moreOpen && (
+          <>
+            <div className="tab-more-backdrop" onClick={() => setMoreOpen(false)} />
+            <div className="tab-more">
+              {([
+                ['quarter', '季'],
+                ['year', '年'],
+                ['life', '願景'],
+                ['history', '回顧'],
+              ] as [Tab, string][]).map(([t, label]) => (
+                <button
+                  key={t}
+                  className={tab === t ? 'active' : ''}
+                  onClick={() => {
+                    setTab(t)
+                    setMoreOpen(false)
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </nav>
 
       {timer && (
         <FocusTimer
