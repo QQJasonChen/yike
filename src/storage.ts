@@ -29,6 +29,20 @@ export const markCloudBound = () => localStorage.setItem(CLOUD_BOUND_KEY, '1')
 /** 此裝置是否曾登入過雲端帳號 */
 export const isCloudBound = (): boolean => localStorage.getItem(CLOUD_BOUND_KEY) === '1'
 
+/** 殘留的 Supabase session token（key 形如 sb-xxxxx-auth-token） */
+const supabaseTokenKeys = (): string[] => {
+  const keys: string[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (k && k.startsWith('sb-') && k.includes('auth-token')) keys.push(k)
+  }
+  return keys
+}
+/** 這台是否殘留任何雲端登入痕跡（標記或 Supabase token） */
+export const hasCloudArtifact = (): boolean => isCloudBound() || supabaseTokenKeys().length > 0
+/** 清掉殘留的 Supabase session token（登出/孤兒清除時，連 token 一起清，避免重整迴圈） */
+export const clearSupabaseTokens = () => supabaseTokenKeys().forEach((k) => localStorage.removeItem(k))
+
 // ---- 日期工具（一律使用本地時區） ----
 
 export const toDateKey = (d: Date): string => {

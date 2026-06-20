@@ -8,7 +8,8 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL, cloudEnabled } from './cloudConfig'
 import {
   allDataKeys,
   clearAllLocalData,
-  isCloudBound,
+  clearSupabaseTokens,
+  hasCloudArtifact,
   loadMeta,
   markCloudBound,
   setOnDataWrite,
@@ -157,10 +158,11 @@ export const startAutoSync = async (onChange?: (msg: string) => void): Promise<v
   if (!cloudEnabled()) return
   const email = await currentEmail()
   if (!email) {
-    // 此裝置曾登入雲端帳號、但現在沒有有效 session（登出或過期）→
-    // 清掉殘留的雲端資料、回到空白。資料都在雲端，重新登入即還原。
-    // 從沒登入過的純本機使用者（無此標記）不受影響。
-    if (isCloudBound()) {
+    // 這台有雲端登入殘留（標記或 Supabase token），但目前沒有有效 session
+    // （登出 / 過期 / 舊版殘留）→ 清掉本機資料＋token、回到全空白。
+    // 資料都在雲端，重新登入即還原。從沒碰過雲端的純本機訪客不受影響。
+    if (hasCloudArtifact()) {
+      clearSupabaseTokens() // 先清 token，避免重整後又判定為殘留→無限重整
       clearAllLocalData()
       location.reload()
     }

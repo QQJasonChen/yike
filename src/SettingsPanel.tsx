@@ -12,7 +12,7 @@ import {
 } from './cloud'
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
-import { clearAllLocalData } from './storage'
+import { clearAllLocalData, clearSupabaseTokens } from './storage'
 import {
   DEFAULT_EVENING_QS,
   DEFAULT_MORNING_QS,
@@ -210,6 +210,24 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         </div>
                       </>
                     )}
+                    <div className="data-actions" style={{ marginTop: 16 }}>
+                      <button
+                        className="link-btn"
+                        onClick={() => {
+                          if (
+                            !confirm(
+                              '清空「這台裝置」上的所有本機資料、回到全空白？\n\n若你有雲端帳號，資料都在雲端、登入即可還原；純本機未同步的資料會永久消失。'
+                            )
+                          )
+                            return
+                          clearSupabaseTokens()
+                          clearAllLocalData()
+                          location.reload()
+                        }}
+                      >
+                        這台不是你的、或想清空回空白？
+                      </button>
+                    </div>
                   </>
                 )}
                 {cloudStage === 'in' && (
