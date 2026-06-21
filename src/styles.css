@@ -101,6 +101,32 @@ textarea::placeholder {
   white-space: nowrap;
 }
 
+/* 今天的週計畫摘要（從本週甘特萃取今天該推進的任務） */
+.today-plan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+  padding: 9px 12px;
+  border-left: 3px solid #db6e1c;
+  background: rgba(219, 110, 28, 0.06);
+  border-radius: 0 8px 8px 0;
+}
+.today-plan .tp-label {
+  font-family: var(--hand);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.today-plan .tp-chip {
+  font-family: var(--hand);
+  font-size: 14px;
+  color: #b2541d;
+  background: rgba(219, 110, 28, 0.12);
+  border-radius: 999px;
+  padding: 3px 12px;
+}
+
 /* ---------- 手機底部 tab bar（桌機隱藏） ---------- */
 .tab-bar { display: none; }
 @media (max-width: 560px) {

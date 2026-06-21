@@ -6,7 +6,8 @@ import { TimerState } from './FocusTimer'
 import { quoteForDate } from './quotes'
 import { TextField } from './fields'
 import { dayToMarkdown } from './exportMd'
-import { addDays, loadDay, saveDay, toDateKey } from './storage'
+import { spanToCells } from './Gantt'
+import { addDays, fromDateKey, loadDay, loadWeek, mondayOf, saveDay, toDateKey } from './storage'
 import { DayEntry, Settings, Task } from './types'
 
 const WEEKDAYS_EN = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
@@ -48,6 +49,14 @@ export default function DayView({
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
   const [copied, setCopied] = useState(false)
+  // 今天的週計畫：本週甘特裡有排到「今天」的任務（每日提醒該推進什麼）
+  const todayPlanTasks = useMemo(() => {
+    const we = loadWeek(mondayOf(dateKey))
+    const wd = (fromDateKey(dateKey).getDay() + 6) % 7 // 一=0 … 日=6
+    return we.tasks
+      .filter((t) => t.text.trim() && (t.cells ?? spanToCells(t.span)).includes(wd))
+      .map((t) => t.text.trim())
+  }, [dateKey])
   const [rolloverDone, setRolloverDone] = useState(false)
   // 今日時間軸：手機預設收起（桌機永遠展開、不顯示切換鈕）
   const [showTimeline, setShowTimeline] = useState(
@@ -239,6 +248,17 @@ export default function DayView({
         <div className="quote">
           「{quote.text}」<span className="author">— {quote.author}</span>
         </div>
+
+        {todayPlanTasks.length > 0 && (
+          <div className="today-plan">
+            <span className="tp-label">📌 今天的週計畫</span>
+            {todayPlanTasks.map((t, i) => (
+              <span key={i} className="tp-chip">
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="day-grid">
           <div>

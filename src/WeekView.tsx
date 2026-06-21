@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TextArea, TextField } from './fields'
+import Gantt, { spanToCells } from './Gantt'
+import { tierTone } from './ganttTone'
 import HabitWeek from './HabitWeek'
 import MiniCal from './MiniCal'
 import PeriodSummary from './PeriodSummary'
@@ -214,6 +216,33 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
         )}
 
         <HabitWeek mondayKey={mondayKey} settings={settings} onSettingsChange={onSettingsChange} />
+
+        <Gantt
+          title="本週甘特"
+          hint="點一天＝選/取消（可挑不連續如一·三·五）・拖曳＝一次選連續多天・雙擊橫條清那段"
+          emptyHint="在下方「本週主要任務」寫下任務，這裡就會出現可拖拉的時程列"
+          legend={[
+            { tone: 'ink', label: '主要' },
+            { tone: 'gold', label: '次要' },
+            { tone: 'sage', label: '額外' },
+          ]}
+          cols={Array.from({ length: 7 }, (_, d) => {
+            const k = addDays(mondayKey, d)
+            return {
+              label: ['一', '二', '三', '四', '五', '六', '日'][d],
+              sub: String(Number(k.slice(8, 10))),
+              today: k === toDateKey(new Date()),
+            }
+          })}
+          rows={week.tasks
+            .map((t, i) => ({ ...t, i, tone: tierTone(i), cells: t.cells ?? spanToCells(t.span) }))
+            .filter((t) => t.text.trim())}
+          onCells={(i, cells) => {
+            const tasks = week.tasks.slice()
+            tasks[i] = { ...tasks[i], cells, span: null }
+            update({ tasks })
+          }}
+        />
 
         <h2 className="section-title" style={{ marginTop: 46 }}>
           Weekly Planning
