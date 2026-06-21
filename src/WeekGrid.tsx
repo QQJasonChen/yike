@@ -148,9 +148,11 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
     } else if (act.kind === 'move') {
       if (act.moved) {
         updateBlock(act.dayKey, act.id, { start: act.cur, end: act.cur + act.dur })
-        suppressClick.current = true // 拖過了，別讓接下來的 click 開編輯
+        suppressClick.current = true // 拖過了，別讓接下來的 click 又開編輯
+      } else {
+        // 滑鼠單點＝開編輯（pointer capture 會吃掉 native click，所以在這裡直接開）
+        setEditing({ dayKey: act.dayKey, blockId: act.id })
       }
-      // 沒拖＝單點，交給 onClick 開編輯
     } else if (act.kind === 'resize') {
       if (act.moved) {
         updateBlock(act.dayKey, act.id, { end: act.cur })

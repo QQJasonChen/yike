@@ -461,6 +461,8 @@ textarea.line-area {
   border-bottom: 1px solid var(--rule);
   padding: 7px 2px 5px;
   resize: none;
+  overflow: hidden; /* 自動長高，不要內部捲軸 */
+  min-height: calc(3 * 1.8em);
   line-height: 1.8;
   background-image: repeating-linear-gradient(
     transparent,
@@ -2539,13 +2541,14 @@ button.wk-head:hover {
   background: rgba(154, 143, 125, 0.15);
 }
 
+/* 橘色強度階（荷蘭橘，與紙質感調和） */
 .hw-heat-cell.none { background: rgba(154, 143, 125, 0.12); }
-.hw-heat-cell.h0 { background: rgba(184, 146, 62, 0.12); }
-.hw-heat-cell.h1 { background: rgba(184, 146, 62, 0.3); }
-.hw-heat-cell.h2 { background: rgba(184, 146, 62, 0.5); }
-.hw-heat-cell.h3 { background: rgba(150, 115, 43, 0.7); }
-.hw-heat-cell.h4 { background: var(--gold-deep); }
-.hw-heat-cell.today { outline: 1.5px solid var(--terra); }
+.hw-heat-cell.h0 { background: rgba(225, 120, 48, 0.14); }
+.hw-heat-cell.h1 { background: rgba(225, 120, 48, 0.34); }
+.hw-heat-cell.h2 { background: rgba(223, 108, 36, 0.58); }
+.hw-heat-cell.h3 { background: rgba(202, 90, 26, 0.8); }
+.hw-heat-cell.h4 { background: #c2581c; }
+.hw-heat-cell.today { outline: 1.5px solid var(--ink-soft); }
 
 /* GitHub 式：月份標籤(上) + 星期(左) + 少→多 圖例 */
 .hw-heat-wrap {
