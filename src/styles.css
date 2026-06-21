@@ -3335,7 +3335,7 @@ button.mc-month:disabled { cursor: default; }
   height: 20px;
   line-height: 20px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #5a4734, #3d2e20); /* 五大：暖色 espresso */
+  background: linear-gradient(135deg, #ef8c3a, #db6e1c); /* 主要：亮橘 */
   color: #f5f0e6;
   font-family: var(--hand);
   font-size: 11.5px;
@@ -3348,8 +3348,8 @@ button.mc-month:disabled { cursor: default; }
   z-index: 2;
 }
 
-.g-bar.tone-gold { background: linear-gradient(135deg, #d27a3a, #b2541d); box-shadow: 0 2px 8px rgba(178, 84, 29, 0.3); } /* 次要：荷蘭橘 */
-.g-bar.tone-sage { background: linear-gradient(135deg, #c49a45, #a07d2e); box-shadow: 0 2px 8px rgba(160, 125, 46, 0.3); } /* 額外：金 */
+.g-bar.tone-gold { background: linear-gradient(135deg, #e0a64f, #c98931); box-shadow: 0 2px 8px rgba(201, 137, 49, 0.3); }
+.g-bar.tone-sage { background: linear-gradient(135deg, #d3bd7a, #bba75a); box-shadow: 0 2px 8px rgba(187, 167, 90, 0.3); }
 .g-bar.done { opacity: 0.45; text-decoration: line-through; }
 .g-bar.dragging { opacity: 0.85; box-shadow: 0 6px 16px rgba(61, 46, 32, 0.38); }
 
@@ -3409,9 +3409,9 @@ button.mc-month:disabled { cursor: default; }
 .g-legend { font-size: 11px; color: var(--ink-soft); display: inline-flex; gap: 10px; font-weight: 400; letter-spacing: 0.05em; }
 .g-legend > span { display: inline-flex; align-items: center; gap: 4px; }
 .g-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; flex: none; }
-.g-dot.tone-ink { background: #3d2e20; }
-.g-dot.tone-gold { background: #b2541d; }
-.g-dot.tone-sage { background: #a07d2e; }
+.g-dot.tone-ink { background: #db6e1c; }
+.g-dot.tone-gold { background: #c98931; }
+.g-dot.tone-sage { background: #bba75a; }
 
 @media (max-width: 640px) {
   /* 標籤欄隨螢幕寬度縮放（窄機更窄、寬機更寬），不再是死的固定寬 */

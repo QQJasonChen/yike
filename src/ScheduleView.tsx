@@ -190,7 +190,7 @@ export default function ScheduleView() {
             hint="點一天＝選/取消（可不連續）・拖曳＝連續多天・雙擊橫條清那段"
             emptyHint="到「本週」頁寫下五大任務，這裡就會出現可拖拉的時程列"
             legend={[
-              { tone: 'ink', label: '五大' },
+              { tone: 'ink', label: '主要' },
               { tone: 'gold', label: '次要' },
               { tone: 'sage', label: '額外' },
             ]}
