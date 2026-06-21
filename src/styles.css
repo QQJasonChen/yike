@@ -16,7 +16,7 @@
   --gold-soft: #e6d4a8;
   --terra: #b65c38; /* 赤陶色：強調/計時器 */
   --ink-write: #1e2a40; /* 藍黑墨水：用戶手寫的字（對比印刷的墨黑） */
-  --sage: #6e7d5c; /* 鼠尾草綠：完成 */
+  --sage: #9d7a2c; /* 完成色（原鼠尾草綠 → 暖青銅金，融入暖橘系） */
   --serif: 'Noto Serif TC', 'Songti TC', serif;
   --hand: 'LXGW WenKai TC', 'Noto Serif TC', serif;
   --eng: 'EB Garamond', Georgia, serif;
@@ -1076,7 +1076,7 @@ textarea.line-area {
 }
 
 .tl-block.linked {
-  background: linear-gradient(135deg, rgba(110, 125, 92, 0.16), rgba(110, 125, 92, 0.3));
+  background: linear-gradient(135deg, rgba(157, 122, 44, 0.16), rgba(157, 122, 44, 0.3));
   border-color: var(--sage);
   border-left-color: var(--sage);
 }
@@ -1443,7 +1443,7 @@ button.wk-head:hover {
 }
 
 .wk-block.linked {
-  background: linear-gradient(135deg, rgba(110, 125, 92, 0.18), rgba(110, 125, 92, 0.32));
+  background: linear-gradient(135deg, rgba(157, 122, 44, 0.18), rgba(157, 122, 44, 0.32));
   border-left-color: var(--sage);
 }
 
@@ -2949,7 +2949,7 @@ button.wk-head:hover {
   transition: stroke 0.3s;
 }
 
-.pie .pg-done { stroke: #5e7a4e; } /* 完成＝綠（同任務打勾），超標＝金 */
+.pie .pg-done { stroke: #9d7a2c; } /* 完成（同任務打勾的暖青銅金），超標＝金 */
 .pie .pg-rest { stroke: rgba(154, 143, 125, 0.28); }
 
 .pie .pg-dot {

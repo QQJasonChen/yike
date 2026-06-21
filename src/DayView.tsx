@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Gantt, { spanToCells } from './Gantt'
-import { tierTone } from './ganttTone'
 import MiniCal from './MiniCal'
 import TaskRow from './TaskRow'
 import Timeline from './Timeline'
@@ -8,8 +6,8 @@ import { TimerState } from './FocusTimer'
 import { quoteForDate } from './quotes'
 import { TextField } from './fields'
 import { dayToMarkdown } from './exportMd'
-import { addDays, loadDay, loadWeek, mondayOf, saveDay, saveWeek, toDateKey } from './storage'
-import { DayEntry, Settings, Task, WeekEntry } from './types'
+import { addDays, loadDay, saveDay, toDateKey } from './storage'
+import { DayEntry, Settings, Task } from './types'
 
 const WEEKDAYS_EN = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
 
@@ -49,8 +47,6 @@ export default function DayView({
   registerSessionSink,
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
-  // 本週甘特（聚焦：今天對到本週計畫的哪件事）
-  const [weekEntry, setWeekEntry] = useState<WeekEntry>(() => loadWeek(mondayOf(dateKey)))
   const [copied, setCopied] = useState(false)
   const [rolloverDone, setRolloverDone] = useState(false)
   // 今日時間軸：手機預設收起（桌機永遠展開、不顯示切換鈕）
@@ -118,7 +114,6 @@ export default function DayView({
   // 換日期時重新載入
   useEffect(() => {
     setEntry(loadDay(dateKey))
-    setWeekEntry(loadWeek(mondayOf(dateKey)))
   }, [dateKey])
 
   // 任何修改即時存檔（零儲存按鈕）
@@ -244,38 +239,6 @@ export default function DayView({
         <div className="quote">
           「{quote.text}」<span className="author">— {quote.author}</span>
         </div>
-
-        {weekEntry.tasks.some((t) => t.text.trim()) && (
-          <Gantt
-            title="本週甘特"
-            hint="點一天＝選/取消・拖曳＝連續多天・金色欄＝今天"
-            emptyHint=""
-            legend={[
-              { tone: 'ink', label: '主要' },
-              { tone: 'gold', label: '次要' },
-              { tone: 'sage', label: '額外' },
-            ]}
-            cols={Array.from({ length: 7 }, (_, wd) => {
-              const k = addDays(mondayOf(dateKey), wd)
-              return {
-                label: ['一', '二', '三', '四', '五', '六', '日'][wd],
-                sub: String(Number(k.slice(8, 10))),
-                today: k === todayKey,
-                active: k === dateKey,
-              }
-            })}
-            rows={weekEntry.tasks
-              .map((t, i) => ({ ...t, i, tone: tierTone(i), cells: t.cells ?? spanToCells(t.span) }))
-              .filter((t) => t.text.trim())}
-            onCells={(i, cells) => {
-              const tasks = weekEntry.tasks.slice()
-              tasks[i] = { ...tasks[i], cells, span: null }
-              const next = { ...weekEntry, tasks }
-              saveWeek(mondayOf(dateKey), next)
-              setWeekEntry(next)
-            }}
-          />
-        )}
 
         <div className="day-grid">
           <div>
