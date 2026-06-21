@@ -251,7 +251,7 @@ export default function DayView({
             hint="點一天＝選/取消・拖曳＝連續多天・金色欄＝今天"
             emptyHint=""
             legend={[
-              { tone: 'ink', label: '五大' },
+              { tone: 'ink', label: '主要' },
               { tone: 'gold', label: '次要' },
               { tone: 'sage', label: '額外' },
             ]}
