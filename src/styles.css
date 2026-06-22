@@ -972,6 +972,16 @@ textarea.line-area {
 .gear-btn:hover {
   color: var(--gold-deep);
 }
+.reminder-time {
+  font-family: var(--eng);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  padding: 3px 8px;
+}
+
 /* ---------- 首次開啟引導 ---------- */
 .ob-overlay {
   position: fixed;

@@ -12,6 +12,7 @@ import {
 } from './cloud'
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
+import { notify } from './notify'
 import { clearAllLocalData, clearSupabaseTokens } from './storage'
 import {
   DEFAULT_EVENING_QS,
@@ -315,6 +316,8 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
             <span className="hint fl-hint">休息結束自動接下一段專注，不用回 app 按開始</span>
           </div>
 
+          <ReminderSettings settings={settings} onChange={onSettingsChange} />
+
           <div className="settings-row focuslock-row">
             <span>昨日未完成提醒</span>
             <button
@@ -376,6 +379,51 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// 每日提醒設定（僅原生 iOS 顯示）：開關 + 時間
+function ReminderSettings({
+  settings,
+  onChange,
+}: {
+  settings: Settings
+  onChange: (s: Settings) => void
+}) {
+  if (!notify.available()) return null
+  const toggle = async () => {
+    if (settings.reminderEnabled) {
+      await notify.setDailyReminder(false, settings.reminderTime)
+      onChange({ ...settings, reminderEnabled: false })
+    } else {
+      const ok = await notify.setDailyReminder(true, settings.reminderTime)
+      if (ok) onChange({ ...settings, reminderEnabled: true })
+      else alert('需要通知權限——請到 iOS 設定 → 一刻手帳 → 通知 開啟後再試。')
+    }
+  }
+  const changeTime = async (t: string) => {
+    onChange({ ...settings, reminderTime: t })
+    if (settings.reminderEnabled) await notify.setDailyReminder(true, t)
+  }
+  return (
+    <div className="settings-row focuslock-row">
+      <span>每日提醒</span>
+      <button
+        className={`fl-toggle ${settings.reminderEnabled ? 'on' : ''}`}
+        onClick={toggle}
+      >
+        {settings.reminderEnabled ? '開啟' : '關閉'}
+      </button>
+      {settings.reminderEnabled && (
+        <input
+          type="time"
+          className="reminder-time"
+          value={settings.reminderTime}
+          onChange={(e) => changeTime(e.target.value)}
+        />
+      )}
+      <span className="hint fl-hint">每天這個時間，提醒你寫下今天最重要的任務</span>
     </div>
   )
 }

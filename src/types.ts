@@ -93,6 +93,8 @@ export interface Settings {
   showRollover: boolean // 今天頁顯示「昨日未完成 → 帶入今天」提醒（預設開）
   routines: RoutineItem[] // 時間軸快填 routine（可自訂，最多 8）
   autoLoop: boolean // 連續番茄鐘：休息結束自動接下一段專注（預設關）
+  reminderEnabled: boolean // 每日提醒（僅原生 iOS 生效）
+  reminderTime: string // 提醒時間 HH:MM
 }
 
 // 預設 routine：精簡 4 個一日骨架（一行剛好放得下；可在設定頁增到 8 個）
@@ -195,4 +197,6 @@ export const defaultSettings = (): Settings => ({
   showRollover: true,
   routines: [...DEFAULT_ROUTINES],
   autoLoop: false,
+  reminderEnabled: false,
+  reminderTime: '20:00',
 })

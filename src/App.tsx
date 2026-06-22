@@ -11,6 +11,7 @@ import HistoryView from './HistoryView'
 import SettingsPanel from './SettingsPanel'
 import FocusTimer, { TimerState } from './FocusTimer'
 import Onboarding from './Onboarding'
+import { notify } from './notify'
 import { focusLock } from './focusLock'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
 import {
@@ -99,6 +100,12 @@ export default function App() {
   // 已登入雲端帳號時：開站自動同步＋寫入自動推送
   useEffect(() => {
     startAutoSync()
+  }, [])
+
+  // 每日提醒：開 app 時重新排程一次，確保通知與目前設定一致
+  useEffect(() => {
+    if (settings.reminderEnabled) notify.setDailyReminder(true, settings.reminderTime)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const streak = currentStreak(todayKey)
