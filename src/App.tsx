@@ -10,6 +10,7 @@ import LifeView from './LifeView'
 import HistoryView from './HistoryView'
 import SettingsPanel from './SettingsPanel'
 import FocusTimer, { TimerState } from './FocusTimer'
+import Onboarding from './Onboarding'
 import { focusLock } from './focusLock'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
 import {
@@ -39,6 +40,18 @@ export default function App() {
   const [timer, setTimer] = useState<TimerState | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  // 首次開啟引導：沒看過、且還沒有任何一天的資料（老用戶不打擾）
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (localStorage.getItem('pp:onboarded') === '1') return false
+    for (let i = 0; i < localStorage.length; i++) {
+      if (localStorage.key(i)?.startsWith('pp:day:')) return false
+    }
+    return true
+  })
+  const dismissOnboarding = () => {
+    localStorage.setItem('pp:onboarded', '1')
+    setShowOnboarding(false)
+  }
   const sessionSink = useRef<((taskIndex: number, startMs: number, endMs: number) => void) | null>(null)
 
   // 浮窗讀「目前計時狀態」的即時來源（用 ref 避免每次 render 重註冊）
@@ -281,6 +294,8 @@ export default function App() {
           onSessionDone={(ti, s, e) => sessionSink.current?.(ti, s, e)}
         />
       )}
+
+      {showOnboarding && <Onboarding onClose={dismissOnboarding} />}
 
       {showSettings && (
         <SettingsPanel
