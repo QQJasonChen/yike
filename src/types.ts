@@ -50,6 +50,7 @@ export interface DayEntry {
   habit: boolean // (legacy v1) 單一習慣
   habitsDone: Record<string, boolean> // 習慣名 → 今天是否完成
   ink?: { png: string; drawing: string; fmt?: 'pk' | 'web' } // 手寫便箋：png 顯示、drawing 可再編輯、fmt 記錄編輯器（pk=原生 iPad / web=畫布）
+  inkAnswers?: Record<string, { png: string; drawing: string; fmt?: 'pk' | 'web' }> // 每題反思的手寫版（key=問題 id m0/e1…）
 }
 
 /** 舊版欄位（v1 固定問題）— 僅供載入時遷移 */

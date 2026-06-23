@@ -1009,6 +1009,42 @@ textarea.line-area {
   font-size: 15px;
 }
 
+/* 反思欄位的打字/手寫切換 */
+.reflect-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.reflect-row .line-input,
+.reflect-row > :first-child {
+  flex: 1;
+}
+.reflect-mode {
+  flex: none;
+  background: none;
+  border: none;
+  font-size: 16px;
+  opacity: 0.4;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: opacity 0.15s;
+}
+.reflect-mode:hover {
+  opacity: 1;
+}
+.reflect-ink {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.ink-pad.mini {
+  min-height: 60px;
+  flex: 1;
+}
+.ink-pad.mini img {
+  max-height: 200px;
+}
+
 /* web 手寫畫布（手機/桌機/iPad-Safari） */
 .inkc-overlay {
   position: fixed;

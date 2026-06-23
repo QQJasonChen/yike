@@ -52,7 +52,7 @@ export default function DayView({
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
   const [copied, setCopied] = useState(false)
   const [inkNative, setInkNative] = useState(false) // iPad 原生 PencilKit
-  const [inkEditing, setInkEditing] = useState(false) // web 畫布開啟中
+  const [inkTarget, setInkTarget] = useState<string | null>(null) // web 畫布正在編輯的 key（'note' 或 'q:m0'）
   useEffect(() => {
     ink.available().then(setInkNative)
   }, [])
@@ -141,15 +141,30 @@ export default function DayView({
     })
   }
 
-  const openInk = async () => {
+  type InkData = { png: string; drawing: string; fmt?: 'pk' | 'web' }
+  const currentInk = (key: string): InkData | undefined =>
+    key === 'note' ? entry.ink : entry.inkAnswers?.[key.slice(2)]
+  const writeInk = (key: string, data: InkData | null) => {
+    if (key === 'note') {
+      update({ ink: data ?? undefined })
+    } else {
+      const qid = key.slice(2)
+      const m = { ...(entry.inkAnswers ?? {}) }
+      if (data) m[qid] = data
+      else delete m[qid]
+      update({ inkAnswers: m })
+    }
+  }
+  const openInkFor = async (key: string) => {
+    const cur = currentInk(key)
     if (inkNative) {
       // iPad 原生 PencilKit
-      const r = await ink.edit(entry.ink?.fmt === 'pk' ? entry.ink.drawing : undefined)
+      const r = await ink.edit(cur?.fmt === 'pk' ? cur.drawing : undefined)
       if (!r) return
-      update({ ink: r.png ? { png: r.png, drawing: r.drawing, fmt: 'pk' } : undefined })
+      writeInk(key, r.png ? { png: r.png, drawing: r.drawing, fmt: 'pk' } : null)
     } else {
       // 手機/桌機/iPad-Safari：web 畫布
-      setInkEditing(true)
+      setInkTarget(key)
     }
   }
 
@@ -286,13 +301,14 @@ export default function DayView({
                 <div className="label" style={i === 0 ? { marginTop: 0 } : undefined}>
                   {q}
                 </div>
-                <div className="line-input">
-                  <TextField
-                    value={entry.answers[`m${i}`] ?? ''}
-                    onValue={(v) => setAnswer(`m${i}`, v)}
-                    placeholder={MORNING_PLACEHOLDERS[i] ?? ''}
-                  />
-                </div>
+                <ReflectField
+                  text={entry.answers[`m${i}`] ?? ''}
+                  onText={(v) => setAnswer(`m${i}`, v)}
+                  placeholder={MORNING_PLACEHOLDERS[i] ?? ''}
+                  ink={entry.inkAnswers?.[`m${i}`]}
+                  onEdit={() => openInkFor(`q:m${i}`)}
+                  onClearInk={() => writeInk(`q:m${i}`, null)}
+                />
               </span>
             ))}
 
@@ -403,13 +419,14 @@ export default function DayView({
             {settings.eveningQs.map((q, i) => (
               <span key={`e${i}`}>
                 <div className="label">{q}</div>
-                <div className="line-input">
-                  <TextField
-                    value={entry.answers[`e${i}`] ?? ''}
-                    onValue={(v) => setAnswer(`e${i}`, v)}
-                    placeholder={i === 0 ? '今天最棒的時刻⋯' : ''}
-                  />
-                </div>
+                <ReflectField
+                  text={entry.answers[`e${i}`] ?? ''}
+                  onText={(v) => setAnswer(`e${i}`, v)}
+                  placeholder={i === 0 ? '今天最棒的時刻⋯' : ''}
+                  ink={entry.inkAnswers?.[`e${i}`]}
+                  onEdit={() => openInkFor(`q:e${i}`)}
+                  onClearInk={() => writeInk(`q:e${i}`, null)}
+                />
               </span>
             ))}
 
@@ -420,7 +437,7 @@ export default function DayView({
                   {inkNative ? '用 Apple Pencil 在這寫字、塗鴉' : '手指／滑鼠／觸控筆都能寫'}
                 </span>
               </div>
-              <button className="ink-pad" onClick={openInk}>
+              <button className="ink-pad" onClick={() => openInkFor('note')}>
                 {entry.ink?.png ? (
                   <img src={`data:image/png;base64,${entry.ink.png}`} alt="手寫便箋" />
                 ) : (
@@ -520,16 +537,58 @@ export default function DayView({
         </div>
       </div>
 
-      {inkEditing && (
+      {inkTarget !== null && (
         <InkCanvas
-          initial={entry.ink?.fmt === 'web' ? entry.ink.drawing : undefined}
-          onCancel={() => setInkEditing(false)}
+          initial={currentInk(inkTarget)?.fmt === 'web' ? currentInk(inkTarget)!.drawing : undefined}
+          onCancel={() => setInkTarget(null)}
           onSave={(png, drawing) => {
-            update({ ink: png ? { png, drawing, fmt: 'web' } : undefined })
-            setInkEditing(false)
+            writeInk(inkTarget, png ? { png, drawing, fmt: 'web' } : null)
+            setInkTarget(null)
           }}
         />
       )}
+    </div>
+  )
+}
+
+// 反思欄位：可切「打字 / 手寫」
+function ReflectField({
+  text,
+  onText,
+  placeholder,
+  ink,
+  onEdit,
+  onClearInk,
+}: {
+  text: string
+  onText: (v: string) => void
+  placeholder?: string
+  ink?: { png: string }
+  onEdit: () => void
+  onClearInk: () => void
+}) {
+  if (ink?.png) {
+    return (
+      <div className="reflect-ink">
+        <button className="ink-pad mini" onClick={onEdit}>
+          <img src={`data:image/png;base64,${ink.png}`} alt="手寫" />
+        </button>
+        <button
+          className="reflect-mode"
+          title="改回打字（會清掉這題手寫）"
+          onClick={() => confirm('改回打字會清掉這題的手寫，確定？') && onClearInk()}
+        >
+          ⌨️
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className="line-input reflect-row">
+      <TextField value={text} onValue={onText} placeholder={placeholder} />
+      <button className="reflect-mode" title="改成手寫" onClick={onEdit}>
+        ✍️
+      </button>
     </div>
   )
 }
