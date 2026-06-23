@@ -7,6 +7,7 @@ import { quoteForDate } from './quotes'
 import { TextField } from './fields'
 import { dayToMarkdown } from './exportMd'
 import { spanToCells } from './Gantt'
+import { ink } from './ink'
 import { addDays, fromDateKey, loadDay, loadWeek, mondayOf, saveDay, toDateKey } from './storage'
 import { DayEntry, Settings, Task } from './types'
 
@@ -49,6 +50,10 @@ export default function DayView({
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
   const [copied, setCopied] = useState(false)
+  const [inkOk, setInkOk] = useState(false) // iPad 才有手寫
+  useEffect(() => {
+    ink.available().then(setInkOk)
+  }, [])
   // 今天的週計畫：本週甘特裡有排到「今天」的任務（每日提醒該推進什麼）
   const todayPlanTasks = useMemo(() => {
     const we = loadWeek(mondayOf(dateKey))
@@ -132,6 +137,12 @@ export default function DayView({
       saveDay(dateKey, next)
       return next
     })
+  }
+
+  const openInk = async () => {
+    const r = await ink.edit(entry.ink?.drawing)
+    if (!r) return // 取消
+    update({ ink: r.png ? r : undefined }) // 清空（png 空）就移除
   }
 
   const updateTask = (i: number, t: Task) => {
@@ -393,6 +404,21 @@ export default function DayView({
                 </div>
               </span>
             ))}
+
+            {inkOk && (
+              <div className="ink-note">
+                <div className="label">
+                  手寫便箋 <span className="hint">用 Apple Pencil 在這寫字、塗鴉</span>
+                </div>
+                <button className="ink-pad" onClick={openInk}>
+                  {entry.ink?.png ? (
+                    <img src={`data:image/png;base64,${entry.ink.png}`} alt="手寫便箋" />
+                  ) : (
+                    <span className="ink-empty">✍️ 點一下，用 Apple Pencil 手寫</span>
+                  )}
+                </button>
+              </div>
+            )}
 
             <div className="eval-bar">
               <div className="eval-row habits-row">

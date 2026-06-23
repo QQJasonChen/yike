@@ -49,6 +49,7 @@ export interface DayEntry {
   score: number | null // 生產力評分 1-5
   habit: boolean // (legacy v1) 單一習慣
   habitsDone: Record<string, boolean> // 習慣名 → 今天是否完成
+  ink?: { png: string; drawing: string } // 手寫便箋（iPad PencilKit）：png 顯示、drawing 可再編輯
 }
 
 /** 舊版欄位（v1 固定問題）— 僅供載入時遷移 */

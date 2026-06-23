@@ -972,6 +972,43 @@ textarea.line-area {
 .gear-btn:hover {
   color: var(--gold-deep);
 }
+/* 手寫便箋（iPad PencilKit） */
+.ink-note {
+  margin-top: 22px;
+}
+.ink-pad {
+  width: 100%;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(
+      transparent,
+      transparent calc(1.8em - 1px),
+      var(--rule) calc(1.8em - 1px),
+      var(--rule) 1.8em
+    ),
+    var(--paper-card);
+  border: 1px dashed var(--rule);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 8px;
+  overflow: hidden;
+}
+.ink-pad:hover {
+  border-color: var(--gold);
+}
+.ink-pad img {
+  max-width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+}
+.ink-empty {
+  font-family: var(--hand);
+  color: var(--ink-faint);
+  font-size: 15px;
+}
+
 /* AI 洞察結果 */
 .ai-status {
   font-family: var(--hand);
