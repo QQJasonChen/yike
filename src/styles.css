@@ -972,6 +972,51 @@ textarea.line-area {
 .gear-btn:hover {
   color: var(--gold-deep);
 }
+/* AI 洞察結果 */
+.ai-status {
+  font-family: var(--hand);
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 8px;
+}
+.ai-status.err {
+  color: var(--terra);
+}
+.ai-result {
+  margin-top: 12px;
+  border: 1px solid rgba(219, 110, 28, 0.3);
+  border-left: 3px solid #db6e1c;
+  background: rgba(219, 110, 28, 0.05);
+  border-radius: 0 10px 10px 0;
+  padding: 12px 16px;
+}
+.ai-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--hand);
+  font-size: 13px;
+  color: #b2541d;
+  margin-bottom: 8px;
+}
+.ai-copy {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ai-copy:hover {
+  color: var(--gold-deep);
+}
+.ai-result-body {
+  font-family: var(--hand);
+  font-size: 14.5px;
+  color: var(--ink);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
 .reminder-time {
   font-family: var(--eng);
   font-size: 14px;
