@@ -8,6 +8,7 @@ import { TextField } from './fields'
 import { dayToMarkdown } from './exportMd'
 import { spanToCells } from './Gantt'
 import { ink } from './ink'
+import InkCanvas from './InkCanvas'
 import { addDays, fromDateKey, loadDay, loadWeek, mondayOf, saveDay, toDateKey } from './storage'
 import { DayEntry, Settings, Task } from './types'
 
@@ -50,9 +51,10 @@ export default function DayView({
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
   const [copied, setCopied] = useState(false)
-  const [inkOk, setInkOk] = useState(false) // iPad 才有手寫
+  const [inkNative, setInkNative] = useState(false) // iPad 原生 PencilKit
+  const [inkEditing, setInkEditing] = useState(false) // web 畫布開啟中
   useEffect(() => {
-    ink.available().then(setInkOk)
+    ink.available().then(setInkNative)
   }, [])
   // 今天的週計畫：本週甘特裡有排到「今天」的任務（每日提醒該推進什麼）
   const todayPlanTasks = useMemo(() => {
@@ -140,9 +142,15 @@ export default function DayView({
   }
 
   const openInk = async () => {
-    const r = await ink.edit(entry.ink?.drawing)
-    if (!r) return // 取消
-    update({ ink: r.png ? r : undefined }) // 清空（png 空）就移除
+    if (inkNative) {
+      // iPad 原生 PencilKit
+      const r = await ink.edit(entry.ink?.fmt === 'pk' ? entry.ink.drawing : undefined)
+      if (!r) return
+      update({ ink: r.png ? { png: r.png, drawing: r.drawing, fmt: 'pk' } : undefined })
+    } else {
+      // 手機/桌機/iPad-Safari：web 畫布
+      setInkEditing(true)
+    }
   }
 
   const updateTask = (i: number, t: Task) => {
@@ -405,20 +413,21 @@ export default function DayView({
               </span>
             ))}
 
-            {inkOk && (
-              <div className="ink-note">
-                <div className="label">
-                  手寫便箋 <span className="hint">用 Apple Pencil 在這寫字、塗鴉</span>
-                </div>
-                <button className="ink-pad" onClick={openInk}>
-                  {entry.ink?.png ? (
-                    <img src={`data:image/png;base64,${entry.ink.png}`} alt="手寫便箋" />
-                  ) : (
-                    <span className="ink-empty">✍️ 點一下，用 Apple Pencil 手寫</span>
-                  )}
-                </button>
+            <div className="ink-note">
+              <div className="label">
+                手寫便箋{' '}
+                <span className="hint">
+                  {inkNative ? '用 Apple Pencil 在這寫字、塗鴉' : '手指／滑鼠／觸控筆都能寫'}
+                </span>
               </div>
-            )}
+              <button className="ink-pad" onClick={openInk}>
+                {entry.ink?.png ? (
+                  <img src={`data:image/png;base64,${entry.ink.png}`} alt="手寫便箋" />
+                ) : (
+                  <span className="ink-empty">✍️ 點一下開始手寫</span>
+                )}
+              </button>
+            </div>
 
             <div className="eval-bar">
               <div className="eval-row habits-row">
@@ -510,6 +519,17 @@ export default function DayView({
           </div>
         </div>
       </div>
+
+      {inkEditing && (
+        <InkCanvas
+          initial={entry.ink?.fmt === 'web' ? entry.ink.drawing : undefined}
+          onCancel={() => setInkEditing(false)}
+          onSave={(png, drawing) => {
+            update({ ink: png ? { png, drawing, fmt: 'web' } : undefined })
+            setInkEditing(false)
+          }}
+        />
+      )}
     </div>
   )
 }

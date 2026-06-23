@@ -2,7 +2,10 @@
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './cloudConfig'
 import { supa } from './cloud'
 
-export const aiEnabled = (): boolean => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
+// edge function 部署、OPENAI_KEY 設好後，改成 true 即露出 AI 按鈕。
+export const AI_ENABLED = false
+
+export const aiEnabled = (): boolean => AI_ENABLED && Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
 
 /** 用 prompt + 資料生成洞察。未登入或超過上限會 throw 友善訊息。 */
 export const generateInsight = async (prompt: string, data: string): Promise<string> => {
