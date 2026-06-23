@@ -1009,15 +1009,32 @@ textarea.line-area {
   font-size: 15px;
 }
 
-/* 反思欄位的打字/手寫切換 */
+/* 反思欄位：多行自動長高 + 打字/手寫並存 */
 .reflect-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
 }
-.reflect-row .line-input,
 .reflect-row > :first-child {
   flex: 1;
+}
+.reflect-area {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  background: none;
+  resize: none;
+  overflow: hidden;
+  min-height: 2em;
+  line-height: 1.8;
+  font-family: var(--hand);
+  font-size: 16px;
+  color: var(--ink-write);
+  padding: 5px 2px 4px;
+}
+.reflect-area::placeholder {
+  color: var(--ink-faint);
+  font-family: var(--hand);
 }
 .reflect-mode {
   flex: none;

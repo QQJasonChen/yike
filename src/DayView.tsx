@@ -4,7 +4,7 @@ import TaskRow from './TaskRow'
 import Timeline from './Timeline'
 import { TimerState } from './FocusTimer'
 import { quoteForDate } from './quotes'
-import { TextField } from './fields'
+import { TextArea, TextField } from './fields'
 import { dayToMarkdown } from './exportMd'
 import { spanToCells } from './Gantt'
 import { ink } from './ink'
@@ -567,28 +567,38 @@ function ReflectField({
   onEdit: () => void
   onClearInk: () => void
 }) {
-  if (ink?.png) {
-    return (
-      <div className="reflect-ink">
-        <button className="ink-pad mini" onClick={onEdit}>
-          <img src={`data:image/png;base64,${ink.png}`} alt="手寫" />
-        </button>
+  return (
+    <>
+      <div className="reflect-row">
+        <TextArea
+          className="reflect-area"
+          rows={1}
+          value={text}
+          onValue={onText}
+          placeholder={placeholder}
+        />
         <button
           className="reflect-mode"
-          title="改回打字（會清掉這題手寫）"
-          onClick={() => confirm('改回打字會清掉這題的手寫，確定？') && onClearInk()}
+          title={ink?.png ? '編輯手寫' : '加上手寫'}
+          onClick={onEdit}
         >
-          ⌨️
+          ✍️
         </button>
       </div>
-    )
-  }
-  return (
-    <div className="line-input reflect-row">
-      <TextField value={text} onValue={onText} placeholder={placeholder} />
-      <button className="reflect-mode" title="改成手寫" onClick={onEdit}>
-        ✍️
-      </button>
-    </div>
+      {ink?.png && (
+        <div className="reflect-ink">
+          <button className="ink-pad mini" onClick={onEdit} title="點一下編輯手寫">
+            <img src={`data:image/png;base64,${ink.png}`} alt="手寫" />
+          </button>
+          <button
+            className="reflect-mode"
+            title="移除這題手寫"
+            onClick={() => confirm('移除這題的手寫？（打字內容會保留）') && onClearInk()}
+          >
+            🗑
+          </button>
+        </div>
+      )}
+    </>
   )
 }
