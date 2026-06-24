@@ -88,6 +88,25 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const [copiedMsg, setCopiedMsg] = useState('')
+  const flashCopied = (msg: string) => {
+    setCopiedMsg(msg)
+    setTimeout(() => setCopiedMsg(''), 1500)
+  }
+  const copyHit = (h: { when: string; text: string }) => {
+    navigator.clipboard
+      .writeText(`[${h.when}] ${h.text}`)
+      .then(() => flashCopied('✓ 已複製'))
+      .catch(() => flashCopied('複製失敗'))
+  }
+  const copyAllHits = () => {
+    const md = searchHits.map((h) => `- [${h.when}] ${h.kind}：${h.text}`).join('\n')
+    navigator.clipboard
+      .writeText(md)
+      .then(() => flashCopied(`✓ 已複製 ${searchHits.length} 筆`))
+      .catch(() => flashCopied('複製失敗'))
+  }
+
   const goTo = (t: SearchTarget) => {
     if (t.tab === 'day') setDateKey(t.dateKey)
     else if (t.tab === 'week') setMondayKey(t.mondayKey)
@@ -389,6 +408,16 @@ export default function App() {
                 }
               }}
             />
+            {searchHits.length > 0 && (
+              <div className="search-meta">
+                <span>
+                  {searchHits.length} 筆{copiedMsg && ` ・ ${copiedMsg}`}
+                </span>
+                <button className="search-copyall" onClick={copyAllHits}>
+                  📋 複製全部
+                </button>
+              </div>
+            )}
             <div className="search-results">
               {searchQuery.trim() && searchHits.length === 0 && (
                 <p className="search-empty">沒有找到「{searchQuery}」</p>
@@ -403,6 +432,16 @@ export default function App() {
                   <span className="sh-kind">{h.kind}</span>
                   <span className="sh-when">{h.when}</span>
                   <span className="sh-text">{highlightMatch(h.text, searchQuery)}</span>
+                  <span
+                    className="sh-copy"
+                    title="複製這筆"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      copyHit(h)
+                    }}
+                  >
+                    ⧉
+                  </span>
                 </button>
               ))}
             </div>
