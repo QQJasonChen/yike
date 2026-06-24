@@ -12,6 +12,7 @@ import SettingsPanel from './SettingsPanel'
 import FocusTimer, { TimerState } from './FocusTimer'
 import Onboarding from './Onboarding'
 import { notify } from './notify'
+import { searchAll, SearchTarget } from './search'
 import { focusLock } from './focusLock'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
 import {
@@ -41,6 +42,34 @@ export default function App() {
   const [timer, setTimer] = useState<TimerState | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchHits = useMemo(() => (searchOpen ? searchAll(searchQuery) : []), [searchOpen, searchQuery])
+
+  // ⌘K / Ctrl+K 開搜尋；Esc 關
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchOpen((v) => !v)
+      } else if (e.key === 'Escape') {
+        setSearchOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const goTo = (t: SearchTarget) => {
+    if (t.tab === 'day') setDateKey(t.dateKey)
+    else if (t.tab === 'week') setMondayKey(t.mondayKey)
+    else if (t.tab === 'month') setMonthKey(t.monthKey)
+    else if (t.tab === 'quarter') setQuarterKey(t.quarterKey)
+    else if (t.tab === 'year') setYearNum(t.yearNum)
+    setTab(t.tab)
+    setSearchOpen(false)
+    setSearchQuery('')
+  }
   // 首次開啟引導：沒看過、且還沒有任何一天的資料（老用戶不打擾）
   const [showOnboarding, setShowOnboarding] = useState(() => {
     if (localStorage.getItem('pp:onboarded') === '1') return false
@@ -159,6 +188,9 @@ export default function App() {
               {cloudIn ? '☁ 同步中' : '☁ 登入'}
             </button>
           )}
+          <button className="gear-btn" onClick={() => setSearchOpen(true)} title="搜尋全部紀錄（⌘K）">
+            🔍
+          </button>
           <button className="gear-btn" onClick={() => setShowSettings(true)} title="設定">
             ⚙
           </button>
@@ -303,6 +335,37 @@ export default function App() {
       )}
 
       {showOnboarding && <Onboarding onClose={dismissOnboarding} />}
+
+      {searchOpen && (
+        <div className="search-overlay" onClick={() => setSearchOpen(false)}>
+          <div className="search-box" onClick={(e) => e.stopPropagation()}>
+            <input
+              className="search-input"
+              autoFocus
+              placeholder="搜尋所有紀錄：任務、反思、目標、亮點…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <div className="search-results">
+              {searchQuery.trim() && searchHits.length === 0 && (
+                <p className="search-empty">沒有找到「{searchQuery}」</p>
+              )}
+              {searchHits.map((h) => (
+                <button key={h.id} className="search-hit" onClick={() => goTo(h.target)}>
+                  <span className="sh-kind">{h.kind}</span>
+                  <span className="sh-when">{h.when}</span>
+                  <span className="sh-text">{h.text}</span>
+                </button>
+              ))}
+            </div>
+            {!searchQuery.trim() && (
+              <p className="search-tip">
+                跨 日／週／月／季／年／願景 全文搜尋・點結果直接跳過去・⌘K 開關
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {showSettings && (
         <SettingsPanel
