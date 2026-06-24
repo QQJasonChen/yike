@@ -1228,8 +1228,14 @@ textarea.line-area {
   padding: 11px 20px;
   cursor: pointer;
 }
-.search-hit:hover {
-  background: rgba(219, 110, 28, 0.07);
+.search-hit.sel {
+  background: rgba(219, 110, 28, 0.12);
+}
+.sh-mark {
+  background: rgba(219, 110, 28, 0.28);
+  color: var(--ink);
+  border-radius: 2px;
+  padding: 0 1px;
 }
 .sh-kind {
   flex: none;

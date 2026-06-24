@@ -30,6 +30,29 @@ import { Settings } from './types'
 
 type Tab = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'schedule' | 'life' | 'history'
 
+// 把命中的關鍵字標色
+const highlightMatch = (text: string, q: string): React.ReactNode => {
+  const ql = q.trim().toLowerCase()
+  if (!ql) return text
+  const lower = text.toLowerCase()
+  const out: React.ReactNode[] = []
+  let i = 0
+  let key = 0
+  let idx = lower.indexOf(ql)
+  while (idx !== -1) {
+    if (idx > i) out.push(text.slice(i, idx))
+    out.push(
+      <mark key={key++} className="sh-mark">
+        {text.slice(idx, idx + ql.length)}
+      </mark>
+    )
+    i = idx + ql.length
+    idx = lower.indexOf(ql, i)
+  }
+  out.push(text.slice(i))
+  return out
+}
+
 export default function App() {
   const todayKey = toDateKey(new Date())
   const [tab, setTab] = useState<Tab>('day')
@@ -44,7 +67,12 @@ export default function App() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchSel, setSearchSel] = useState(0)
   const searchHits = useMemo(() => (searchOpen ? searchAll(searchQuery) : []), [searchOpen, searchQuery])
+  // 選取項捲進視野
+  useEffect(() => {
+    document.querySelector('.search-hit.sel')?.scrollIntoView({ block: 'nearest' })
+  }, [searchSel])
 
   // ⌘K / Ctrl+K 開搜尋；Esc 關
   useEffect(() => {
@@ -344,17 +372,37 @@ export default function App() {
               autoFocus
               placeholder="搜尋所有紀錄：任務、反思、目標、亮點…"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setSearchSel(0)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  setSearchSel((s) => Math.min(s + 1, searchHits.length - 1))
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setSearchSel((s) => Math.max(s - 1, 0))
+                } else if (e.key === 'Enter') {
+                  const h = searchHits[searchSel]
+                  if (h) goTo(h.target)
+                }
+              }}
             />
             <div className="search-results">
               {searchQuery.trim() && searchHits.length === 0 && (
                 <p className="search-empty">沒有找到「{searchQuery}」</p>
               )}
-              {searchHits.map((h) => (
-                <button key={h.id} className="search-hit" onClick={() => goTo(h.target)}>
+              {searchHits.map((h, i) => (
+                <button
+                  key={h.id}
+                  className={`search-hit ${i === searchSel ? 'sel' : ''}`}
+                  onClick={() => goTo(h.target)}
+                  onMouseEnter={() => setSearchSel(i)}
+                >
                   <span className="sh-kind">{h.kind}</span>
                   <span className="sh-when">{h.when}</span>
-                  <span className="sh-text">{h.text}</span>
+                  <span className="sh-text">{highlightMatch(h.text, searchQuery)}</span>
                 </button>
               ))}
             </div>
