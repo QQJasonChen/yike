@@ -10,15 +10,18 @@ import {
   isoWeekOf,
   loadDay,
   loadLife,
+  loadSettings,
   mondayOf,
   monthOf,
   nameStats,
   recentNames,
   saveDay,
   saveLife,
+  saveSettings,
   saveWeek,
   toDateKey,
 } from '../storage'
+import { defaultSettings } from '../types'
 import { emptyDay, emptyWeek } from '../types'
 import type { DayEntry } from '../types'
 
@@ -183,6 +186,43 @@ describe('export / import', () => {
 
   it('importAll throws on malformed payload', () => {
     expect(() => importAll('{"nope":1}')).toThrow()
+  })
+})
+
+describe('habit auto-recovery', () => {
+  const dayWith = (habits: string[]): DayEntry => {
+    const d = emptyDay()
+    habits.forEach((h) => (d.habitsDone[h] = true))
+    return d
+  }
+
+  it('rebuilds an empty habit list from day history once', () => {
+    saveDay('2026-06-13', dayWith(['讀荷蘭文', '運動']))
+    saveDay('2026-06-12', dayWith(['讀荷蘭文', '冥想']))
+    // settings 的習慣清單被清空（模擬資料遺失）
+    saveSettings({ ...defaultSettings(), habits: [] })
+
+    const s = loadSettings()
+    expect(new Set(s.habits)).toEqual(new Set(['讀荷蘭文', '運動', '冥想']))
+    // 已持久化
+    expect(new Set(loadSettings().habits)).toEqual(new Set(['讀荷蘭文', '運動', '冥想']))
+  })
+
+  it('does not resurrect habits the user later clears (only restores once)', () => {
+    saveDay('2026-06-13', dayWith(['讀荷蘭文']))
+    saveSettings({ ...defaultSettings(), habits: [] })
+    loadSettings() // 第一次救援 → 補回 讀荷蘭文
+
+    // 使用者刻意清空
+    saveSettings({ ...defaultSettings(), habits: [] })
+    expect(loadSettings().habits).toEqual([]) // 不再自動補回
+  })
+
+  it('does not sync the device-local restore flag', () => {
+    saveDay('2026-06-13', dayWith(['讀荷蘭文']))
+    saveSettings({ ...defaultSettings(), habits: [] })
+    loadSettings()
+    expect(allDataKeys()).not.toContain('pp:habitsAutoRestored')
   })
 })
 

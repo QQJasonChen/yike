@@ -209,10 +209,34 @@ export const loadLife = (): LifeEntry => {
 
 export const saveLife = (entry: LifeEntry) => write(LIFE_KEY, entry)
 
+const HABITS_RESTORED_KEY = 'pp:habitsAutoRestored'
+
+/** 從所有日記的打勾紀錄（habitsDone 的 key）反推曾經存在過的習慣名單。
+ *  習慣清單只存 settings.habits，但每天的完成紀錄用習慣名當 key 散在各日——
+ *  所以就算 settings 被清空，只要日記還在就能把名單撿回來。 */
+const habitsFromHistory = (): string[] => {
+  const names = new Set<string>()
+  for (const dk of allDayKeys()) {
+    const done = loadDay(dk).habitsDone
+    if (done) for (const n of Object.keys(done)) names.add(n)
+  }
+  return [...names]
+}
+
 export const loadSettings = (): Settings => {
   const s = { ...defaultSettings(), ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}) }
   // v1 單一習慣 → v2 習慣清單
   if (s.habits.length === 0 && s.habitName) s.habits = [s.habitName]
+  // 一次性救援：習慣清單空了但歷史有打勾紀錄 → 從歷史重建。
+  // 只跑一次（記旗標），才不會跟「使用者刻意刪光習慣」打架。
+  if (s.habits.length === 0 && !localStorage.getItem(HABITS_RESTORED_KEY)) {
+    const recovered = habitsFromHistory()
+    if (recovered.length) {
+      s.habits = recovered
+      saveSettings(s) // 持久化 + bump meta → 同步把名單推回雲端/其他裝置
+    }
+    localStorage.setItem(HABITS_RESTORED_KEY, '1')
+  }
   return s
 }
 
@@ -358,7 +382,13 @@ export const allDataKeys = (): string[] => {
   const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)
-    if (k?.startsWith('pp:') && k !== SYNC_KEY && k !== META_KEY && k !== CLOUD_BOUND_KEY)
+    if (
+      k?.startsWith('pp:') &&
+      k !== SYNC_KEY &&
+      k !== META_KEY &&
+      k !== CLOUD_BOUND_KEY &&
+      k !== HABITS_RESTORED_KEY
+    )
       keys.push(k)
   }
   return keys
