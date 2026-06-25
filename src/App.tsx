@@ -16,6 +16,7 @@ import { searchAll, SearchTarget } from './search'
 import { focusLock } from './focusLock'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
 import {
+  autoBackup,
   currentStreak,
   loadDay,
   loadSettings,
@@ -73,6 +74,11 @@ export default function App() {
   useEffect(() => {
     document.querySelector('.search-hit.sel')?.scrollIntoView({ block: 'nearest' })
   }, [searchSel])
+
+  // 每日本機備份（安全網）：開站快照一次今天的資料，保留最近 7 份
+  useEffect(() => {
+    autoBackup(toDateKey(new Date()))
+  }, [])
 
   // ⌘K / Ctrl+K 開搜尋；Esc 關
   useEffect(() => {

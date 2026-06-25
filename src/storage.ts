@@ -23,6 +23,9 @@ const SETTINGS_KEY = 'pp:settings'
 const LIFE_KEY = 'pp:life' // 願景維度——整個 app 只有一份
 const SYNC_KEY = 'pp:sync' // 同步設定（含 token）——絕不進匯出檔
 const CLOUD_BOUND_KEY = 'pp:cloudBound' // 此裝置曾登入雲端帳號的標記（裝置本地，不同步）
+const BACKUP_PREFIX = 'pp:bk:' // 每日本機快照（pp:bk:<date>）——純本機、不同步、不匯出
+const LAST_BACKUP_KEY = 'pp:lastBackup' // 上次自動備份的日期（一天只備一次）
+const BACKUP_KEEP = 7 // 保留最近幾份每日快照
 
 /** 標記此裝置曾綁定雲端帳號（登入成功時呼叫） */
 export const markCloudBound = () => localStorage.setItem(CLOUD_BOUND_KEY, '1')
@@ -387,7 +390,9 @@ export const allDataKeys = (): string[] => {
       k !== SYNC_KEY &&
       k !== META_KEY &&
       k !== CLOUD_BOUND_KEY &&
-      k !== HABITS_RESTORED_KEY
+      k !== HABITS_RESTORED_KEY &&
+      k !== LAST_BACKUP_KEY &&
+      !k.startsWith(BACKUP_PREFIX)
     )
       keys.push(k)
   }
@@ -409,10 +414,91 @@ export const importAll = (json: string): number => {
   if (!parsed.data) throw new Error('格式不正確')
   let count = 0
   for (const [k, v] of Object.entries(parsed.data)) {
-    if (k.startsWith('pp:') && k !== SYNC_KEY && k !== META_KEY) {
+    if (k.startsWith('pp:') && k !== SYNC_KEY && k !== META_KEY && !k.startsWith(BACKUP_PREFIX)) {
       write(k, v)
       count++
     }
   }
   return count
+}
+
+// ---- 本機每日備份（安全網：就算同步出錯/資料被清，也能在這台還原）----
+
+export interface BackupMeta {
+  date: string // pp:bk:<date> 的 date
+  keys: number // 快照了幾個 key
+  bytes: number // 快照大小
+}
+
+const pruneBackups = () => {
+  const dates: string[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (k?.startsWith(BACKUP_PREFIX)) dates.push(k.slice(BACKUP_PREFIX.length))
+  }
+  dates.sort() // 舊→新
+  while (dates.length > BACKUP_KEEP) {
+    const d = dates.shift()!
+    localStorage.removeItem(BACKUP_PREFIX + d)
+  }
+}
+
+/** 每天自動快照一次本機所有資料到 pp:bk:<today>，保留最近 7 份。純本機、不同步、不匯出。
+ *  寫入型操作、不碰既有資料；空資料不備份。配額/序列化失敗一律靜默。 */
+export const autoBackup = (todayKey: string): void => {
+  try {
+    if (localStorage.getItem(LAST_BACKUP_KEY) === todayKey) return // 今天已備份
+    const data: Record<string, string> = {}
+    let has = false
+    for (const k of allDataKeys()) {
+      const raw = localStorage.getItem(k)
+      if (raw) {
+        data[k] = raw // 存原始 JSON 字串，還原時精確還原
+        has = true
+      }
+    }
+    if (!has) return // 全空（新裝置同步前/已清空）：先不備份也不標記，等資料載入後再試
+    localStorage.setItem(BACKUP_PREFIX + todayKey, JSON.stringify(data))
+    localStorage.setItem(LAST_BACKUP_KEY, todayKey)
+    pruneBackups()
+  } catch {
+    /* 配額或序列化失敗：靜默略過，不影響 app */
+  }
+}
+
+/** 列出現有的每日快照（新→舊）。 */
+export const listBackups = (): BackupMeta[] => {
+  const out: BackupMeta[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (!k?.startsWith(BACKUP_PREFIX)) continue
+    const raw = localStorage.getItem(k) ?? '{}'
+    let keys = 0
+    try {
+      keys = Object.keys(JSON.parse(raw) as Record<string, string>).length
+    } catch {
+      /* 壞掉的快照算 0 */
+    }
+    out.push({ date: k.slice(BACKUP_PREFIX.length), keys, bytes: raw.length })
+  }
+  return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+}
+
+/** 還原某份快照：清掉目前資料 key（不動 sync/meta/backup），寫回快照並 bump meta（讓它同步上雲）。
+ *  回傳還原的 key 數。這是使用者明確觸發的還原動作。 */
+export const restoreBackup = (date: string): number => {
+  const raw = localStorage.getItem(BACKUP_PREFIX + date)
+  if (!raw) throw new Error('找不到該備份')
+  const data = JSON.parse(raw) as Record<string, string>
+  for (const k of allDataKeys()) localStorage.removeItem(k) // 先清現有資料（保留 sync/meta/backup）
+  let n = 0
+  for (const [k, v] of Object.entries(data)) {
+    try {
+      write(k, JSON.parse(v)) // write 會 bump meta + 觸發同步推送
+      n++
+    } catch {
+      /* 單筆壞掉：跳過 */
+    }
+  }
+  return n
 }

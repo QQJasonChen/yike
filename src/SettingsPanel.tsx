@@ -13,7 +13,13 @@ import {
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
 import { notify } from './notify'
-import { clearAllLocalData, clearSupabaseTokens } from './storage'
+import {
+  BackupMeta,
+  clearAllLocalData,
+  clearSupabaseTokens,
+  listBackups,
+  restoreBackup,
+} from './storage'
 import {
   DEFAULT_EVENING_QS,
   DEFAULT_MORNING_QS,
@@ -377,8 +383,61 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
               </div>
             </div>
           )}
+
+          <BackupSettings />
         </div>
       </div>
+    </div>
+  )
+}
+
+// 資料備份/還原：列出本機每日快照，可一鍵還原（安全網）
+function BackupSettings() {
+  const [items, setItems] = useState<BackupMeta[]>(() => listBackups())
+  const [msg, setMsg] = useState('')
+  return (
+    <div className="data-actions backup-box" style={{ marginTop: 18, display: 'block' }}>
+      <div className="label">資料備份（本機自動，每天一份，留最近 7 份）</div>
+      <p className="sync-help">
+        同步出錯或資料被清掉時的安全網。只存在這台裝置、不上傳。還原會用該份覆蓋目前資料。
+      </p>
+      {items.length === 0 ? (
+        <p className="hint" style={{ marginTop: 8 }}>
+          還沒有備份——有資料時開站會自動建立第一份。
+        </p>
+      ) : (
+        <ul className="backup-list">
+          {items.map((b) => (
+            <li key={b.date}>
+              <span>
+                {b.date} · {b.keys} 筆 · {Math.max(1, Math.round(b.bytes / 1024))}KB
+              </span>
+              <button
+                className="link-btn"
+                onClick={() => {
+                  if (
+                    !confirm(
+                      `用 ${b.date} 的備份覆蓋目前這台的資料？\n\n目前資料會被該備份取代（若有雲端帳號，還原後會自動上傳同步）。`
+                    )
+                  )
+                    return
+                  const n = restoreBackup(b.date)
+                  setItems(listBackups())
+                  setMsg(`✓ 已還原 ${n} 筆（${b.date}），即將重新整理…`)
+                  setTimeout(() => location.reload(), 900)
+                }}
+              >
+                還原
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {msg && (
+        <p className="hint" style={{ marginTop: 6 }}>
+          {msg}
+        </p>
+      )}
     </div>
   )
 }

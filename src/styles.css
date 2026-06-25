@@ -1722,6 +1722,27 @@ textarea.line-area {
   vertical-align: middle;
 }
 
+.backup-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.backup-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.backup-list li:last-child {
+  border-bottom: none;
+}
+.backup-list li span {
+  font-family: var(--eng);
+}
+
 /* ---------- 無印良品式週間直式時間格 ---------- */
 
 .wk-search {

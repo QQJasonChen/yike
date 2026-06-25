@@ -8,6 +8,8 @@ import {
   fromDateKey,
   importAll,
   isoWeekOf,
+  autoBackup,
+  listBackups,
   loadDay,
   loadLife,
   loadSettings,
@@ -15,6 +17,7 @@ import {
   monthOf,
   nameStats,
   recentNames,
+  restoreBackup,
   saveDay,
   saveLife,
   saveSettings,
@@ -223,6 +226,53 @@ describe('habit auto-recovery', () => {
     saveSettings({ ...defaultSettings(), habits: [] })
     loadSettings()
     expect(allDataKeys()).not.toContain('pp:habitsAutoRestored')
+  })
+})
+
+describe('local backup safety net', () => {
+  it('snapshots data and restores it after loss', () => {
+    saveDay('2026-06-13', { ...emptyDay(), score: 5 })
+    autoBackup('2026-06-13')
+    const list = listBackups()
+    expect(list.length).toBe(1)
+    expect(list[0].date).toBe('2026-06-13')
+    // 模擬資料遺失
+    localStorage.removeItem('pp:day:2026-06-13')
+    expect(loadDay('2026-06-13').score).not.toBe(5)
+    const n = restoreBackup('2026-06-13')
+    expect(n).toBeGreaterThan(0)
+    expect(loadDay('2026-06-13').score).toBe(5)
+  })
+
+  it('only snapshots once per day', () => {
+    saveDay('2026-06-13', { ...emptyDay(), score: 5 })
+    autoBackup('2026-06-13')
+    autoBackup('2026-06-13')
+    expect(listBackups().length).toBe(1)
+  })
+
+  it('skips backup when there is no data', () => {
+    autoBackup('2026-06-13')
+    expect(listBackups().length).toBe(0)
+  })
+
+  it('keeps only the last 7 daily snapshots (newest first)', () => {
+    for (let d = 1; d <= 10; d++) {
+      const dk = `2026-06-${String(d).padStart(2, '0')}`
+      saveDay(dk, { ...emptyDay(), score: 3 })
+      autoBackup(dk)
+    }
+    const list = listBackups()
+    expect(list.length).toBe(7)
+    expect(list[0].date).toBe('2026-06-10')
+    expect(list.some((b) => b.date === '2026-06-01')).toBe(false)
+  })
+
+  it('excludes backups from sync keys', () => {
+    saveDay('2026-06-13', { ...emptyDay(), score: 5 })
+    autoBackup('2026-06-13')
+    expect(allDataKeys().some((k) => k.startsWith('pp:bk:'))).toBe(false)
+    expect(allDataKeys()).not.toContain('pp:lastBackup')
   })
 })
 
