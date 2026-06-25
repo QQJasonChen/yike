@@ -1679,6 +1679,49 @@ textarea.line-area {
   letter-spacing: 0.1em;
 }
 
+.block-pop .pop-note {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--hand);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 7px 9px;
+  margin-bottom: 8px;
+  resize: none;
+}
+.block-pop .pop-note:focus {
+  border-color: var(--gold);
+  outline: none;
+}
+
+.block-pop .pop-notify {
+  display: block;
+  width: 100%;
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink-soft);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 7px 9px;
+  margin-bottom: 10px;
+}
+.block-pop .pop-notify.on {
+  color: var(--terra);
+  border-color: var(--gold);
+  background: rgba(184, 146, 62, 0.1);
+}
+
+.tl-block-badge {
+  font-size: 11px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
 /* ---------- 無印良品式週間直式時間格 ---------- */
 
 .wk-search {

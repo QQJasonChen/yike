@@ -10,7 +10,11 @@ import { spanToCells } from './Gantt'
 import { ink } from './ink'
 import InkCanvas from './InkCanvas'
 import { addDays, fromDateKey, loadDay, loadWeek, mondayOf, saveDay, toDateKey } from './storage'
+import { notifyAvailable, syncBlockReminders } from './notify'
 import { DayEntry, Settings, Task } from './types'
+
+const fmtMin = (m: number) =>
+  `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 
 const WEEKDAYS_EN = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
 
@@ -119,6 +123,53 @@ export default function DayView({
     setRolloverDone(true)
   }
   const isToday = dateKey === todayKey
+
+  // 時間塊提醒：只看「要提醒」的塊，避免無關編輯一直重排
+  const notifySig = useMemo(
+    () =>
+      entry.blocks
+        .filter((b) => b.notify)
+        .map((b) => `${b.id}:${b.start}:${b.text}`)
+        .join('|'),
+    [entry.blocks]
+  )
+  useEffect(() => {
+    const toNotify = entry.blocks.filter((b) => b.notify)
+    if (notifyAvailable()) {
+      // iOS：排本地通知，關 app 也會在開始時間響
+      void syncBlockReminders(
+        dateKey,
+        toNotify.map((b) => ({ id: b.id, start: b.start, text: b.text }))
+      )
+      return
+    }
+    // web：只有「今天」且 app 開著時，到點用瀏覽器通知提醒
+    if (dateKey !== todayKey || toNotify.length === 0) return
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    }
+    const now = new Date()
+    const nowMs = now.getHours() * 3600000 + now.getMinutes() * 60000 + now.getSeconds() * 1000
+    const timers: number[] = []
+    for (const b of toNotify) {
+      const msUntil = b.start * 60000 - nowMs
+      if (msUntil <= 0) continue
+      timers.push(
+        window.setTimeout(() => {
+          try {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              new Notification('一刻手帳', { body: `${fmtMin(b.start)} ${b.text || '時間到了'}` })
+            }
+          } catch {
+            /* 通知失敗：略過 */
+          }
+        }, msUntil)
+      )
+    }
+    return () => timers.forEach((t) => clearTimeout(t))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateKey, todayKey, notifySig])
+
   const dropRef = useRef<((x: number, y: number, text: string, taskIndex: number) => boolean) | null>(null)
   const taskListRef = useRef<HTMLDivElement>(null)
 

@@ -50,9 +50,10 @@ export const searchAll = (query: string, limit = 80): SearchHit[] => {
     const d = loadDay(dk)
     const when = md(dk)
     d.tasks.forEach((t, i) => add(t.text, '任務', when, dk, { tab: 'day', dateKey: dk }, `d${dk}t${i}`))
-    d.blocks.forEach((b, i) =>
+    d.blocks.forEach((b, i) => {
       add(b.text, '時間塊', when, dk, { tab: 'day', dateKey: dk }, `d${dk}b${i}`)
-    )
+      add(b.note, '時間塊筆記', when, dk, { tab: 'day', dateKey: dk }, `d${dk}bn${i}`)
+    })
     Object.entries(d.answers).forEach(([qk, v]) =>
       add(v, '反思', when, dk, { tab: 'day', dateKey: dk }, `d${dk}a${qk}`)
     )

@@ -414,6 +414,8 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                   {fmt(start)} – {fmt(end)}
                 </span>
                 {b.text || '（未命名）'}
+                {b.notify && <span className="tl-block-badge" title="開始時提醒">🔔</span>}
+                {b.note?.trim() && <span className="tl-block-badge" title="有筆記">📝</span>}
                 <div
                   className="tl-resize"
                   onPointerDown={(e) => startBlockDrag(e, b, 'resize')}
@@ -500,6 +502,19 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                 />
               ))}
             </div>
+            <textarea
+              className="pop-note"
+              placeholder="筆記（為什麼做、要點、連結…）"
+              value={editing.note ?? ''}
+              onChange={(e) => updateBlock(editing.id, { note: e.target.value })}
+              rows={editing.note?.trim() ? 3 : 1}
+            />
+            <button
+              className={`pop-notify ${editing.notify ? 'on' : ''}`}
+              onClick={() => updateBlock(editing.id, { notify: !editing.notify })}
+            >
+              {editing.notify ? '🔔 開始時提醒（已開）' : '🔕 開始時提醒'}
+            </button>
             <div className="pop-actions">
               <span />
               <span>
