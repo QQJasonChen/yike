@@ -16,15 +16,19 @@ import {
   writeFromCloud,
 } from './storage'
 
-let client: SupabaseClient | null = null
+let clientPromise: Promise<SupabaseClient> | null = null
 
-// 動態載入：沒啟用雲端的用戶完全不下載 supabase-js
-export const supa = async (): Promise<SupabaseClient> => {
-  if (!client) {
-    const { createClient } = await import('@supabase/supabase-js')
-    client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+// 動態載入：沒啟用雲端的用戶完全不下載 supabase-js。
+// 記住「Promise」而非「client」：supa() 是 async，在 null 檢查與賦值之間有 await，
+// 若記 client 會讓並發的首次呼叫各自 createClient → 多個 GoTrueClient 實例搶同一個
+// storage key（auth/同步未定義行為）。記 Promise 可保證全程只建立一個 client。
+export const supa = (): Promise<SupabaseClient> => {
+  if (!clientPromise) {
+    clientPromise = import('@supabase/supabase-js').then(({ createClient }) =>
+      createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    )
   }
-  return client
+  return clientPromise
 }
 
 export { cloudEnabled }

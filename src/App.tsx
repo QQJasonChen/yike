@@ -235,10 +235,20 @@ export default function App() {
               {cloudIn ? '☁ 同步中' : '☁ 登入'}
             </button>
           )}
-          <button className="gear-btn" onClick={() => setSearchOpen(true)} title="搜尋全部紀錄（⌘K）">
+          <button
+            className="gear-btn"
+            onClick={() => setSearchOpen(true)}
+            title="搜尋全部紀錄（⌘K）"
+            aria-label="搜尋全部紀錄"
+          >
             🔍
           </button>
-          <button className="gear-btn" onClick={() => setShowSettings(true)} title="設定">
+          <button
+            className="gear-btn"
+            onClick={() => setShowSettings(true)}
+            title="設定"
+            aria-label="設定"
+          >
             ⚙
           </button>
           {todayFocusSessions > 0 && (
