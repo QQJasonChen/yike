@@ -416,7 +416,7 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                 </span>
                 {b.text || '（未命名）'}
                 {b.notify && <span className="tl-block-badge" title="開始時提醒">🔔</span>}
-                {b.note?.trim() && <span className="tl-block-badge" title="有筆記">📝</span>}
+                {b.note?.trim() && <span className="tl-note-dot" title="有筆記" />}
                 <div
                   className="tl-resize"
                   onPointerDown={(e) => startBlockDrag(e, b, 'resize')}
@@ -531,13 +531,13 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                 </button>
                 {editing.notify && (
                   <div className="tl-lead">
-                    {[0, 5, 10, 15].map((m) => (
+                    {[0, 10, 30, 60].map((m) => (
                       <button
                         key={m}
                         className={`tl-lead-btn ${(editing.notifyLead ?? 0) === m ? 'on' : ''}`}
                         onClick={() => updateBlock(editing.id, { notifyLead: m })}
                       >
-                        {m === 0 ? '準時' : `提前 ${m} 分`}
+                        {m === 0 ? '準時' : m < 60 ? `提前 ${m} 分` : `提前 ${m / 60} 小時`}
                       </button>
                     ))}
                   </div>

@@ -1722,6 +1722,18 @@ textarea.line-area {
   vertical-align: middle;
 }
 
+/* 有筆記的時間塊：右上角一顆小圓點（slim 塊也看得到） */
+.tl-note-dot {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--terra);
+  box-shadow: 0 0 0 1.5px var(--paper-card);
+}
+
 /* ---------- 時間塊編輯卡（置中 modal，手機底部 sheet）---------- */
 .tl-edit-overlay {
   position: fixed;
