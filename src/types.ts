@@ -15,6 +15,7 @@ export interface Block {
   color?: string // 色彩編碼（routine 帶入時帶上；palette key，見 ROUTINE_COLORS）
   note?: string // 這個時間塊的深度筆記（為什麼做、要點、連結…）
   notify?: boolean // 開始時間到時跳本地通知（iOS 即使關 app 也響；web 僅 app 開著時）
+  notifyLead?: number // 提前幾分鐘提醒（0=準時，預設 0）
 }
 
 // 時間軸「一鍵快填」的 routine（使用者可自訂，最多 8 個）

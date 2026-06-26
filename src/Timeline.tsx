@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { TextField } from './fields'
 import { Block, MAX_ROUTINES, ROUTINE_COLORS, RoutineItem, colorHex } from './types'
 
@@ -441,92 +442,120 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
           <div className="now-line" style={{ top: minToY(nowMin) }} />
         )}
 
-        {editing && (
-          <div
-            className="block-pop"
-            style={{
-              top: Math.min(minToY(editing.start), (END_MIN - START_MIN) / SLOT * SLOT_PX - 110),
-              right: 0,
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <input
-              autoFocus
-              list="yike-names"
-              placeholder="做什麼？例：上班、深度工作"
-              value={editing.text}
-              onChange={(e) => updateBlock(editing.id, { text: e.target.value })}
-              onKeyDown={(e) => e.key === 'Enter' && setEditId(null)}
-            />
-            <div className="pop-times">
-              <select
-                value={editing.start}
-                onChange={(e) => {
-                  const start = Number(e.target.value)
-                  updateBlock(editing.id, {
-                    start,
-                    end: Math.max(editing.end, start + SLOT),
-                  })
-                }}
-              >
-                {rows.map((min) => (
-                  <option key={min} value={min}>
-                    {fmt(min)}
-                  </option>
-                ))}
-              </select>
-              <span>–</span>
-              <select
-                value={editing.end}
-                onChange={(e) => updateBlock(editing.id, { end: Number(e.target.value) })}
-              >
-                {rows
-                  .map((min) => min + SLOT)
-                  .filter((min) => min > editing.start)
-                  .map((min) => (
+        {editing &&
+          createPortal(
+            <div
+              className="tl-edit-overlay"
+              onClick={() => setEditId(null)}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+            <div
+              className="tl-edit-card"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <input
+                className="tl-edit-title"
+                autoFocus
+                list="yike-names"
+                placeholder="做什麼？例：上班、深度工作"
+                value={editing.text}
+                onChange={(e) => updateBlock(editing.id, { text: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && setEditId(null)}
+              />
+              <div className="pop-times">
+                <select
+                  value={editing.start}
+                  onChange={(e) => {
+                    const start = Number(e.target.value)
+                    updateBlock(editing.id, {
+                      start,
+                      end: Math.max(editing.end, start + SLOT),
+                    })
+                  }}
+                >
+                  {rows.map((min) => (
                     <option key={min} value={min}>
                       {fmt(min)}
                     </option>
                   ))}
-              </select>
-            </div>
-            <div className="pop-swatches">
-              {ROUTINE_COLORS.map((c) => (
+                </select>
+                <span>–</span>
+                <select
+                  value={editing.end}
+                  onChange={(e) => updateBlock(editing.id, { end: Number(e.target.value) })}
+                >
+                  {rows
+                    .map((min) => min + SLOT)
+                    .filter((min) => min > editing.start)
+                    .map((min) => (
+                      <option key={min} value={min}>
+                        {fmt(min)}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="pop-swatches">
+                {ROUTINE_COLORS.map((c) => (
+                  <button
+                    key={c.key}
+                    className={`tl-swatch ${editing.color === c.key ? 'on' : ''}`}
+                    style={{ background: c.hex }}
+                    onClick={() => updateBlock(editing.id, { color: c.key })}
+                    title={c.key}
+                  />
+                ))}
+              </div>
+
+              <label className="tl-edit-label">筆記</label>
+              <textarea
+                className="tl-edit-note"
+                placeholder="為什麼做、要點、連結… 想到什麼都記在這。"
+                value={editing.note ?? ''}
+                ref={(el) => {
+                  if (el) {
+                    el.style.height = 'auto'
+                    el.style.height = `${el.scrollHeight}px`
+                  }
+                }}
+                onChange={(e) => updateBlock(editing.id, { note: e.target.value })}
+              />
+
+              <label className="tl-edit-label">提醒</label>
+              <div className="tl-edit-remind">
                 <button
-                  key={c.key}
-                  className={`tl-swatch ${editing.color === c.key ? 'on' : ''}`}
-                  style={{ background: c.hex }}
-                  onClick={() => updateBlock(editing.id, { color: c.key })}
-                  title={c.key}
-                />
-              ))}
-            </div>
-            <textarea
-              className="pop-note"
-              placeholder="筆記（為什麼做、要點、連結…）"
-              value={editing.note ?? ''}
-              onChange={(e) => updateBlock(editing.id, { note: e.target.value })}
-              rows={editing.note?.trim() ? 3 : 1}
-            />
-            <button
-              className={`pop-notify ${editing.notify ? 'on' : ''}`}
-              onClick={() => updateBlock(editing.id, { notify: !editing.notify })}
-            >
-              {editing.notify ? '🔔 開始時提醒（已開）' : '🔕 開始時提醒'}
-            </button>
-            <div className="pop-actions">
-              <span />
-              <span>
+                  className={`tl-remind-toggle ${editing.notify ? 'on' : ''}`}
+                  onClick={() => updateBlock(editing.id, { notify: !editing.notify })}
+                >
+                  {editing.notify ? '🔔 提醒已開' : '🔕 不提醒'}
+                </button>
+                {editing.notify && (
+                  <div className="tl-lead">
+                    {[0, 5, 10, 15].map((m) => (
+                      <button
+                        key={m}
+                        className={`tl-lead-btn ${(editing.notifyLead ?? 0) === m ? 'on' : ''}`}
+                        onClick={() => updateBlock(editing.id, { notifyLead: m })}
+                      >
+                        {m === 0 ? '準時' : `提前 ${m} 分`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="pop-actions tl-edit-actions">
                 <button className="pop-del" onClick={() => removeBlock(editing.id)}>
                   刪除
                 </button>
-                {'　'}
-                <button onClick={() => setEditId(null)}>完成</button>
-              </span>
+                <button className="tl-edit-done" onClick={() => setEditId(null)}>
+                  完成
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          </div>,
+          document.body
+          )}
       </div>
     </div>
   )

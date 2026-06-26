@@ -56,6 +56,7 @@ export interface BlockReminder {
   id: string
   start: number // 從 00:00 起算分鐘
   text: string
+  lead?: number // 提前幾分鐘提醒（0=準時）
 }
 
 /** 重排某一天所有「要提醒」的時間塊通知（先取消該日舊的、再排新的）。非 iOS no-op。 */
@@ -81,14 +82,16 @@ export const syncBlockReminders = async (
     const notifs = []
     const ids: number[] = []
     for (const it of items) {
-      const at = new Date(y, (mo || 1) - 1, d, Math.floor(it.start / 60), it.start % 60, 0, 0)
+      const fireMin = it.start - (it.lead ?? 0)
+      const at = new Date(y, (mo || 1) - 1, d, Math.floor(fireMin / 60), fireMin % 60, 0, 0)
       if (at.getTime() <= now) continue // 過去的不排
       const id = blockNotifId(dateKey, it.id)
       ids.push(id)
+      const lead = it.lead ?? 0
       notifs.push({
         id,
         title: '一刻手帳',
-        body: `${hhmm(it.start)} ${it.text || '時間到了'}`,
+        body: lead > 0 ? `${lead} 分後：${it.text || hhmm(it.start)}` : `${hhmm(it.start)} ${it.text || '時間到了'}`,
         schedule: { at, allowWhileIdle: true },
       })
     }

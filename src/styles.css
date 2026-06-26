@@ -1722,6 +1722,135 @@ textarea.line-area {
   vertical-align: middle;
 }
 
+/* ---------- 時間塊編輯卡（置中 modal，手機底部 sheet）---------- */
+.tl-edit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  background: rgba(60, 48, 30, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.tl-edit-card {
+  width: 100%;
+  max-width: 380px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--paper-card);
+  border: 1px solid var(--gold);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(60, 48, 30, 0.35);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tl-edit-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  width: 100%;
+}
+.tl-edit-card .pop-times {
+  margin: 4px 0 8px;
+}
+.tl-edit-label {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+  margin-top: 12px;
+  margin-bottom: 5px;
+}
+.tl-edit-note {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 64px;
+  font-family: var(--hand);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 10px 12px;
+  resize: none;
+  overflow: hidden;
+}
+.tl-edit-note:focus {
+  border-color: var(--gold);
+  outline: none;
+  background: rgba(255, 255, 255, 0.75);
+}
+.tl-edit-remind {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tl-remind-toggle {
+  align-self: flex-start;
+  font-size: 14px;
+  color: var(--ink-soft);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+.tl-remind-toggle.on {
+  color: var(--terra);
+  border-color: var(--gold);
+  background: rgba(184, 146, 62, 0.12);
+}
+.tl-lead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tl-lead-btn {
+  font-size: 13px;
+  color: var(--ink-soft);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+.tl-lead-btn.on {
+  color: #fff;
+  background: var(--terra);
+  border-color: var(--terra);
+}
+.tl-edit-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.tl-edit-done {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--terra);
+  border-radius: 999px;
+  padding: 8px 22px;
+}
+
+@media (max-width: 560px) {
+  .tl-edit-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .tl-edit-card {
+    max-width: none;
+    max-height: 88vh;
+    border-radius: 18px 18px 0 0;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+  }
+}
+
 .backup-list {
   list-style: none;
   margin: 10px 0 0;

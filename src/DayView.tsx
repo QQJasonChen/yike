@@ -129,17 +129,17 @@ export default function DayView({
     () =>
       entry.blocks
         .filter((b) => b.notify)
-        .map((b) => `${b.id}:${b.start}:${b.text}`)
+        .map((b) => `${b.id}:${b.start}:${b.notifyLead ?? 0}:${b.text}`)
         .join('|'),
     [entry.blocks]
   )
   useEffect(() => {
     const toNotify = entry.blocks.filter((b) => b.notify)
     if (notifyAvailable()) {
-      // iOS：排本地通知，關 app 也會在開始時間響
+      // iOS：排本地通知，關 app 也會在（開始時間 − 提前分鐘）響
       void syncBlockReminders(
         dateKey,
-        toNotify.map((b) => ({ id: b.id, start: b.start, text: b.text }))
+        toNotify.map((b) => ({ id: b.id, start: b.start, text: b.text, lead: b.notifyLead ?? 0 }))
       )
       return
     }
@@ -152,13 +152,18 @@ export default function DayView({
     const nowMs = now.getHours() * 3600000 + now.getMinutes() * 60000 + now.getSeconds() * 1000
     const timers: number[] = []
     for (const b of toNotify) {
-      const msUntil = b.start * 60000 - nowMs
+      const lead = b.notifyLead ?? 0
+      const msUntil = (b.start - lead) * 60000 - nowMs
       if (msUntil <= 0) continue
       timers.push(
         window.setTimeout(() => {
           try {
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-              new Notification('一刻手帳', { body: `${fmtMin(b.start)} ${b.text || '時間到了'}` })
+              const body =
+                lead > 0
+                  ? `${lead} 分後：${b.text || fmtMin(b.start)}`
+                  : `${fmtMin(b.start)} ${b.text || '時間到了'}`
+              new Notification('一刻手帳', { body })
             }
           } catch {
             /* 通知失敗：略過 */
