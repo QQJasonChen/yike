@@ -112,9 +112,33 @@ const touchMeta = (key: string) => {
   localStorage.setItem(META_KEY, JSON.stringify(m))
 }
 
+// 同步閘門（拉取優先）：雲端裝置開站時「先把雲端 pull 下來、再讓本機寫入影響同步」。
+// 閘門關閉期間，write() 照常落地 localStorage（畫面不受影響），但**不 bump meta、不觸發 push**——
+// 這樣「pull 前的空白/預設寫入」絕不會拿到較新的時間戳去反蓋雲端的正確資料（資料消失的根因）。
+// 首次 pull 完成後 openSyncGate()：此時雲端基準已就位，才把這期間寫過的 key 補上時間戳並推送。
+let syncGateClosed = false
+const gatedKeys = new Set<string>()
+export const closeSyncGate = () => {
+  syncGateClosed = true
+}
+export const openSyncGate = () => {
+  if (!syncGateClosed && gatedKeys.size === 0) return
+  syncGateClosed = false
+  const keys = [...gatedKeys]
+  gatedKeys.clear()
+  for (const k of keys) {
+    touchMeta(k)
+    onDataWrite?.(k)
+  }
+}
+
 const write = (key: string, value: unknown) => {
   localStorage.setItem(key, JSON.stringify(value))
   if (key !== SYNC_KEY && key !== META_KEY) {
+    if (syncGateClosed) {
+      gatedKeys.add(key) // 閘門關閉：先記下，等 openSyncGate 再 bump+推送
+      return
+    }
     touchMeta(key)
     onDataWrite?.(key)
   }

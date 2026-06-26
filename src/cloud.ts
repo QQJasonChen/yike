@@ -12,6 +12,7 @@ import {
   hasCloudArtifact,
   loadMeta,
   markCloudBound,
+  openSyncGate,
   setOnDataWrite,
   writeFromCloud,
 } from './storage'
@@ -169,25 +170,14 @@ export const startAutoSync = async (onChange?: (msg: string) => void): Promise<v
       clearSupabaseTokens() // 先清 token，避免重整後又判定為殘留→無限重整
       clearAllLocalData()
       location.reload()
+      return
     }
+    openSyncGate() // 萬一 main.tsx 關了閘門但這裡判定無 session（race）：放開，避免寫入被卡住不同步
     return
   }
   markCloudBound()
 
-  try {
-    const { pulled } = await syncNow()
-    onChange?.(`已同步（${email}）`)
-    // 開站時拉到新資料 → 重新整理一次讓畫面吃到（防迴圈旗標）
-    if (pulled > 0 && !sessionStorage.getItem('pp:justSynced')) {
-      sessionStorage.setItem('pp:justSynced', '1')
-      location.reload()
-      return
-    }
-    sessionStorage.removeItem('pp:justSynced')
-  } catch {
-    onChange?.('自動同步失敗，稍後會再試')
-  }
-
+  // 先掛好自動推送，再打開閘門——這樣 openSyncGate flush 的 key 會被排進推送
   setOnDataWrite(() => {
     if (pushTimer) clearTimeout(pushTimer)
     pushTimer = setTimeout(() => {
@@ -196,6 +186,27 @@ export const startAutoSync = async (onChange?: (msg: string) => void): Promise<v
         .catch(() => onChange?.('同步失敗，下次寫入時重試'))
     }, 4000)
   })
+
+  try {
+    // 首次 pull 加逾時保護：就算網路掛了也要在 8 秒內打開閘門，不讓本機寫入永遠卡住
+    const { pulled } = (await Promise.race([
+      syncNow(),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('sync-timeout')), 8000)),
+    ])) as { pulled: number; pushed: number }
+    onChange?.(`已同步（${email}）`)
+    // 開站時拉到新資料 → 重新整理一次讓畫面吃到（防迴圈旗標）
+    if (pulled > 0 && !sessionStorage.getItem('pp:justSynced')) {
+      sessionStorage.setItem('pp:justSynced', '1')
+      openSyncGate()
+      location.reload()
+      return
+    }
+    sessionStorage.removeItem('pp:justSynced')
+  } catch {
+    onChange?.('自動同步失敗，稍後會再試')
+  } finally {
+    openSyncGate() // 不論成功/失敗/逾時，首次同步後一律打開閘門
+  }
 
   // 切回 app／分頁時立刻拉一次（手機-電腦輪流用時幾乎即時）
   let lastVisPull = 0

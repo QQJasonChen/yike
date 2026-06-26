@@ -9,19 +9,23 @@ import {
   importAll,
   isoWeekOf,
   autoBackup,
+  closeSyncGate,
   listBackups,
   loadDay,
   loadLife,
+  loadMeta,
   loadSettings,
   mondayOf,
   monthOf,
   nameStats,
+  openSyncGate,
   recentNames,
   restoreBackup,
   saveDay,
   saveLife,
   saveSettings,
   saveWeek,
+  setOnDataWrite,
   toDateKey,
 } from '../storage'
 import { defaultSettings } from '../types'
@@ -226,6 +230,31 @@ describe('habit auto-recovery', () => {
     saveSettings({ ...defaultSettings(), habits: [] })
     loadSettings()
     expect(allDataKeys()).not.toContain('pp:habitsAutoRestored')
+  })
+})
+
+describe('sync gate (pull-before-write)', () => {
+  it('defers meta bump + push while gate closed, flushes on open', () => {
+    const pushed: string[] = []
+    setOnDataWrite((k) => pushed.push(k))
+    closeSyncGate()
+    saveDay('2026-06-13', { ...emptyDay(), score: 4 })
+    // 閘門關閉：localStorage 有寫入，但 meta 不動、push 不觸發
+    expect(loadDay('2026-06-13').score).toBe(4)
+    expect(loadMeta()['pp:day:2026-06-13']).toBeUndefined()
+    expect(pushed).toEqual([])
+    openSyncGate()
+    // 打開後：補 bump meta + 觸發推送
+    expect(loadMeta()['pp:day:2026-06-13']).toBeGreaterThan(0)
+    expect(pushed).toContain('pp:day:2026-06-13')
+    setOnDataWrite(null)
+  })
+
+  it('writes after gate opens bump meta normally', () => {
+    closeSyncGate()
+    openSyncGate()
+    saveDay('2026-06-14', { ...emptyDay(), score: 2 })
+    expect(loadMeta()['pp:day:2026-06-14']).toBeGreaterThan(0)
   })
 })
 

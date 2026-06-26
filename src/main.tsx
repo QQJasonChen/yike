@@ -2,6 +2,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import './styles.css'
+import { cloudEnabled } from './cloudConfig'
+import { closeSyncGate, hasCloudArtifact } from './storage'
+
+// 拉取優先：若這台曾登入雲端，render 前先關上同步閘門，
+// 擋掉「首次 pull 完成前」的任何本機寫入污染雲端時間戳。cloud.ts 同步完成後打開。
+if (cloudEnabled() && hasCloudArtifact()) closeSyncGate()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
