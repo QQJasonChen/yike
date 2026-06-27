@@ -418,7 +418,7 @@ export default function App() {
                 } else if (e.key === 'ArrowUp') {
                   e.preventDefault()
                   setSearchSel((s) => Math.max(s - 1, 0))
-                } else if (e.key === 'Enter') {
+                } else if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                   const h = searchHits[searchSel]
                   if (h) goTo(h.target)
                 }

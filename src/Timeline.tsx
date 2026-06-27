@@ -461,7 +461,7 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
                 placeholder="做什麼？例：上班、深度工作"
                 value={editing.text}
                 onChange={(e) => updateBlock(editing.id, { text: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && setEditId(null)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && setEditId(null)}
               />
               <div className="pop-times">
                 <select

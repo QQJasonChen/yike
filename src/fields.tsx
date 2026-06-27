@@ -9,7 +9,7 @@ type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' |
   onValue: (v: string) => void
 }
 
-export function TextField({ value, onValue, ...rest }: InputProps) {
+export function TextField({ value, onValue, onKeyDown, ...rest }: InputProps) {
   const composing = useRef(false)
   const [buf, setBuf] = useState<string | null>(null)
   return (
@@ -23,6 +23,11 @@ export function TextField({ value, onValue, ...rest }: InputProps) {
           setBuf(null)
           onValue(v)
         }
+      }}
+      onKeyDown={(e) => {
+        // 組字（IME 選字）期間按 Enter 等鍵不要觸發父層動作（跳下一欄/送出/關閉）
+        if (composing.current || e.nativeEvent.isComposing) return
+        onKeyDown?.(e)
       }}
       onCompositionStart={() => {
         composing.current = true
@@ -42,7 +47,7 @@ type AreaProps = Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onChan
   onValue: (v: string) => void
 }
 
-export function TextArea({ value, onValue, ...rest }: AreaProps) {
+export function TextArea({ value, onValue, onKeyDown, ...rest }: AreaProps) {
   const composing = useRef(false)
   const [buf, setBuf] = useState<string | null>(null)
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -70,6 +75,10 @@ export function TextArea({ value, onValue, ...rest }: AreaProps) {
           onValue(v)
         }
         fit()
+      }}
+      onKeyDown={(e) => {
+        if (composing.current || e.nativeEvent.isComposing) return
+        onKeyDown?.(e)
       }}
       onCompositionStart={() => {
         composing.current = true
