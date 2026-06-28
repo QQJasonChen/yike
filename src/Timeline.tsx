@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { TextField } from './fields'
+import { recentNames } from './storage'
 import { Block, MAX_ROUTINES, ROUTINE_COLORS, RoutineItem, colorHex } from './types'
 
 // 時間軸範圍：06:00 – 23:00，每格 30 分鐘
@@ -263,6 +264,16 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
 
   const editing = editId ? blocks.find((b) => b.id === editId) : null
 
+  // 最近常用的活動名稱（取代原生 datalist 那個又醜又難控的下拉，改成乾淨可控的膠囊）
+  const allNames = useMemo(() => recentNames(), [editId])
+  const nameSuggestions = (() => {
+    if (!editing) return []
+    const q = (editing.text ?? '').trim().toLowerCase()
+    return allNames
+      .filter((n) => n && n !== editing.text && (!q || n.toLowerCase().includes(q)))
+      .slice(0, 8)
+  })()
+
   return (
     <div className="timeline-wrap">
       <div className="timeline-head">
@@ -457,12 +468,24 @@ export default function Timeline({ blocks, isToday, routines, onChange, onRoutin
               <input
                 className="tl-edit-title"
                 autoFocus
-                list="yike-names"
                 placeholder="做什麼？例：上班、深度工作"
                 value={editing.text}
                 onChange={(e) => updateBlock(editing.id, { text: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && setEditId(null)}
               />
+              {nameSuggestions.length > 0 && (
+                <div className="tl-suggest">
+                  {nameSuggestions.map((n) => (
+                    <button
+                      key={n}
+                      className="tl-suggest-chip"
+                      onClick={() => updateBlock(editing.id, { text: n })}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="pop-times">
                 <select
                   value={editing.start}

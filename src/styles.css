@@ -1768,6 +1768,31 @@ textarea.line-area {
   margin-bottom: 6px;
   width: 100%;
 }
+.tl-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 6px;
+}
+.tl-suggest-chip {
+  font-family: var(--hand);
+  font-size: 13px;
+  color: var(--ink-soft);
+  background: rgba(184, 146, 62, 0.08);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 4px 12px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tl-suggest-chip:hover {
+  border-color: var(--gold);
+  background: rgba(184, 146, 62, 0.16);
+  color: var(--ink);
+}
+
 .tl-edit-card .pop-times {
   margin: 4px 0 8px;
 }
