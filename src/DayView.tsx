@@ -179,7 +179,7 @@ export default function DayView({
   const taskListRef = useRef<HTMLDivElement>(null)
 
   const focusNextTask = (currentIndex: number) => {
-    const inputs = taskListRef.current?.querySelectorAll<HTMLInputElement>('input[list="yike-names"]')
+    const inputs = taskListRef.current?.querySelectorAll<HTMLInputElement>('input.task-name')
     inputs?.[currentIndex + 1]?.focus()
   }
 

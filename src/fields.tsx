@@ -2,7 +2,8 @@
 // 關鍵：組字（composition）期間用「本地暫存值」顯示，不讓父層的舊 value 在重繪時
 // 把正在組的字洗掉（這會讓 iOS WKWebView 打不了中文）；組字結束才把最終值送上去。
 // 桌機：組字中不通知父層 → 不會因重繪而重複字。兩邊都正確。
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { recentNames } from './storage'
 
 type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> & {
   value: string
@@ -91,5 +92,45 @@ export function TextArea({ value, onValue, onKeyDown, ...rest }: AreaProps) {
         fit()
       }}
     />
+  )
+}
+
+// 命名輸入：TextField + 乾淨可控的「最近用過」自製下拉，取代原生 <datalist>（醜、難控、會蓋畫面）。
+// 聚焦才開、邊打邊篩、最多 6 筆、點即填；用 onMouseDown preventDefault 避免 blur 搶先關掉。
+export function NameField({ value, onValue, ...rest }: InputProps) {
+  const [open, setOpen] = useState(false)
+  const names = useMemo(() => (open ? recentNames() : []), [open])
+  const q = value.trim().toLowerCase()
+  const matches = open
+    ? names.filter((n) => n && n !== value && (!q || n.toLowerCase().includes(q))).slice(0, 6)
+    : []
+  return (
+    <span className="name-field">
+      <TextField
+        {...rest}
+        value={value}
+        onValue={onValue}
+        onFocus={() => setOpen(true)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+      />
+      {matches.length > 0 && (
+        <span className="name-menu">
+          {matches.map((n) => (
+            <button
+              key={n}
+              type="button"
+              className="name-opt"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onValue(n)
+                setOpen(false)
+              }}
+            >
+              {n}
+            </button>
+          ))}
+        </span>
+      )}
+    </span>
   )
 }

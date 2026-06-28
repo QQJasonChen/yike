@@ -23,7 +23,6 @@ import {
   mondayOf,
   monthOf,
   quarterOf,
-  recentNames,
   saveSettings,
   toDateKey,
 } from './storage'
@@ -192,17 +191,8 @@ export default function App() {
 
   const streak = currentStreak(todayKey)
   const todayFocusSessions = loadDay(todayKey).tasks.reduce((s, t) => s + t.done, 0)
-  // 歷史名稱 → 全域自動完成；刻意在切換分頁時重算（抓到剛新增的名稱）
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const names = useMemo(() => recentNames(), [tab])
-
   return (
     <>
-      <datalist id="yike-names">
-        {names.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
       <div className="topbar">
         <span className="brand">一刻手帳 Yike</span>
         <nav className="tabs">

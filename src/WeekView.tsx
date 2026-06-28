@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { TextArea, TextField } from './fields'
+import { NameField, TextArea, TextField } from './fields'
 import Gantt, { spanToCells } from './Gantt'
 import { tierTone } from './ganttTone'
 import HabitWeek from './HabitWeek'
@@ -116,8 +116,7 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
         return (
           <div key={idx} className={`week-task-row ${t.done ? 'done' : ''}`}>
             <span className="task-num">{idx + 1}.</span>
-            <TextField
-              list="yike-names"
+            <NameField
               value={t.text}
               onValue={(v) => updateTask(idx, { text: v })}
             />

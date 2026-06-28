@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { TextArea, TextField } from './fields'
+import { NameField, TextArea } from './fields'
 import MiniCal from './MiniCal'
 import HabitHeatmap from './HabitHeatmap'
 import PeriodSummary from './PeriodSummary'
@@ -121,8 +121,7 @@ export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay
         {entry.priorities.map((p, i) => (
           <div key={i} className={`week-task-row ${p.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
-            <TextField
-              list="yike-names"
+            <NameField
               value={p.text}
               onValue={(v) => {
                 const priorities = entry.priorities.slice()

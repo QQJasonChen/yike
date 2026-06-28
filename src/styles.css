@@ -1768,6 +1768,44 @@ textarea.line-area {
   margin-bottom: 6px;
   width: 100%;
 }
+/* 命名自製下拉（取代原生 datalist） */
+.name-field {
+  display: block;
+  position: relative;
+  width: 100%;
+}
+.name-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 160px;
+  max-width: 280px;
+  z-index: 80;
+  background: var(--paper-card);
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(60, 48, 30, 0.25);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.name-opt {
+  text-align: left;
+  font-family: var(--hand);
+  font-size: 14px;
+  color: var(--ink-soft);
+  padding: 7px 10px;
+  border-radius: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.name-opt:hover {
+  background: rgba(184, 146, 62, 0.14);
+  color: var(--ink);
+}
+
 .tl-suggest {
   display: flex;
   flex-wrap: wrap;

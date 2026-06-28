@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { TextField } from './fields'
+import { NameField } from './fields'
 import { addDays, fromDateKey, loadDay, saveDay, toDateKey } from './storage'
 import { Block, DayEntry } from './types'
 
@@ -252,9 +252,8 @@ export default function WeekGrid({ mondayKey, query, onOpenDay }: Props) {
                     style={{ top: Math.max(0, minToY(edit.start) - 4) }}
                     onPointerDown={(e) => e.stopPropagation()}
                   >
-                    <TextField
+                    <NameField
                       autoFocus
-                      list="yike-names"
                       placeholder="做什麼？"
                       value={edit.text}
                       onValue={(v) => updateBlock(k, edit.id, { text: v })}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TextArea, TextField } from './fields'
+import { NameField, TextArea, TextField } from './fields'
 import Gantt, { spanToCells } from './Gantt'
 import { loadLife, saveLife } from './storage'
 import { LifeEntry } from './types'
@@ -62,8 +62,7 @@ export default function LifeView() {
         {entry.goals.map((g, i) => (
           <div key={i} className={`week-task-row ${g.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
-            <TextField
-              list="yike-names"
+            <NameField
               value={g.text}
               placeholder={i === 0 ? '如果這十年只完成一件，你會選哪一件？' : ''}
               onValue={(v) => setGoal(i, { text: v })}

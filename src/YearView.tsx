@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { TextField } from './fields'
+import { NameField, TextField } from './fields'
 import HabitHeatmap from './HabitHeatmap'
 import PeriodSummary from './PeriodSummary'
 import { allDayKeys, loadDay, loadYear, mondayOf, saveYear, toDateKey } from './storage'
@@ -95,8 +95,7 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
         {entry.goals.map((g, i) => (
           <div key={i} className={`week-task-row ${g.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
-            <TextField
-              list="yike-names"
+            <NameField
               value={g.text}
               placeholder={i === 0 ? '今年就算只完成這一件，也值得了' : ''}
               onValue={(v) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TextArea, TextField } from './fields'
+import { NameField, TextArea } from './fields'
 import HabitHeatmap from './HabitHeatmap'
 import PeriodSummary from './PeriodSummary'
 import { addQuarters, loadQuarter, mondayOf, saveQuarter } from './storage'
@@ -65,8 +65,7 @@ export default function QuarterView({ quarterKey, onQuarterChange, settings }: P
         {entry.priorities.map((p, i) => (
           <div key={i} className={`week-task-row ${p.done ? 'done' : ''}`}>
             <span className="task-num">{i + 1}.</span>
-            <TextField
-              list="yike-names"
+            <NameField
               value={p.text}
               placeholder={i === 0 ? '這一季最想推進的一件事' : ''}
               onValue={(v) => {
