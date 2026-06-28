@@ -4,6 +4,7 @@ import {
   activateWithCode,
   cloudEnabled,
   currentEmail,
+  deleteAccount,
   signInOrUp,
   signOut,
   startAutoSync,
@@ -277,6 +278,30 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         }}
                       >
                         登出
+                      </button>
+                    </div>
+                    <div className="data-actions" style={{ marginTop: 14 }}>
+                      <button
+                        className="link-btn"
+                        style={{ color: 'var(--terra)' }}
+                        onClick={() => {
+                          const typed = prompt(
+                            '永久刪除帳號會刪掉雲端與這台裝置上的所有資料，無法復原。\n\n若確定，請輸入你的 Email 以確認刪除：'
+                          )
+                          if (typed == null) return
+                          if (typed.trim().toLowerCase() !== (cloudUser ?? '').toLowerCase()) {
+                            alert('Email 不符，已取消刪除。')
+                            return
+                          }
+                          cloudAct(async () => {
+                            await deleteAccount()
+                            stopAutoSync()
+                            clearAllLocalData()
+                            location.reload()
+                          })
+                        }}
+                      >
+                        永久刪除帳號
                       </button>
                     </div>
                   </>

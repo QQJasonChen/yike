@@ -107,6 +107,25 @@ export const currentEmail = async (): Promise<string | null> => {
 
 export const signOut = async () => (await supa()).auth.signOut()
 
+/** 永久刪除帳號＋雲端資料（App Store 強制）。成功後呼叫端應清本機並重整。 */
+export const deleteAccount = async (): Promise<void> => {
+  const db = await supa()
+  const { data: sess } = await db.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) throw new Error('請先登入')
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+  if (!res.ok || !body.ok) throw new Error(body.error ?? `刪除失敗（${res.status}）`)
+  await db.auth.signOut().catch(() => {})
+}
+
 interface Row {
   key: string
   value: unknown
