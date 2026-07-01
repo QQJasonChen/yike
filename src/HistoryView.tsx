@@ -11,6 +11,7 @@ import {
   toDateKey,
 } from './storage'
 import { dayToMarkdown } from './exportMd'
+import ExportPanel from './ExportPanel'
 import { Settings } from './types'
 
 const AI_COACH_PROMPT = `你是一位犀利但溫暖的生產力教練。以下是我最近的每日手帳記錄（最重要任務、專注時段、時間軸、反思、心情與評分）。請分析：
@@ -46,10 +47,6 @@ export default function HistoryView({ onOpenDay, settings }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const todayKey = toDateKey(new Date())
   const [coachCopied, setCoachCopied] = useState(false)
-  // Markdown 區間匯出
-  const [mdFrom, setMdFrom] = useState(() => addDays(toDateKey(new Date()), -6))
-  const [mdTo, setMdTo] = useState(() => toDateKey(new Date()))
-  const [mdCopied, setMdCopied] = useState(false)
   // 活動統計期間
   const [period, setPeriod] = useState<string>('all')
   const statRange = (): { from?: string; to?: string } => {
@@ -81,29 +78,6 @@ export default function HistoryView({ onOpenDay, settings }: Props) {
       await navigator.clipboard.writeText(AI_COACH_PROMPT + body)
       setCoachCopied(true)
       setTimeout(() => setCoachCopied(false), 2500)
-    } catch {
-      alert('複製失敗')
-    }
-  }
-
-  // 區間 MD：把 from→to 之間「有記錄」的每天串成一份 Markdown 複製
-  const copyRangeMD = async () => {
-    const lo = mdFrom <= mdTo ? mdFrom : mdTo
-    const hi = mdFrom <= mdTo ? mdTo : mdFrom
-    const inRange = allDayKeys()
-      .filter((k) => k >= lo && k <= hi)
-      .sort()
-    if (inRange.length === 0) {
-      alert('這段日期內沒有任何記錄。')
-      return
-    }
-    const md = inRange
-      .map((k) => dayToMarkdown(k, loadDay(k), settings.morningQs, settings.eveningQs))
-      .join('\n\n---\n\n')
-    try {
-      await navigator.clipboard.writeText(md)
-      setMdCopied(true)
-      setTimeout(() => setMdCopied(false), 2500)
     } catch {
       alert('複製失敗')
     }
@@ -307,17 +281,7 @@ export default function HistoryView({ onOpenDay, settings }: Props) {
           </label>
         </div>
 
-        <div className="label" style={{ marginTop: 18 }}>
-          Markdown 區間匯出 <span className="hint">選一段日期，一次複製多天（貼 Heptabase / Notion / 週月報）</span>
-        </div>
-        <div className="md-range">
-          <input type="date" value={mdFrom} max={mdTo} onChange={(e) => setMdFrom(e.target.value)} />
-          <span className="md-range-sep">→</span>
-          <input type="date" value={mdTo} min={mdFrom} onChange={(e) => setMdTo(e.target.value)} />
-          <button className="md-range-btn" onClick={copyRangeMD}>
-            {mdCopied ? '✓ 已複製' : '⧉ 複製這段 MD'}
-          </button>
-        </div>
+        <ExportPanel settings={settings} />
       </div>
     </div>
   )
