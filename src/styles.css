@@ -938,6 +938,7 @@ textarea.line-area {
   margin-top: 6px;
 }
 .md-range input[type='date'] {
+  width: auto; /* 蓋掉全域 input{width:100%}，讓 from → to 排同一列 */
   font-family: var(--eng);
   font-size: 14px;
   border: 1px solid var(--rule);

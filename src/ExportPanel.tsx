@@ -175,7 +175,7 @@ export default function ExportPanel({ settings }: Props) {
         </button>
       </div>
       {msg && (
-        <p className="sync-help" style={{ color: msg.err ? 'var(--danger, #a33)' : undefined }}>
+        <p className="sync-help" style={{ color: msg.err ? 'var(--terra)' : undefined }}>
           {msg.text}
           {msg.url && (
             <>
@@ -189,6 +189,14 @@ export default function ExportPanel({ settings }: Props) {
       )}
       {showSetup && (
         <div className="sync-box" style={{ marginTop: 10 }}>
+          {cfg && (
+            <p className="sync-help">
+              ✓ 目前已連結頁面：
+              <a href={cfg.parentUrl} target="_blank" rel="noreferrer">
+                {cfg.parentUrl.length > 52 ? `${cfg.parentUrl.slice(0, 52)}…` : cfg.parentUrl}
+              </a>
+            </p>
+          )}
           <p className="sync-help">
             連你<b>自己的 Notion</b>（資料不經過任何人的帳號）：
             <br />
