@@ -244,6 +244,16 @@ footer a{color:var(--ink-faint)}
     </div>
   </section>
 
+  <section id="newsletter">
+    <div class="sec-kicker">Newsletter</div>
+    <h2>訂閱第二大腦週報</h2>
+    <p class="sec-sub">一刻手帳是我用 AI 打造的工具之一。每週日一封信，分享我實際在用的 AI 工作流與第二大腦方法——5 分鐘讀完，不寄垃圾信，隨時取消。</p>
+    <div class="reveal" style="text-align:center">
+      <iframe src="https://qqleveragelife.substack.com/embed" width="480" height="150" style="border:1px solid var(--rule);border-radius:8px;background:#fff;max-width:100%" frameborder="0" scrolling="no" title="訂閱第二大腦週報"></iframe>
+      <p style="font-size:13px;color:var(--ink-faint);margin-top:8px">或到 <a href="https://qqleveragelife.substack.com" target="_blank" rel="noreferrer">Substack</a> 先看過往的信</p>
+    </div>
+  </section>
+
   <div class="final">
     <p class="quote">「我們如何度過每一天，就是我們如何度過一生。」</p>
     <p class="author">— Annie Dillard</p>
@@ -262,5 +272,6 @@ footer a{color:var(--ink-faint)}
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
 document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 </script>
+<script data-goatcounter="https://yike.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>

@@ -22,5 +22,15 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // GoatCounter：無 cookie 匿名流量統計。只在正式網域計數（本機開發與 iOS 原生殼不載入，維持 App Privacy「不追蹤」）
+      if (location.protocol === 'https:' && location.hostname !== 'localhost') {
+        var gc = document.createElement('script')
+        gc.async = true
+        gc.dataset.goatcounter = 'https://yike.goatcounter.com/count'
+        gc.src = 'https://gc.zgo.at/count.js'
+        document.head.appendChild(gc)
+      }
+    </script>
   </body>
 </html>

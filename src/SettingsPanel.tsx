@@ -410,6 +410,16 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
           )}
 
           <BackupSettings />
+
+          {!isNative && (
+            <p className="sync-help" style={{ marginTop: 20, textAlign: 'center' }}>
+              <a href="landing.html" target="_blank" rel="noreferrer">官網介紹</a>
+              {' ・ '}
+              <a href="manual.html" target="_blank" rel="noreferrer">使用手冊</a>
+              {' ・ '}
+              <a href="https://qqleveragelife.substack.com" target="_blank" rel="noreferrer">第二大腦週報</a>
+            </p>
+          )}
         </div>
       </div>
     </div>
