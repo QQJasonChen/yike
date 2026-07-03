@@ -4291,6 +4291,15 @@ button.mc-month:disabled { cursor: default; }
   );
 }
 
+/* 每條路的常駐引導（placeholder 打字就消失，這行一直在） */
+.odyssey-lead {
+  font-family: var(--hand);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: -2px 0 0;
+}
+
 /* 儀表板：資源/興奮/自信/一致 兩欄排列（原版生命設計師四儀表） */
 .odyssey-dash {
   display: grid;

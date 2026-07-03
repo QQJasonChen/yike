@@ -7,6 +7,25 @@ import { LifeEntry } from './types'
 // 願景：一頁看見長遠的方向（北極星 + 十年甘特 + 奧德賽三條路）
 const HORIZON = 10 // 甘特顯示幾年
 
+// 奧德賽三條路的引導（常駐顯示——placeholder 打字就消失，關鍵指引要一直看得到）
+const ODYSSEY_GUIDE = [
+  {
+    title: '現在這條路',
+    lead: '把手上的計畫認真展開——照這個方向走五年，最好會長成什麼樣？',
+    body: '寫成五年時間軸：每年 1–2 個「可驗證」的里程碑（做到沒做到，一看就知道）⋯',
+  },
+  {
+    title: '如果它消失了',
+    lead: '想像這條路明天突然不能走了（產業變了、平台死了）——你靠什麼活？盤點你的第二專長。',
+    body: '不是你不想走，是它被抽掉。寫下你會轉去做什麼、靠什麼收入，一樣列五年里程碑⋯',
+  },
+  {
+    title: '不管錢與面子',
+    lead: '不用賺錢、也沒有人評價你，你會怎麼過五年？這條在挖被你審查掉的真實渴望。',
+    body: '大膽寫。跟路 1 差很遠或驚訝地差不多，都是重要訊號⋯',
+  },
+]
+
 // 奧德賽儀表（《生命設計師》原版四儀表：資源/興奮/自信/一致）
 function Rate({
   label,
@@ -133,7 +152,9 @@ export default function LifeView() {
         >
           <span className={`odyssey-caret ${entry.odysseyOpen ? 'open' : ''}`}>▸</span>
           奧德賽計畫 — 三個五年後的我
-          <span className="hint">同一個你，三條都走得通的路。興奮度幫你看出真正想要的。</span>
+          <span className="hint">
+            三條都要認真寫——先看見「人生有多個可行版本」，焦慮才會鬆。寫完不是選一條，是挑出最想驗證的問題去做小實驗。
+          </span>
         </div>
 
         {entry.odysseyOpen && (
@@ -143,19 +164,14 @@ export default function LifeView() {
                 <TextField
                   className="odyssey-title"
                   value={p.title}
-                  placeholder={['現在這條路', '如果它消失了', '不管錢與面子'][i]}
+                  placeholder={ODYSSEY_GUIDE[i].title}
                   onValue={(v) => setPath(i, { title: v })}
                 />
+                <p className="odyssey-lead">{ODYSSEY_GUIDE[i].lead}</p>
                 <TextArea
                   className="odyssey-body"
                   rows={6}
-                  placeholder={
-                    [
-                      '沿著現在的路走五年，會走到哪？',
-                      '如果現在這條路突然不能走了，你會做什麼？',
-                      '如果錢和別人的眼光都不是問題，你會過怎樣的五年？',
-                    ][i]
-                  }
+                  placeholder={ODYSSEY_GUIDE[i].body}
                   value={p.body}
                   onValue={(v) => setPath(i, { body: v })}
                 />
@@ -192,7 +208,7 @@ export default function LifeView() {
                 <TextArea
                   className="odyssey-questions"
                   rows={2}
-                  placeholder="這條路引出什麼問題？（例：收入從哪來？家人怎麼想？）"
+                  placeholder="這條路最想驗證的 2–3 個問題——之後用小實驗收集答案（例：找活在這條路上的人聊 30 分鐘）"
                   value={p.questions ?? ''}
                   onValue={(v) => setPath(i, { questions: v })}
                 />
