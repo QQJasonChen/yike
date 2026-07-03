@@ -7,6 +7,37 @@ import { LifeEntry } from './types'
 // 願景：一頁看見長遠的方向（北極星 + 十年甘特 + 奧德賽三條路）
 const HORIZON = 10 // 甘特顯示幾年
 
+// 奧德賽儀表（《生命設計師》原版四儀表：資源/興奮/自信/一致）
+function Rate({
+  label,
+  hint,
+  glyph,
+  value,
+  onValue,
+}: {
+  label: string
+  hint: string
+  glyph: string
+  value: number
+  onValue: (v: number) => void
+}) {
+  return (
+    <div className="odyssey-rate" title={hint}>
+      <span className="odyssey-rate-label">{label}</span>
+      {Array.from({ length: 5 }, (_, s) => (
+        <button
+          key={s}
+          className={`sun ${s < value ? 'on' : ''}`}
+          onClick={() => onValue(value === s + 1 ? s : s + 1)}
+          title={`${s + 1} 分`}
+        >
+          {glyph}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function LifeView() {
   const [entry, setEntry] = useState<LifeEntry>(loadLife)
   const thisYear = new Date().getFullYear()
@@ -128,19 +159,43 @@ export default function LifeView() {
                   value={p.body}
                   onValue={(v) => setPath(i, { body: v })}
                 />
-                <div className="odyssey-rate" title="這條路讓你多興奮？">
-                  <span className="odyssey-rate-label">興奮度</span>
-                  {Array.from({ length: 5 }, (_, s) => (
-                    <button
-                      key={s}
-                      className={`sun ${s < p.excitement ? 'on' : ''}`}
-                      onClick={() => setPath(i, { excitement: p.excitement === s + 1 ? s : s + 1 })}
-                      title={`${s + 1} 分`}
-                    >
-                      ☀
-                    </button>
-                  ))}
+                <div className="odyssey-dash">
+                  <Rate
+                    label="資源"
+                    hint="時間、錢、技能，夠走這條路嗎？"
+                    glyph="◆"
+                    value={p.resources ?? 0}
+                    onValue={(v) => setPath(i, { resources: v })}
+                  />
+                  <Rate
+                    label="興奮"
+                    hint="這條路讓你多興奮？"
+                    glyph="☀"
+                    value={p.excitement}
+                    onValue={(v) => setPath(i, { excitement: v })}
+                  />
+                  <Rate
+                    label="自信"
+                    hint="我做得成嗎？"
+                    glyph="▲"
+                    value={p.confidence ?? 0}
+                    onValue={(v) => setPath(i, { confidence: v })}
+                  />
+                  <Rate
+                    label="一致"
+                    hint="跟你的北極星同一個方向嗎？"
+                    glyph="✦"
+                    value={p.coherence ?? 0}
+                    onValue={(v) => setPath(i, { coherence: v })}
+                  />
                 </div>
+                <TextArea
+                  className="odyssey-questions"
+                  rows={2}
+                  placeholder="這條路引出什麼問題？（例：收入從哪來？家人怎麼想？）"
+                  value={p.questions ?? ''}
+                  onValue={(v) => setPath(i, { questions: v })}
+                />
               </div>
             ))}
           </div>

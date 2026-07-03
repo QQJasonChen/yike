@@ -4291,6 +4291,22 @@ button.mc-month:disabled { cursor: default; }
   );
 }
 
+/* 儀表板：資源/興奮/自信/一致 兩欄排列（原版生命設計師四儀表） */
+.odyssey-dash {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 10px;
+  margin-top: 2px;
+}
+
+.odyssey-questions {
+  font-size: 13.5px;
+  line-height: 1.7;
+  resize: vertical;
+  border-top: 1px dashed var(--rule);
+  padding-top: 7px;
+}
+
 .odyssey-rate {
   display: flex;
   align-items: center;

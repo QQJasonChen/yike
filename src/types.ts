@@ -123,6 +123,11 @@ export interface OdysseyPath {
   title: string // 路線名（現在這條路／如果它消失了／不管錢與面子）
   body: string // 這個版本的五年後長什麼樣（自由書寫）
   excitement: number // 興奮度自評 0–5（幫你看出真正想要的）
+  // ↓《生命設計師》完整儀表板——後加的可選欄位；loadLife 逐條合併會自動補預設，舊資料原封不動
+  resources?: number // 資源 0–5：時間、錢、技能夠走這條路嗎
+  confidence?: number // 自信 0–5：我做得成嗎
+  coherence?: number // 一致 0–5：跟北極星同一個方向嗎
+  questions?: string // 這條路引出的問題（原框架要求每條路記下 2–3 個待解問題）
 }
 
 /** 願景維度：北極星 + 十年大目標甘特 + 奧德賽三條路。整個 app 只有一份。 */
@@ -168,9 +173,9 @@ export const emptyLife = (): LifeEntry => ({
   goals: Array.from({ length: 5 }, () => ({ text: '', done: false })),
   startYear: new Date().getFullYear(),
   odyssey: [
-    { title: '現在這條路', body: '', excitement: 0 },
-    { title: '如果它消失了', body: '', excitement: 0 },
-    { title: '不管錢與面子', body: '', excitement: 0 },
+    { title: '現在這條路', body: '', excitement: 0, resources: 0, confidence: 0, coherence: 0, questions: '' },
+    { title: '如果它消失了', body: '', excitement: 0, resources: 0, confidence: 0, coherence: 0, questions: '' },
+    { title: '不管錢與面子', body: '', excitement: 0, resources: 0, confidence: 0, coherence: 0, questions: '' },
   ],
   odysseyOpen: true,
 })
