@@ -125,7 +125,6 @@ export default function TaskRow({
                   onClick={() => onPlantClick(i)}
                 >
                   {kind === 'sprout' && <span className="plant-drop" />}
-                  {kind === 'gold' && <span className="plant-star">★</span>}
                   {kind === 'tree' || kind === 'gold' ? treeAt(i) : PLANT_GLYPHS[kind]}
                 </button>
               ))

@@ -136,6 +136,6 @@ export const PLANT_TITLES: Record<CellKind, string> = {
   seedPast: '沒長大的小苗（過去的日子）',
   sprout: '澆水中——專注結束就長成樹',
   tree: '完成的一段專注',
-  gold: '超標的一段——加碼的樹（金星）',
+  gold: '超標的一段——多種的一棵',
   withered: '中途放棄枯掉的一棵，點一下清除',
 }
