@@ -452,26 +452,20 @@ export default function DayView({
                       aria-label="開始專注"
                     >
                       {settings.focusStyle === 'tree' ? (
-                        // 澆水壺：專注 = 替今天的樹澆一段水
+                        // 水滴：專注 = 替今天的樹澆一段水
                         <svg className="mit-tomato" viewBox="0 0 32 32" aria-hidden="true">
-                          {/* 壺身 */}
                           <path
-                            d="M9 14 h11 a1.6 1.6 0 0 1 1.6 1.6 V25 a2 2 0 0 1 -2 2 H9.4 a2 2 0 0 1 -2 -2 V15.6 A1.6 1.6 0 0 1 9 14Z"
-                            fill="#3e6f8e"
+                            d="M16 4 C16 4 8 15 8 21 a8 8 0 0 0 16 0 C24 15 16 4 16 4 Z"
+                            fill="#4d81a3"
                           />
-                          {/* 壺口 */}
-                          <path d="M10.5 14 Q11 11.6 14.5 11.2 L18 11.2 Q21 11.6 20 14Z" fill="#4d81a3" />
-                          {/* 提把 */}
-                          <path d="M13 11 Q16 7.6 19 11" stroke="#3e6f8e" strokeWidth="2" fill="none" strokeLinecap="round" />
-                          {/* 壺嘴 */}
-                          <path d="M8.6 17.5 L3.4 12.6 L5.2 10.8 L9.6 15.4Z" fill="#3e6f8e" />
-                          <path d="M2.6 12.6 a2.2 2.2 0 1 1 3.4 -2.6 a2.2 2.2 0 0 1 -3.4 2.6Z" fill="#4d81a3" />
-                          {/* 水滴 ×3 */}
-                          <ellipse cx="3.6" cy="5.6" rx="1" ry="1.5" fill="#6f93b5" />
-                          <ellipse cx="6.2" cy="3.8" rx="1" ry="1.5" fill="#6f93b5" />
-                          <ellipse cx="8.8" cy="5.8" rx="1" ry="1.5" fill="#6f93b5" />
-                          {/* 反光 */}
-                          <ellipse cx="11.4" cy="19" rx="1.6" ry="2.6" fill="#fff" opacity="0.35" />
+                          <path
+                            d="M16 8 C16 8 11 15.5 11 20"
+                            stroke="#fff"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            fill="none"
+                            opacity="0.45"
+                          />
                         </svg>
                       ) : (
                         <svg className="mit-tomato" viewBox="0 0 32 32" aria-hidden="true">
