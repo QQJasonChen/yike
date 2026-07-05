@@ -4,7 +4,11 @@ export interface Task {
   done: number // 已完成的 30 分鐘時段數（塗圈）
   actual: number | null // 實際格數（任務完成時記下）
   completed: boolean
+  withered?: number // 番茄鐘計時中放棄的次數（種樹主題的枯樹格）；舊資料 undefined 視為 0
 }
+
+/** 單一任務的段數上限（done 與 target 共用；16 段 = 8 小時專注，一天的合理天花板） */
+export const MAX_SEGS = 16
 
 export interface Block {
   id: string
@@ -100,6 +104,7 @@ export interface Settings {
   autoLoop: boolean // 連續番茄鐘：休息結束自動接下一段專注（預設關）
   reminderEnabled: boolean // 每日提醒（僅原生 iOS 生效）
   reminderTime: string // 提醒時間 HH:MM
+  focusStyle: 'tree' | 'grid' // Focus 塗格風格：種樹（Forest 式，預設）／稿紙方格
 }
 
 // 預設 routine：精簡 4 個一日骨架（一行剛好放得下；可在設定頁增到 8 個）
@@ -209,4 +214,5 @@ export const defaultSettings = (): Settings => ({
   autoLoop: false,
   reminderEnabled: false,
   reminderTime: '20:00',
+  focusStyle: 'tree',
 })

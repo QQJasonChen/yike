@@ -42,6 +42,8 @@ interface Props {
   onSettingsChange: (s: Settings) => void
   /** 計時器完成一個時段時，由 App 呼叫塗圈 */
   registerSessionSink: (fn: (taskIndex: number, startMs: number, endMs: number) => void) => void
+  /** 計時中按 ✕ 放棄時，由 App 呼叫記枯樹 */
+  registerAbandonSink: (fn: (taskIndex: number) => void) => void
 }
 
 export default function DayView({
@@ -52,6 +54,7 @@ export default function DayView({
   settings,
   onSettingsChange,
   registerSessionSink,
+  registerAbandonSink,
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
   const [copied, setCopied] = useState(false)
@@ -279,6 +282,20 @@ export default function DayView({
     })
   }, [registerSessionSink, todayKey])
 
+  // 計時中放棄（✕）→ 該任務記一棵枯樹（計時永遠記在今天，同 startFocus 慣例）
+  useEffect(() => {
+    registerAbandonSink((taskIndex) => {
+      setEntry((prev) => {
+        const tasks = prev.tasks.slice()
+        const t = tasks[taskIndex]
+        if (t) tasks[taskIndex] = { ...t, withered: (t.withered ?? 0) + 1 }
+        const next = { ...prev, tasks }
+        saveDay(todayKey, next)
+        return next
+      })
+    })
+  }, [registerAbandonSink, todayKey])
+
   const d = new Date(
     Number(dateKey.slice(0, 4)),
     Number(dateKey.slice(5, 7)) - 1,
@@ -394,6 +411,8 @@ export default function DayView({
                   task={t}
                   onChange={(nt) => updateTask(i, nt)}
                   isRunning={timer?.phase === 'focus' && timer.taskIndex === i && isToday}
+                  focusStyle={settings.focusStyle}
+                  isPast={dateKey < todayKey}
                   onStartFocus={() => onStartFocus(i, t.text)}
                   onEnterKey={() => focusNextTask(i)}
                   onDropToTimeline={(x, y) => {

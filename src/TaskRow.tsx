@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { NameField } from './fields'
-import { Task } from './types'
+import { clickDone, plantCells } from './plantCells'
+import { PLANT_GLYPHS, PLANT_TITLES } from './plantGlyphs'
+import { MAX_SEGS, Task } from './types'
 
 interface Props {
   index: number
@@ -8,6 +10,10 @@ interface Props {
   onChange: (t: Task) => void
   onStartFocus: () => void
   isRunning: boolean
+  /** Focus 塗格風格：種樹（Forest 式）／稿紙方格 */
+  focusStyle: 'tree' | 'grid'
+  /** 過去日期：種樹模式下未發芽種子渲染成枯褐 */
+  isPast: boolean
   /** 把任務拖到時間軸：放開時回報座標，由 App 轉交 Timeline */
   onDropToTimeline: (clientX: number, clientY: number) => void
   /** Enter 鍵按下：由 DayView 決定聚焦下一個輸入框 */
@@ -20,15 +26,25 @@ export default function TaskRow({
   onChange,
   onStartFocus,
   isRunning,
+  focusStyle,
+  isPast,
   onDropToTimeline,
   onEnterKey,
 }: Props) {
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
   const dragging = useRef(false)
+  const withered = task.withered ?? 0
 
   const setDone = (n: number) => {
-    const done = Math.max(0, Math.min(8, n))
+    const done = Math.max(0, Math.min(MAX_SEGS, n))
     onChange({ ...task, done, actual: done > 0 ? done : null })
+  }
+
+  /** 種樹模式點格：枯樹格＝清除（改過自新），其他照 clickDone 語意 */
+  const onPlantClick = (i: number) => {
+    const next = clickDone(i, task.done, withered)
+    if (next === null) onChange({ ...task, withered: Math.max(0, withered - 1) })
+    else setDone(next)
   }
 
   const toggleDone = () => {
@@ -84,21 +100,44 @@ export default function TaskRow({
         ⠿
       </span>
 
-      {/* 稿紙方格：一格＝一段 30 分鐘。塗滿＝完成，金格＝超標，＋−直接調整預期 */}
+      {/* Focus 塗格：一格＝一段 30 分鐘。種樹模式＝種子→小樹（超標金花、放棄枯萎）；方格模式＝原稿紙格 */}
       <div className="focus-track sq-track">
         <div className="sq-row">
-          {(() => {
-            const planned = task.target ?? 0
-            const count = Math.max(planned, task.done, 1)
-            return Array.from({ length: count }, (_, i) => (
-              <button
-                key={i}
-                className={`sq ${i < task.done ? (planned > 0 && i >= planned ? 'gold' : 'fill') : ''}`}
-                title={`第 ${i + 1} 段（30 分鐘）`}
-                onClick={() => setDone(task.done === i + 1 ? i : i + 1)}
-              />
-            ))
-          })()}
+          {focusStyle === 'tree'
+            ? plantCells({
+                target: task.target,
+                done: task.done,
+                withered,
+                growing: isRunning,
+                isPast: isPast && task.text.trim() !== '', // 沒寫過的任務不算「殘留」
+              }).map((kind, i) => (
+                <button
+                  key={i}
+                  className={`plant-cell ${kind}`}
+                  title={PLANT_TITLES[kind]}
+                  onClick={() => onPlantClick(i)}
+                >
+                  {kind === 'sprout' && <span className="plant-drop" />}
+                  {PLANT_GLYPHS[kind]}
+                </button>
+              ))
+            : (() => {
+                const planned = task.target ?? 0
+                const count = Math.max(planned, task.done + withered, 1)
+                return Array.from({ length: count }, (_, i) => {
+                  const isWither = i >= task.done && i < task.done + withered
+                  return (
+                    <button
+                      key={i}
+                      className={`sq ${
+                        isWither ? 'wither' : i < task.done ? (planned > 0 && i >= planned ? 'gold' : 'fill') : ''
+                      }`}
+                      title={isWither ? PLANT_TITLES.withered : `第 ${i + 1} 段（30 分鐘）`}
+                      onClick={() => onPlantClick(i)}
+                    />
+                  )
+                })
+              })()}
         </div>
         <span className="sq-adj">
           <button
@@ -114,7 +153,7 @@ export default function TaskRow({
             title="多排一段"
             onClick={() => {
               const cur = task.target ?? Math.max(task.done, 1)
-              onChange({ ...task, target: Math.min(8, cur + 1) })
+              onChange({ ...task, target: Math.min(MAX_SEGS, cur + 1) })
             }}
           >
             ＋

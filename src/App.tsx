@@ -171,6 +171,12 @@ export default function App() {
     sessionSink.current = fn
   }, [])
 
+  // 計時中放棄（✕）→ 種樹主題記一棵枯樹（管線同 sessionSink）
+  const abandonSink = useRef<((taskIndex: number) => void) | null>(null)
+  const registerAbandonSink = useCallback((fn: (taskIndex: number) => void) => {
+    abandonSink.current = fn
+  }, [])
+
   // 雲端登入狀態（頂欄 badge 用）
   const [cloudIn, setCloudIn] = useState<boolean | null>(null)
   useEffect(() => {
@@ -269,6 +275,7 @@ export default function App() {
           settings={settings}
           onSettingsChange={updateSettings}
           registerSessionSink={registerSessionSink}
+          registerAbandonSink={registerAbandonSink}
         />
       )}
       {tab === 'week' && (
@@ -384,6 +391,8 @@ export default function App() {
           autoLoop={settings.autoLoop}
           lockApps={settings.focusLock}
           onSessionDone={(ti, s, e) => sessionSink.current?.(ti, s, e)}
+          onAbandon={(ti) => abandonSink.current?.(ti)}
+          treeStyle={settings.focusStyle === 'tree'}
         />
       )}
 

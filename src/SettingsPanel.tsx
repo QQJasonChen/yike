@@ -347,6 +347,19 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
             <span className="hint fl-hint">休息結束自動接下一段專注，不用回 app 按開始</span>
           </div>
 
+          <div className="settings-row focuslock-row">
+            <span>專注風格</span>
+            <button
+              className={`fl-toggle ${settings.focusStyle === 'tree' ? 'on' : ''}`}
+              onClick={() =>
+                onSettingsChange({ ...settings, focusStyle: settings.focusStyle === 'tree' ? 'grid' : 'tree' })
+              }
+            >
+              {settings.focusStyle === 'tree' ? '🌱 種樹' : '▦ 方格'}
+            </button>
+            <span className="hint fl-hint">種樹：完成一段長一棵墨綠小樹、超標開金花、計時中放棄會枯萎</span>
+          </div>
+
           <ReminderSettings settings={settings} onChange={onSettingsChange} />
 
           <div className="settings-row focuslock-row">

@@ -17,6 +17,8 @@
   --terra: #b65c38; /* 赤陶色：強調/計時器 */
   --ink-write: #1e2a40; /* 藍黑墨水：用戶手寫的字（對比印刷的墨黑） */
   --sage: #9d7a2c; /* 完成色（原鼠尾草綠 → 暖青銅金，融入暖橘系） */
+  --tree: #4a6a44; /* 墨綠：種樹主題長成的小樹 */
+  --wither: #8a6a4f; /* 枯褐：放棄枯掉的樹、過去日未發芽的種子 */
   --serif: 'Noto Serif TC', 'Songti TC', serif;
   --hand: 'LXGW WenKai TC', 'Noto Serif TC', serif;
   --eng: 'EB Garamond', Georgia, serif;
@@ -3755,7 +3757,7 @@ button.wk-head:hover {
 
 .sq-track { gap: 8px; }
 
-.sq-row { display: flex; gap: 5px; align-items: center; }
+.sq-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; row-gap: 4px; max-width: 172px; /* 8 格一行，16 格自動兩行 */ }
 
 .sq {
   width: 16px;
@@ -3807,6 +3809,71 @@ button.wk-head:hover {
 }
 
 .sq-adj button:hover { border-color: var(--gold); color: var(--gold-deep); }
+
+/* 方格模式下的放棄紀錄（枯褐格，資料不因切主題而隱形） */
+.sq.wither { background: var(--wither); border-color: var(--wither); opacity: 0.75; }
+
+/* ---------- 種樹專注（Forest 式塗格，focusStyle: tree） ---------- */
+
+.plant-cell {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  position: relative;
+  flex-shrink: 0;
+  transition: transform 0.18s;
+  cursor: pointer;
+}
+
+.plant-cell:hover { transform: scale(1.18); }
+
+.plant-cell svg { width: 100%; height: 100%; display: block; }
+
+.plant-cell.seed { color: var(--ink-faint); }
+.plant-cell.seedPast { color: var(--wither); opacity: 0.55; }
+.plant-cell.tree { color: var(--tree); animation: plantPop 0.3s cubic-bezier(0.34, 1.45, 0.64, 1); }
+.plant-cell.gold { color: var(--gold-deep); animation: plantPop 0.3s cubic-bezier(0.34, 1.45, 0.64, 1); }
+.plant-cell.withered { color: var(--wither); }
+.plant-cell.sprout { color: var(--tree); }
+
+.plant-cell.sprout svg {
+  transform-origin: 8px 13px;
+  animation: plantSway 2.4s ease-in-out infinite;
+}
+
+@keyframes plantPop {
+  from { transform: scale(0.5); }
+  to { transform: scale(1); }
+}
+
+@keyframes plantSway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+
+/* 澆水滴：生長格上方一滴水，週期落下 */
+.plant-drop {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 3px;
+  height: 4px;
+  margin-left: -1.5px;
+  border-radius: 50% 50% 60% 60%;
+  background: #6f93b5;
+  opacity: 0;
+  animation: dropFall 2.4s ease-in infinite;
+  pointer-events: none;
+}
+
+@keyframes dropFall {
+  0%, 55% { opacity: 0; transform: translateY(0); }
+  65% { opacity: 0.9; }
+  85% { opacity: 0; transform: translateY(9px); }
+  100% { opacity: 0; }
+}
 
 .week-no { color: var(--gold-deep); font-style: italic; }
 

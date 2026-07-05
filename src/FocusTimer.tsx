@@ -28,6 +28,10 @@ interface Props {
   onUpdate: (t: TimerState | null) => void
   /** 一段專注完成：任務 index ＋ 真實起訖（ms），用來塗圈＋寫進時間軸 */
   onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void
+  /** 計時中按 ✕ 放棄（focus 階段才算）：種樹主題記一棵枯樹 */
+  onAbandon: (taskIndex: number) => void
+  /** 種樹主題開著（放棄 confirm 的文案用） */
+  treeStyle: boolean
   breakMinutes: number
   focusMinutes: number
   /** 連續番茄鐘：休息結束自動接下一段（使用者可在設定開關） */
@@ -64,7 +68,7 @@ const chime = () => {
   navigator.vibrate?.([200, 80, 200])
 }
 
-export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, autoLoop, lockApps }: Props) {
+export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, treeStyle, breakMinutes, focusMinutes, autoLoop, lockApps }: Props) {
   const [, force] = useState(0)
   const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
@@ -173,6 +177,18 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
     })
   }
 
+  // ✕ 結束：focus 階段＝放棄（種樹主題會枯一棵，先 confirm）；休息階段＝正常收工不記
+  const stopTimer = () => {
+    if (timer.phase === 'focus') {
+      const msg = treeStyle
+        ? '確定要放棄嗎？這段專注的小樹會枯掉。'
+        : '確定要放棄這段專注嗎？會記下一次放棄。'
+      if (!confirm(msg)) return
+      onAbandon(timer.taskIndex)
+    }
+    onUpdate(null)
+  }
+
   // 墨圈（與 app icon 同一筆）：弧長隨倒數慢慢畫滿
   const ZR = 150
   const ZC = 2 * Math.PI * ZR
@@ -216,7 +232,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
               ⧉ 浮窗
             </button>
           )}
-          <button className="zen-stop" onClick={() => onUpdate(null)}>✕ 結束</button>
+          <button className="zen-stop" onClick={stopTimer}>✕ 結束</button>
         </div>
       </div>
     )
@@ -266,7 +282,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, breakMinute
             ✓
           </button>
         )}
-        <button className="stop" title="結束計時" onClick={(e) => { e.stopPropagation(); onUpdate(null) }}>
+        <button className="stop" title="結束計時" onClick={(e) => { e.stopPropagation(); stopTimer() }}>
           ✕
         </button>
       </div>
