@@ -42,3 +42,16 @@ export const clickDone = (i: number, done: number, withered: number): number | n
   if (i < done + withered) return null
   return Math.min(MAX_SEGS, Math.max(0, i + 1 - withered))
 }
+
+import type { TreeTier } from './plantGlyphs'
+
+/** 專注時長 → 樹種（門檻制：50 分以上茂密樹、120 分以上櫻花；100 分＝50 分那階） */
+export const treeTier = (minutes: number): TreeTier =>
+  minutes >= 120 ? 'cherry' : minutes >= 50 ? 'lush' : 'pine'
+
+/** 讓 grove（每棵樹的分鐘數）長度對齊 done：多的截掉、少的用 fill 補（新種的樹） */
+export const syncGrove = (grove: number[] | undefined, len: number, fill: number): number[] => {
+  const g = (grove ?? []).slice(0, len)
+  while (g.length < len) g.push(fill)
+  return g
+}

@@ -249,8 +249,9 @@ export default function DayView({
         const tasks = prev.tasks.slice()
         const t = tasks[taskIndex]
         if (t) {
-          const done = Math.min(t.done + 1, 8)
-          tasks[taskIndex] = { ...t, done, actual: done }
+          const done = Math.min(t.done + 1, 16)
+          // 這段完成 → 依當下選定時長種一棵樹（記進 grove 決定樹種）
+          tasks[taskIndex] = { ...t, done, actual: done, grove: syncGrove(t.grove, done, settings.focusMinutes) }
         }
         // 真實起訖 → 分鐘（夾在時間軸 06:00–23:00 範圍內，最短 15 分鐘）
         const toMin = (ms: number) => {
@@ -412,6 +413,7 @@ export default function DayView({
                   onChange={(nt) => updateTask(i, nt)}
                   isRunning={timer?.phase === 'focus' && timer.taskIndex === i && isToday}
                   focusStyle={settings.focusStyle}
+                  focusMinutes={settings.focusMinutes}
                   isPast={dateKey < todayKey}
                   onStartFocus={() => onStartFocus(i, t.text)}
                   onEnterKey={() => focusNextTask(i)}
@@ -446,7 +448,7 @@ export default function DayView({
                 {i === 0 && isToday && t.text.trim() && !t.completed && !timer && (
                   <div className="mit-focus-row">
                     <button
-                      className="mit-focus"
+                      className={`mit-focus ${settings.focusStyle === 'tree' ? 'water' : ''}`}
                       onClick={() => onStartFocus(0, t.text)}
                       title={settings.focusStyle === 'tree' ? '開始澆水（一段專注）' : '開始專注（番茄鐘）'}
                       aria-label="開始專注"
@@ -488,17 +490,29 @@ export default function DayView({
                     </button>
                     <select
                       className="mit-len"
-                      value={settings.focusMinutes}
-                      title="一段專注的長度（會記住）"
-                      onChange={(e) =>
-                        onSettingsChange({ ...settings, focusMinutes: Number(e.target.value) })
-                      }
+                      value={[25, 50, 120].includes(settings.focusMinutes) ? settings.focusMinutes : 'custom'}
+                      title="一段專注的長度——種樹模式下越久種出的樹越大棵"
+                      onChange={(e) => {
+                        if (e.target.value === 'custom') {
+                          const n = Number(prompt('自訂專注分鐘數（1–240）', String(settings.focusMinutes)))
+                          if (n >= 1 && n <= 240) onSettingsChange({ ...settings, focusMinutes: Math.round(n) })
+                        } else {
+                          onSettingsChange({ ...settings, focusMinutes: Number(e.target.value) })
+                        }
+                      }}
                     >
-                      {[15, 20, 25, 30, 35, 40, 45, 50].map((m) => (
+                      {[25, 50, 120].map((m) => (
                         <option key={m} value={m}>
-                          {m} 分
+                          {m} 分{settings.focusStyle === 'tree' ? ` · ${TIER_NAME[treeTier(m)]}` : ''}
                         </option>
                       ))}
+                      {![25, 50, 120].includes(settings.focusMinutes) && (
+                        <option value={settings.focusMinutes}>
+                          {settings.focusMinutes} 分
+                          {settings.focusStyle === 'tree' ? ` · ${TIER_NAME[treeTier(settings.focusMinutes)]}` : ''}（自訂）
+                        </option>
+                      )}
+                      <option value="custom">自訂…</option>
                     </select>
                     <span className="mit-focus-sub">
                       {settings.focusStyle === 'tree'

@@ -18,7 +18,7 @@
   --ink-write: #1e2a40; /* 藍黑墨水：用戶手寫的字（對比印刷的墨黑） */
   --sage: #9d7a2c; /* 完成色（原鼠尾草綠 → 暖青銅金，融入暖橘系） */
   --tree: #2e7d3f; /* 森林綠：種樹主題長成的松樹（要夠綠、一眼看到） */
-  --seed: #7a5334; /* 咖啡色：剛種下的小苗 */
+  --seed: #5f9a54; /* 嫩綠：剛種下的小苗（比松樹淺一階） */
   --wither: #8a6a4f; /* 枯褐：放棄枯掉的樹、過去日未發芽的種子 */
   --serif: 'Noto Serif TC', 'Songti TC', serif;
   --hand: 'LXGW WenKai TC', 'Noto Serif TC', serif;
@@ -3405,6 +3405,12 @@ button.wk-head:hover {
   transition: all 0.22s;
 }
 
+/* 種樹模式：澆水按鈕改水色底（配藍水滴，取代赤陶紅） */
+.mit-focus.water {
+  background: linear-gradient(135deg, #7fb3d1, #4d81a3);
+  box-shadow: 0 5px 16px rgba(61, 111, 142, 0.3);
+}
+
 .mit-focus:hover {
   transform: translateY(-1px);
   box-shadow: 0 9px 24px rgba(158, 76, 44, 0.42);
@@ -3834,6 +3840,18 @@ button.wk-head:hover {
 
 .plant-cell.seed { color: var(--seed); }
 .plant-cell.seedPast { color: var(--wither); opacity: 0.6; }
+
+/* 超標加碼樹：右上金星 */
+.plant-star {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--gold);
+  text-shadow: 0 0 1px var(--paper-deep, #f5f0e6);
+  pointer-events: none;
+}
 .plant-cell.tree { color: var(--tree); animation: plantPop 0.3s cubic-bezier(0.34, 1.45, 0.64, 1); }
 .plant-cell.gold { color: var(--gold-deep); animation: plantPop 0.3s cubic-bezier(0.34, 1.45, 0.64, 1); }
 .plant-cell.withered { color: var(--wither); }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { clickDone, plantCells } from '../plantCells'
+import { clickDone, plantCells, syncGrove, treeTier } from '../plantCells'
 import { loadSettings } from '../storage'
 
 const base = { target: null, done: 0, withered: 0, growing: false, isPast: false }
@@ -66,6 +66,31 @@ describe('clickDone 點擊語意', () => {
 
   it('clamp 上限 16', () => {
     expect(clickDone(20, 16, 0)).toBe(16)
+  })
+})
+
+describe('treeTier 門檻', () => {
+  it('25→松樹、50→茂密、120→櫻花；100 算 50 那階', () => {
+    expect(treeTier(25)).toBe('pine')
+    expect(treeTier(49)).toBe('pine')
+    expect(treeTier(50)).toBe('lush')
+    expect(treeTier(100)).toBe('lush') // 門檻制：未達 120 仍算茂密樹
+    expect(treeTier(119)).toBe('lush')
+    expect(treeTier(120)).toBe('cherry')
+    expect(treeTier(200)).toBe('cherry')
+  })
+})
+
+describe('syncGrove 對齊 done', () => {
+  it('補足：不足的用 fill 填', () => {
+    expect(syncGrove(undefined, 2, 25)).toEqual([25, 25])
+    expect(syncGrove([50], 3, 25)).toEqual([50, 25, 25]) // 保留既有、新樹用 fill
+  })
+  it('截斷：多的砍掉', () => {
+    expect(syncGrove([50, 120, 25], 1, 25)).toEqual([50])
+  })
+  it('相等：原樣', () => {
+    expect(syncGrove([50, 120], 2, 25)).toEqual([50, 120])
   })
 })
 

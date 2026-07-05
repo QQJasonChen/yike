@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { NameField } from './fields'
-import { clickDone, plantCells } from './plantCells'
-import { PLANT_GLYPHS, PLANT_TITLES } from './plantGlyphs'
+import { clickDone, plantCells, syncGrove, treeTier } from './plantCells'
+import { PLANT_GLYPHS, PLANT_TITLES, treeGlyph } from './plantGlyphs'
 import { MAX_SEGS, Task } from './types'
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
   isRunning: boolean
   /** Focus 塗格風格：種樹（Forest 式）／稿紙方格 */
   focusStyle: 'tree' | 'grid'
+  /** 目前選定的專注時長（分）：手動點格種樹時記進 grove，決定樹種 */
+  focusMinutes: number
   /** 過去日期：種樹模式下未發芽種子渲染成枯褐 */
   isPast: boolean
   /** 把任務拖到時間軸：放開時回報座標，由 App 轉交 Timeline */
@@ -27,6 +29,7 @@ export default function TaskRow({
   onStartFocus,
   isRunning,
   focusStyle,
+  focusMinutes,
   isPast,
   onDropToTimeline,
   onEnterKey,
@@ -37,8 +40,12 @@ export default function TaskRow({
 
   const setDone = (n: number) => {
     const done = Math.max(0, Math.min(MAX_SEGS, n))
-    onChange({ ...task, done, actual: done > 0 ? done : null })
+    // grove 對齊 done：手動新種的樹用目前選定時長決定樹種
+    onChange({ ...task, done, actual: done > 0 ? done : null, grove: syncGrove(task.grove, done, focusMinutes) })
   }
+
+  /** 第 i 棵樹的圖示（依 grove 記的分鐘數選樹種；沒記到就當松樹） */
+  const treeAt = (i: number) => treeGlyph(treeTier(task.grove?.[i] ?? 25))
 
   /** 種樹模式點格：枯樹格＝清除（改過自新），其他照 clickDone 語意 */
   const onPlantClick = (i: number) => {
@@ -118,7 +125,8 @@ export default function TaskRow({
                   onClick={() => onPlantClick(i)}
                 >
                   {kind === 'sprout' && <span className="plant-drop" />}
-                  {PLANT_GLYPHS[kind]}
+                  {kind === 'gold' && <span className="plant-star">★</span>}
+                  {kind === 'tree' || kind === 'gold' ? treeAt(i) : PLANT_GLYPHS[kind]}
                 </button>
               ))
             : (() => {

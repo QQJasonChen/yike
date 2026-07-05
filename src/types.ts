@@ -5,6 +5,7 @@ export interface Task {
   actual: number | null // 實際格數（任務完成時記下）
   completed: boolean
   withered?: number // 番茄鐘計時中放棄的次數（種樹主題的枯樹格）；舊資料 undefined 視為 0
+  grove?: number[] // 種樹主題：每棵已種的樹的專注分鐘數（決定樹種）；長度對齊 done，舊資料 undefined 一律當松樹
 }
 
 /** 單一任務的段數上限（done 與 target 共用；16 段 = 8 小時專注，一天的合理天花板） */
