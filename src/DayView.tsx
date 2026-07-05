@@ -11,6 +11,8 @@ import { ink } from './ink'
 import InkCanvas from './InkCanvas'
 import { addDays, fromDateKey, loadDay, loadWeek, mondayOf, saveDay, toDateKey } from './storage'
 import { notifyAvailable, syncBlockReminders } from './notify'
+import { syncGrove, treeTier } from './plantCells'
+import { TIER_NAME } from './plantGlyphs'
 import { DayEntry, Settings, Task } from './types'
 
 const fmtMin = (m: number) =>
