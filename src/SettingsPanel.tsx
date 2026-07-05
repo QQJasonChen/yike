@@ -14,6 +14,7 @@ import {
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
 import { notify } from './notify'
+import { PlantLegend } from './plantGlyphs'
 import {
   BackupMeta,
   clearAllLocalData,
@@ -357,8 +358,10 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
             >
               {settings.focusStyle === 'tree' ? '🌱 種樹' : '▦ 方格'}
             </button>
-            <span className="hint fl-hint">種樹：完成一段長一棵墨綠小樹、超標開金花、計時中放棄會枯萎</span>
+            <span className="hint fl-hint">種樹：專注越久種出越厲害的樹，計時中放棄會枯萎</span>
           </div>
+
+          {settings.focusStyle === 'tree' && <PlantLegend />}
 
           <ReminderSettings settings={settings} onChange={onSettingsChange} />
 

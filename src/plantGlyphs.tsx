@@ -95,6 +95,27 @@ export const PLANT_GLYPHS: Partial<Record<CellKind, ReactNode>> = {
   withered: <Withered />,
 }
 
+/** 成長圖例：灰苗 → 松樹/茂密樹/櫻花（依專注時長）→ 枯樹。設定頁展示用。 */
+export const PlantLegend = () => {
+  const items: { node: ReactNode; cls: string; label: string }[] = [
+    { node: <Seedling />, cls: 'seed', label: '還沒種' },
+    { node: <Pine />, cls: 'tree', label: '25 分 松樹' },
+    { node: <Lush />, cls: 'tree', label: '50 分 茂密樹' },
+    { node: <Cherry />, cls: 'cherry', label: '120 分 櫻花' },
+    { node: <Withered />, cls: 'withered', label: '放棄枯萎' },
+  ]
+  return (
+    <div className="plant-legend">
+      {items.map((it) => (
+        <div key={it.label} className="plant-legend-item">
+          <span className={`plant-cell ${it.cls}`}>{it.node}</span>
+          <span className="plant-legend-label">{it.label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export const PLANT_TITLES: Record<CellKind, string> = {
   seed: '小苗——專注結束就長成樹（越久種越大棵）',
   seedPast: '沒長大的小苗（過去的日子）',
