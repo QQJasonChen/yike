@@ -3891,8 +3891,8 @@ button.wk-head:hover {
   text-shadow: 0 0 1px var(--paper-deep, #f5f0e6);
   pointer-events: none;
 }
-.plant-cell.tree { color: var(--tree); animation: plantPop 0.3s cubic-bezier(0.34, 1.45, 0.64, 1); }
-.plant-cell.gold { color: var(--gold-deep); animation: plantPop 0.3s cubic-bezier(0.34, 1.45, 0.64, 1); }
+.plant-cell.tree,
+.plant-cell.gold { color: var(--tree); animation: plantPop 0.3s cubic-bezier(0.34, 1.45, 0.64, 1); }
 .plant-cell.withered { color: var(--wither); }
 .plant-cell.sprout { color: var(--tree); }
 
