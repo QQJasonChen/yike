@@ -17,7 +17,8 @@
   --terra: #b65c38; /* 赤陶色：強調/計時器 */
   --ink-write: #1e2a40; /* 藍黑墨水：用戶手寫的字（對比印刷的墨黑） */
   --sage: #9d7a2c; /* 完成色（原鼠尾草綠 → 暖青銅金，融入暖橘系） */
-  --tree: #4a6a44; /* 墨綠：種樹主題長成的小樹 */
+  --tree: #2e7d3f; /* 森林綠：種樹主題長成的小樹（要夠綠、一眼看到） */
+  --seed: #8a7355; /* 種子：暖褐，跟奶油紙底拉開對比 */
   --wither: #8a6a4f; /* 枯褐：放棄枯掉的樹、過去日未發芽的種子 */
   --serif: 'Noto Serif TC', 'Songti TC', serif;
   --hand: 'LXGW WenKai TC', 'Noto Serif TC', serif;
@@ -3757,7 +3758,7 @@ button.wk-head:hover {
 
 .sq-track { gap: 8px; }
 
-.sq-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; row-gap: 4px; max-width: 172px; /* 8 格一行，16 格自動兩行 */ }
+.sq-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; row-gap: 4px; max-width: 220px; /* 8 格一行（22px 植物格），16 格自動兩行 */ }
 
 .sq {
   width: 16px;
@@ -3816,8 +3817,8 @@ button.wk-head:hover {
 /* ---------- 種樹專注（Forest 式塗格，focusStyle: tree） ---------- */
 
 .plant-cell {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: none;
   background: none;
@@ -3831,8 +3832,8 @@ button.wk-head:hover {
 
 .plant-cell svg { width: 100%; height: 100%; display: block; }
 
-.plant-cell.seed { color: var(--ink-faint); }
-.plant-cell.seedPast { color: var(--wither); opacity: 0.55; }
+.plant-cell.seed { color: var(--seed); }
+.plant-cell.seedPast { color: var(--wither); opacity: 0.6; }
 .plant-cell.tree { color: var(--tree); animation: plantPop 0.3s cubic-bezier(0.34, 1.45, 0.64, 1); }
 .plant-cell.gold { color: var(--gold-deep); animation: plantPop 0.3s cubic-bezier(0.34, 1.45, 0.64, 1); }
 .plant-cell.withered { color: var(--wither); }

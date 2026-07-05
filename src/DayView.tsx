@@ -448,25 +448,49 @@ export default function DayView({
                     <button
                       className="mit-focus"
                       onClick={() => onStartFocus(0, t.text)}
-                      title="開始專注（番茄鐘）"
+                      title={settings.focusStyle === 'tree' ? '開始澆水（一段專注）' : '開始專注（番茄鐘）'}
                       aria-label="開始專注"
                     >
-                      <svg className="mit-tomato" viewBox="0 0 32 32" aria-hidden="true">
-                        {/* 葉冠 */}
-                        <path
-                          d="M16 4 L17.3 7.2 L20.8 7.5 L18.1 9.7 L18.9 13 L16 11.2 L13.1 13 L13.9 9.7 L11.2 7.5 L14.7 7.2 Z"
-                          fill="#6aa345"
-                        />
-                        <rect x="15.2" y="2.4" width="1.6" height="3.4" rx="0.8" fill="#4a7a30" />
-                        {/* 果身 */}
-                        <ellipse cx="16" cy="19.5" rx="10.5" ry="9.6" fill="#e2503a" />
-                        <path
-                          d="M16 10.2c4.6 0 8.4 3.5 9.3 8-2.6.9-6 1.4-9.3 1.4s-6.7-.5-9.3-1.4c.9-4.5 4.7-8 9.3-8z"
-                          fill="#ec6347"
-                        />
-                        {/* 反光 */}
-                        <ellipse cx="11.6" cy="16" rx="2.6" ry="1.7" fill="#fff" opacity="0.5" />
-                      </svg>
+                      {settings.focusStyle === 'tree' ? (
+                        // 澆水壺：專注 = 替今天的樹澆一段水
+                        <svg className="mit-tomato" viewBox="0 0 32 32" aria-hidden="true">
+                          {/* 壺身 */}
+                          <path
+                            d="M9 14 h11 a1.6 1.6 0 0 1 1.6 1.6 V25 a2 2 0 0 1 -2 2 H9.4 a2 2 0 0 1 -2 -2 V15.6 A1.6 1.6 0 0 1 9 14Z"
+                            fill="#3e6f8e"
+                          />
+                          {/* 壺口 */}
+                          <path d="M10.5 14 Q11 11.6 14.5 11.2 L18 11.2 Q21 11.6 20 14Z" fill="#4d81a3" />
+                          {/* 提把 */}
+                          <path d="M13 11 Q16 7.6 19 11" stroke="#3e6f8e" strokeWidth="2" fill="none" strokeLinecap="round" />
+                          {/* 壺嘴 */}
+                          <path d="M8.6 17.5 L3.4 12.6 L5.2 10.8 L9.6 15.4Z" fill="#3e6f8e" />
+                          <path d="M2.6 12.6 a2.2 2.2 0 1 1 3.4 -2.6 a2.2 2.2 0 0 1 -3.4 2.6Z" fill="#4d81a3" />
+                          {/* 水滴 ×3 */}
+                          <ellipse cx="3.6" cy="5.6" rx="1" ry="1.5" fill="#6f93b5" />
+                          <ellipse cx="6.2" cy="3.8" rx="1" ry="1.5" fill="#6f93b5" />
+                          <ellipse cx="8.8" cy="5.8" rx="1" ry="1.5" fill="#6f93b5" />
+                          {/* 反光 */}
+                          <ellipse cx="11.4" cy="19" rx="1.6" ry="2.6" fill="#fff" opacity="0.35" />
+                        </svg>
+                      ) : (
+                        <svg className="mit-tomato" viewBox="0 0 32 32" aria-hidden="true">
+                          {/* 葉冠 */}
+                          <path
+                            d="M16 4 L17.3 7.2 L20.8 7.5 L18.1 9.7 L18.9 13 L16 11.2 L13.1 13 L13.9 9.7 L11.2 7.5 L14.7 7.2 Z"
+                            fill="#6aa345"
+                          />
+                          <rect x="15.2" y="2.4" width="1.6" height="3.4" rx="0.8" fill="#4a7a30" />
+                          {/* 果身 */}
+                          <ellipse cx="16" cy="19.5" rx="10.5" ry="9.6" fill="#e2503a" />
+                          <path
+                            d="M16 10.2c4.6 0 8.4 3.5 9.3 8-2.6.9-6 1.4-9.3 1.4s-6.7-.5-9.3-1.4c.9-4.5 4.7-8 9.3-8z"
+                            fill="#ec6347"
+                          />
+                          {/* 反光 */}
+                          <ellipse cx="11.6" cy="16" rx="2.6" ry="1.7" fill="#fff" opacity="0.5" />
+                        </svg>
+                      )}
                     </button>
                     <select
                       className="mit-len"
@@ -483,7 +507,9 @@ export default function DayView({
                       ))}
                     </select>
                     <span className="mit-focus-sub">
-                      結束自動刻一筆{t.target ? `・目標 ${t.target}` : ''}
+                      {settings.focusStyle === 'tree'
+                        ? `澆一段水，結束長一棵樹${t.target ? `・目標 ${t.target} 棵` : ''}`
+                        : `結束自動刻一筆${t.target ? `・目標 ${t.target}` : ''}`}
                     </span>
                   </div>
                 )}
