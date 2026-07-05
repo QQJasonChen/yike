@@ -38,30 +38,45 @@ const Pine = () => (
   </G>
 )
 
-/** 50 分 · 茂密樹：更寬更高、四層樹冠，明顯比松樹壯 */
-const Lush = () => (
-  <G>
-    <rect x="7.1" y="13" width="1.8" height="2.2" rx="0.4" fill="currentColor" stroke="none" />
-    <path d="M8 9 L13.4 13.4 L2.6 13.4 Z" fill="currentColor" fillOpacity="0.68" />
-    <path d="M8 6.2 L12.4 10.4 L3.6 10.4 Z" fill="currentColor" fillOpacity="0.78" />
-    <path d="M8 3.6 L11.4 7.6 L4.6 7.6 Z" fill="currentColor" fillOpacity="0.88" />
-    <path d="M8 1.2 L10.2 4.8 L5.8 4.8 Z" fill="currentColor" fillOpacity="0.96" />
-  </G>
+// 褐色分岔樹幹（茂密樹與櫻花共用；canopy 由各自疊上去）
+const OakTrunk = () => (
+  <path
+    d="M8 15.4 V8.4 M8 10.8 Q6 9.8 5.2 7.8 M8 9.6 Q10 8.8 10.8 7"
+    stroke="#7a5334"
+    strokeWidth="1.6"
+    fill="none"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />
 )
 
-/** 120 分 · 大櫻花：褐幹 + 粉紅蓬鬆花冠 + 幾點深粉花簇（固定色，最華麗） */
+/** 50 分 · 茂密樹：粗褐色分岔幹 + 寬大蓬鬆綠冠（橡樹式，比松樹壯得多） */
+const Lush = () => (
+  <svg viewBox="0 0 16 16" aria-hidden="true">
+    <circle cx="8" cy="5" r="4.4" fill="currentColor" fillOpacity="0.9" />
+    <circle cx="4.3" cy="6.2" r="2.9" fill="currentColor" fillOpacity="0.78" />
+    <circle cx="11.7" cy="6.2" r="2.9" fill="currentColor" fillOpacity="0.78" />
+    <circle cx="5.8" cy="3" r="2.5" fill="currentColor" fillOpacity="0.95" />
+    <circle cx="10.2" cy="3" r="2.5" fill="currentColor" fillOpacity="0.95" />
+    <circle cx="8" cy="2.2" r="2.3" fill="currentColor" />
+    <OakTrunk />
+  </svg>
+)
+
+/** 120 分 · 大櫻花：粗褐色分岔幹 + 寬大粉紅花冠 + 深粉花簇 + 飄落花瓣（原創扁平 icon） */
 const Cherry = () => (
   <svg viewBox="0 0 16 16" aria-hidden="true">
-    <rect x="7.1" y="10" width="1.8" height="5" rx="0.5" fill="#8a5a3c" />
-    <path d="M7.8 12 Q6 11.4 5 12.4" stroke="#8a5a3c" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-    <path d="M8.2 11 Q10.2 10.4 11.2 11.4" stroke="#8a5a3c" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-    <circle cx="8" cy="5.4" r="4.2" fill="#f0a9c4" />
-    <circle cx="4.9" cy="6.6" r="2.6" fill="#eda0be" />
-    <circle cx="11.1" cy="6.6" r="2.6" fill="#eda0be" />
-    <circle cx="8" cy="3.4" r="2.4" fill="#f5b8ce" />
-    <circle cx="6.4" cy="4.6" r="0.7" fill="#d97ba3" />
-    <circle cx="9.4" cy="5" r="0.7" fill="#d97ba3" />
-    <circle cx="8" cy="6.8" r="0.7" fill="#d97ba3" />
+    <circle cx="8" cy="5" r="4.4" fill="#f2a6c2" />
+    <circle cx="4.3" cy="6.2" r="2.9" fill="#ef9bba" />
+    <circle cx="11.7" cy="6.2" r="2.9" fill="#ef9bba" />
+    <circle cx="5.8" cy="3" r="2.5" fill="#f7bcd2" />
+    <circle cx="10.2" cy="3" r="2.5" fill="#f7bcd2" />
+    <circle cx="8" cy="2.2" r="2.3" fill="#f9c6da" />
+    <circle cx="6.2" cy="4.4" r="0.85" fill="#dd7ba0" />
+    <circle cx="9.8" cy="4.4" r="0.85" fill="#dd7ba0" />
+    <circle cx="8" cy="6.2" r="0.85" fill="#dd7ba0" />
+    <OakTrunk />
+    <ellipse cx="12.6" cy="11.4" rx="0.9" ry="1.4" fill="#f2a6c2" transform="rotate(35 12.6 11.4)" />
   </svg>
 )
 
