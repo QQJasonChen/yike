@@ -79,6 +79,13 @@ h2{font-size:clamp(26px,4vw,38px);font-weight:700;text-align:center;letter-spaci
 .feature li{font-size:14.5px;color:var(--ink-soft);padding-left:22px;position:relative;margin-bottom:6px}
 .feature li::before{content:'✦';position:absolute;left:0;color:var(--gold)}
 @media(max-width:760px){.feature{grid-template-columns:1fr;gap:20px}.feature:nth-child(even) .f-img{order:0}}
+.grove-showcase{background:var(--paper-card,#faf7ef);border:1px solid var(--rule);border-radius:12px;box-shadow:0 18px 48px rgba(50,40,24,.14);padding:34px 20px;display:flex;align-items:center;justify-content:center}
+.grove-row{display:flex;align-items:flex-end;gap:6px}
+.grove-row figure{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0}
+.grove-row svg{width:56px;height:56px;display:block}
+.grove-row figcaption{font-size:12.5px;color:var(--ink-faint);text-align:center;line-height:1.3;letter-spacing:.04em}
+.grove-arrow{color:var(--gold);font-size:18px;padding-bottom:24px}
+@media(max-width:760px){.grove-row svg{width:44px;height:44px}.grove-arrow{font-size:14px}}
 /* data ownership strip */
 .strip{background:var(--ink);color:var(--paper);border-radius:10px;padding:44px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:28px;margin-top:10px}
 .strip h4{font-size:16px;letter-spacing:.14em;color:var(--paper);margin-bottom:6px}
@@ -189,6 +196,25 @@ footer a{color:var(--ink-faint)}
         <h3><em>FOCUS</em>禪模式：墨圈親手畫完的 30 分鐘</h3>
         <p>按下專注，整個畫面變成一張紙。品牌的那一筆墨圈，隨著倒數慢慢畫滿——畫滿的瞬間，金點落下、鐘聲響起、進度自動記錄到時間軸。</p>
         <ul><li>倒數結束自動塗格＋寫進時間軸（計畫 vs 實際自動對照）</li><li>休息模式金圈緩慢呼吸</li><li>預設小列不打擾，想沉浸再展開</li></ul>
+      </div>
+    </div>
+
+    <div class="feature reveal">
+      <div class="f-img grove-showcase">
+        <div class="grove-row">
+          <figure><svg viewBox="0 0 16 16" fill="none" stroke="#b0aaa0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14 V10.6"/><path d="M8 12 Q5.6 11.8 5 9.4 Q7.4 9.6 8 12Z" fill="#b0aaa0" fill-opacity=".55"/><path d="M8 11 Q10.4 10.6 11 8.4 Q8.6 8.8 8 11Z" fill="#b0aaa0" fill-opacity=".55"/></svg><figcaption>還沒種</figcaption></figure>
+          <span class="grove-arrow">→</span>
+          <figure><svg viewBox="0 0 16 16" fill="#2e7d3f"><rect x="7.2" y="12.6" width="1.6" height="2.4" rx=".4"/><path d="M8 7.8 L11.8 13 L4.2 13 Z" fill-opacity=".72"/><path d="M8 4.8 L11 9.2 L5 9.2 Z" fill-opacity=".82"/><path d="M8 2.2 L10.2 6 L5.8 6 Z" fill-opacity=".92"/></svg><figcaption>25 分<br/>松樹</figcaption></figure>
+          <span class="grove-arrow">→</span>
+          <figure><svg viewBox="0 0 16 16"><circle cx="8" cy="5" r="4.4" fill="#2e7d3f" fill-opacity=".9"/><circle cx="4.3" cy="6.2" r="2.9" fill="#2e7d3f" fill-opacity=".78"/><circle cx="11.7" cy="6.2" r="2.9" fill="#2e7d3f" fill-opacity=".78"/><circle cx="5.8" cy="3" r="2.5" fill="#2e7d3f" fill-opacity=".95"/><circle cx="10.2" cy="3" r="2.5" fill="#2e7d3f" fill-opacity=".95"/><circle cx="8" cy="2.2" r="2.3" fill="#2e7d3f"/><path d="M8 15.4 V8.4 M8 10.8 Q6 9.8 5.2 7.8 M8 9.6 Q10 8.8 10.8 7" stroke="#7a5334" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>50 分<br/>茂密樹</figcaption></figure>
+          <span class="grove-arrow">→</span>
+          <figure><svg viewBox="0 0 16 16"><circle cx="8" cy="5" r="4.4" fill="#f2a6c2"/><circle cx="4.3" cy="6.2" r="2.9" fill="#ef9bba"/><circle cx="11.7" cy="6.2" r="2.9" fill="#ef9bba"/><circle cx="5.8" cy="3" r="2.5" fill="#f7bcd2"/><circle cx="10.2" cy="3" r="2.5" fill="#f7bcd2"/><circle cx="8" cy="2.2" r="2.3" fill="#f9c6da"/><circle cx="6.2" cy="4.4" r=".85" fill="#dd7ba0"/><circle cx="9.8" cy="4.4" r=".85" fill="#dd7ba0"/><circle cx="8" cy="6.2" r=".85" fill="#dd7ba0"/><path d="M8 15.4 V8.4 M8 10.8 Q6 9.8 5.2 7.8 M8 9.6 Q10 8.8 10.8 7" stroke="#7a5334" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>120 分<br/>櫻花</figcaption></figure>
+        </div>
+      </div>
+      <div>
+        <h3><em>GROVE</em>認真活過的每一天，長成一片樹林</h3>
+        <p>每完成一段專注，就種下一棵樹——25 分鐘松樹、專注更久長出茂密樹、兩小時開一棵櫻花；中途放棄，樹會枯萎。<b>這不是「為了種樹而分心地專注」（那是別人的把戲）</b>——是先做好今天最重要的一件事，樹，只是你認真活過的證據。</p>
+        <ul><li>專注時長決定樹種：松樹 → 茂密樹 → 櫻花，越專注越華麗</li><li>日→週→月→季→年都有<b>樹林總結</b>：看你的森林一路長大，這是別的計時器給不了的縱深</li><li>不愛遊戲化？設定裡一鍵切回純粹的稿紙塗圈</li></ul>
       </div>
     </div>
 
