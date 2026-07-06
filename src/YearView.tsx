@@ -242,6 +242,7 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
         </div>
 
         <PeriodSummary
+          showGrove={settings.focusStyle === 'tree'}
           title="本年總結"
           periodLabel={`${year} 年`}
           dayKeys={Array.from({ length: 12 }, (_, mi) => {

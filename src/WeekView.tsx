@@ -262,6 +262,7 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
         {section('額外任務', '行有餘力再做', 10, 15)}
 
         <PeriodSummary
+          showGrove={settings.focusStyle === 'tree'}
           title="本週總結"
           periodLabel={`Week ${weekNumber(mondayKey)}（${fmtRange(mondayKey)}）`}
           dayKeys={Array.from({ length: 7 }, (_, i) => addDays(mondayKey, i))}

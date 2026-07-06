@@ -3853,6 +3853,42 @@ button.wk-head:hover {
 .plant-cell.seed { color: var(--seed); }
 .plant-cell.seedPast { color: var(--wither); opacity: 0.6; }
 
+/* 期間樹林總結（週/月/季/年）：這段時間種了幾棵各種樹 */
+.grove-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 2px 4px;
+  padding: 10px 12px;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.grove-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.grove-item svg { width: 22px; height: 22px; display: block; }
+.grove-item.tree { color: var(--tree); }
+.grove-item em {
+  font-style: normal;
+  font-size: 14px;
+  color: var(--ink-soft);
+  font-family: var(--eng);
+}
+.grove-total {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+  margin-left: 2px;
+}
+.grove-wither {
+  font-size: 12.5px;
+  color: var(--wither);
+}
+
 /* 成長圖例（設定頁）：五種樹並排 + 標籤 */
 .plant-legend {
   display: flex;

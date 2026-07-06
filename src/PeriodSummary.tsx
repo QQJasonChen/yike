@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react'
 import { aiEnabled, generateInsight } from './ai'
 import { loadDay } from './storage'
+import { treeTier } from './plantCells'
+import { TIER_NAME, treeGlyph } from './plantGlyphs'
 
 const MOODS = ['😖', '🙁', '😐', '🙂', '😄']
 
@@ -9,6 +11,7 @@ interface Props {
   title: string // 例：本週總結 / 本月總結
   dayKeys: string[] // 期間內所有日期 key
   periodLabel: string // 例：Week 24（6/8–6/14）
+  showGrove?: boolean // 種樹模式才顯示「這段期間的樹林」
 }
 
 interface Summary {
@@ -20,6 +23,8 @@ interface Summary {
   moodCounts: number[]
   acts: { name: string; days: number; sessions: number; minutes: number }[]
   highlights: string[]
+  trees: { pine: number; lush: number; cherry: number; total: number }
+  withered: number
 }
 
 const build = (dayKeys: string[]): Summary => {
@@ -36,6 +41,8 @@ const build = (dayKeys: string[]): Summary => {
   let written = 0
   let completed = 0
   const highlights: string[] = []
+  const trees = { pine: 0, lush: 0, cherry: 0, total: 0 }
+  let withered = 0
 
   for (const k of dayKeys) {
     if (!localStorage.getItem(`pp:day:${k}`)) continue
@@ -54,6 +61,12 @@ const build = (dayKeys: string[]): Summary => {
       const e = touch(n)
       e.days.add(k)
       e.sessions += t.done
+      // 樹林：每棵種下的樹依 grove 記的分鐘數歸類（無 grove 的舊資料當松樹）
+      for (let i = 0; i < t.done; i++) {
+        trees[treeTier(t.grove?.[i] ?? 25)]++
+        trees.total++
+      }
+      withered += t.withered ?? 0
     }
     for (const b of d.blocks) {
       const n = b.text.trim()
@@ -77,6 +90,8 @@ const build = (dayKeys: string[]): Summary => {
       .sort((a, b) => b.minutes + b.sessions * 30 - (a.minutes + a.sessions * 30))
       .slice(0, 8),
     highlights: highlights.slice(0, 10),
+    trees,
+    withered,
   }
 }
 
@@ -85,6 +100,11 @@ const toMarkdown = (title: string, label: string, s: Summary): string => {
     `## 📊 ${title}（${label}）`,
     '',
     `記錄 ${s.recorded} 天 ｜ 專注 ${s.sessions} 段 ｜ 排程 ${Math.round((s.minutes / 60) * 10) / 10} 小時 ｜ 平均評分 ${s.avgScore}${s.doneRate !== null ? ` ｜ 任務完成率 ${s.doneRate}%` : ''}`,
+    ...(s.trees.total > 0
+      ? [
+          `🌳 種樹：松樹 ${s.trees.pine}・茂密樹 ${s.trees.lush}・櫻花 ${s.trees.cherry}・共 ${s.trees.total} 棵${s.withered > 0 ? `（枯 ${s.withered}）` : ''}`,
+        ]
+      : []),
     '',
     '### 活動投入',
     ...s.acts.map(
@@ -108,7 +128,7 @@ const AI_PROMPT = `你是我的生產力教練。以下是我這個期間的手�
 
 `
 
-export default function PeriodSummary({ title, dayKeys, periodLabel }: Props) {
+export default function PeriodSummary({ title, dayKeys, periodLabel, showGrove }: Props) {
   const s = useMemo(() => build(dayKeys), [dayKeys])
   const [copied, setCopied] = useState<'' | 'md' | 'ai'>('')
   const [aiText, setAiText] = useState('')
@@ -153,6 +173,25 @@ export default function PeriodSummary({ title, dayKeys, periodLabel }: Props) {
             '・' + MOODS.map((m, i) => (s.moodCounts[i] ? `${m}${s.moodCounts[i]}` : '')).join('')}
         </span>
       </div>
+      {showGrove && (s.trees.total > 0 || s.withered > 0) && (
+        <div className="grove-summary">
+          {([
+            ['pine', s.trees.pine],
+            ['lush', s.trees.lush],
+            ['cherry', s.trees.cherry],
+          ] as const).map(
+            ([tier, n]) =>
+              n > 0 && (
+                <span key={tier} className={`grove-item ${tier === 'cherry' ? 'cherry' : 'tree'}`} title={TIER_NAME[tier]}>
+                  {treeGlyph(tier)}
+                  <em>×{n}</em>
+                </span>
+              )
+          )}
+          <span className="grove-total">共 {s.trees.total} 棵</span>
+          {s.withered > 0 && <span className="grove-wither">枯 {s.withered}</span>}
+        </div>
+      )}
       {s.acts.length > 0 && (
         <table className="act-table">
           <thead>

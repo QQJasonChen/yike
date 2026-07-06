@@ -106,6 +106,7 @@ export default function QuarterView({ quarterKey, onQuarterChange, settings }: P
         />
 
         <PeriodSummary
+          showGrove={settings.focusStyle === 'tree'}
           title="本季總結"
           periodLabel={`${y} 年 ${Q_CN[q - 1]}`}
           dayKeys={dayKeys}

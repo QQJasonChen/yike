@@ -165,6 +165,7 @@ export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay
         />
 
         <PeriodSummary
+          showGrove={settings.focusStyle === 'tree'}
           title="本月總結"
           periodLabel={`${y} 年 ${m} 月`}
           dayKeys={Array.from({ length: daysInMonth }, (_, i) =>
