@@ -331,6 +331,24 @@ export default function DayView({
             <span className="day-date">
               {d.getMonth() + 1} 月 {d.getDate()} 日 {d.getFullYear()}
               <span className="week-no">・{weekDecimal(d)}</span>
+              {(() => {
+                const n = entry.tasks.reduce((s, t) => s + t.done, 0)
+                if (n === 0) return null
+                return settings.focusStyle === 'tree' ? (
+                  <span className="week-no day-trees" title={`這天種了 ${n} 棵樹`}>
+                    ・
+                    <svg className="day-tree-ico" viewBox="0 0 16 16" fill="#2e7d3f" aria-hidden="true">
+                      <rect x="7.2" y="12.6" width="1.6" height="2.4" rx=".4" />
+                      <path d="M8 7.8 L11.8 13 L4.2 13 Z" fillOpacity=".72" />
+                      <path d="M8 4.8 L11 9.2 L5 9.2 Z" fillOpacity=".82" />
+                      <path d="M8 2.2 L10.2 6 L5.8 6 Z" fillOpacity=".92" />
+                    </svg>
+                    {n}
+                  </span>
+                ) : (
+                  <span className="week-no" title={`這天完成 ${n} 段專注`}>・{n}⊙</span>
+                )
+              })()}
             </span>
           </div>
           <div className="day-nav">

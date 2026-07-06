@@ -18,7 +18,6 @@ import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from '.
 import {
   autoBackup,
   currentStreak,
-  loadDay,
   loadSettings,
   mondayOf,
   monthOf,
@@ -196,7 +195,6 @@ export default function App() {
   }, [])
 
   const streak = currentStreak(todayKey)
-  const todayFocusSessions = loadDay(todayKey).tasks.reduce((s, t) => s + t.done, 0)
   return (
     <>
       <div className="topbar">
@@ -253,9 +251,6 @@ export default function App() {
           >
             ⚙
           </button>
-          {todayFocusSessions > 0 && (
-            <span className="today-focus">{todayFocusSessions}⊙</span>
-          )}
           {streak > 0 ? (
             <>
               <strong>{streak}</strong> 天連續

@@ -3958,6 +3958,8 @@ button.wk-head:hover {
 }
 
 .week-no { color: var(--gold-deep); font-style: italic; }
+.day-trees { font-style: normal; display: inline-flex; align-items: center; }
+.day-tree-ico { width: 16px; height: 16px; vertical-align: middle; margin-right: 1px; }
 
 /* 今日專注段數（頂欄） */
 .today-focus {
