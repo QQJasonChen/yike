@@ -36,7 +36,7 @@ Vite + React + TypeScript，無其他執行期依賴。push 到 main 自動經 G
 
 ## 致意
 
-方法論受 Intelligent Change《The Productivity Planner》與無印良品週間直式手帳的使用經驗啟發；本專案為獨立實作，與上述品牌無任何關聯，亦未使用其文字、設計素材或商標。
+方法論受 Intelligent Change《The Productivity Planner》與無印良品週間直式手帳的使用經驗啟發；「種樹專注」的遊戲化概念受 Forest 等專注 app 啟發。本專案為獨立實作，與上述品牌（含 Seekrtech／Forest）無任何關聯，亦未使用其程式碼、文字、美術素材或商標——所有樹木圖示皆為本專案原創繪製。
 
 ---
 
