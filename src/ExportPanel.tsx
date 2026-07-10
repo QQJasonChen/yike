@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { allDayKeys, loadDay, toDateKey } from './storage'
+import { rangeToIcs } from './icsExport'
+import { addDays, allDayKeys, loadDay, toDateKey } from './storage'
 import { dayToMarkdown } from './exportMd'
 import {
   RangePreset,
@@ -80,6 +81,22 @@ export default function ExportPanel({ settings }: Props) {
     if (!out) return flash('這段日期內沒有任何記錄。', true)
     downloadMarkdown(`${out.title.replace(/\s/g, '')}.md`, `# ${out.title}\n\n${out.md}`)
     flash('✓ 已下載 .md——拖進 Heptabase 白板即成卡片')
+  }
+
+  const doIcs = () => {
+    const lo = from <= to ? from : to
+    const hi = from <= to ? to : from
+    const keys: string[] = []
+    for (let k = lo; k <= hi; k = addDays(k, 1)) keys.push(k)
+    const ics = rangeToIcs(keys)
+    if (!ics) return flash('這段日期的時間軸沒有任何時間塊。', true)
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `yike-${lo}-${hi}.ics`
+    a.click()
+    URL.revokeObjectURL(a.href)
+    flash('✓ 已下載 .ics——Google 日曆「設定 → 匯入」上傳即可（Notion Calendar 經 Google 同步看到）')
   }
 
   const doNotion = async () => {
@@ -166,6 +183,9 @@ export default function ExportPanel({ settings }: Props) {
         </button>
         <button onClick={doDownload} title="下載 .md 檔——拖進 Heptabase 白板即成卡片">
           ⬇ 下載 .md
+        </button>
+        <button onClick={doIcs} title="把這段時間的時間軸匯出成 .ics——Google / Notion Calendar 可匯入">
+          📅 匯出行事曆
         </button>
         <button onClick={doNotion} disabled={busy} title="直送到你自己的 Notion 頁面（首次需 1 分鐘設定）">
           {busy ? '傳送中…' : '🚀 送到 Notion'}
