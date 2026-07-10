@@ -13,6 +13,7 @@ import {
 } from './cloud'
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
+import IapPanel from './IapPanel'
 import { notify } from './notify'
 import { PlantLegend } from './plantGlyphs'
 import {
@@ -309,6 +310,8 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                 )}
                 {cloudMsg && <p className="sync-status">{cloudMsg}</p>}
               </div>
+              {/* iOS 內購：買斷雲端同步（web / 未設定 RevenueCat / 已登入時自動隱藏） */}
+              <IapPanel signedIn={cloudStage === 'in'} />
             </>
           )}
 
