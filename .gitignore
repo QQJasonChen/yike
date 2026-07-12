@@ -8,3 +8,16 @@ npm-debug.log*
 ios/App/Pods
 ios/App/App/public
 ios/App/output
+
+# 🔒 機密：這是「公開」repo，以下絕不進 git（安全稽核 2026-07-12）
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+.deploy-key
+secrets.*
+*.secret
+supabase/.temp/
