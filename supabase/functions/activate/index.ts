@@ -54,6 +54,15 @@ Deno.serve(async (req) => {
     return user.response
   }
 
+  // 路徑 B0：邀請碼（免費試用）→ 比對 INVITE_CODES（逗號分隔，可多組/隨時輪替）→ 直接建帳號
+  const inviteCodes = (Deno.env.get('INVITE_CODES') ?? '')
+    .split(',')
+    .map((c) => c.trim().toUpperCase())
+    .filter(Boolean)
+  if (inviteCodes.length > 0 && inviteCodes.includes(licenseKey.toUpperCase())) {
+    return (await createUser(url, srk, email, password)).response
+  }
+
   // 路徑 B：帶序號 → 向 Gumroad 驗證（會累計啟用次數）
   const permalink = Deno.env.get('GUMROAD_PERMALINK') ?? 'yike'
   const gumRes = await fetch('https://api.gumroad.com/v2/licenses/verify', {
