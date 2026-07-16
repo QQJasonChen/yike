@@ -1,4 +1,5 @@
 import {
+  BizModel,
   DayEntry,
   LegacyDayFields,
   LifeEntry,
@@ -8,6 +9,7 @@ import {
   WeekEntry,
   YearEntry,
   defaultSettings,
+  emptyBizModel,
   emptyDay,
   emptyLife,
   emptyMonth,
@@ -21,6 +23,7 @@ const WEEK_PREFIX = 'pp:week:'
 const MONTH_PREFIX = 'pp:month:'
 const SETTINGS_KEY = 'pp:settings'
 const LIFE_KEY = 'pp:life' // 願景維度——整個 app 只有一份
+const BIZ_KEY = 'pp:bizmodel' // 個人獲利模式九宮格——整個 app 只有一份
 const SYNC_KEY = 'pp:sync' // 同步設定（含 token）——絕不進匯出檔
 const CLOUD_BOUND_KEY = 'pp:cloudBound' // 此裝置曾登入雲端帳號的標記（裝置本地，不同步）
 const BACKUP_PREFIX = 'pp:bk:' // 每日本機快照（pp:bk:<date>）——純本機、不同步、不匯出
@@ -235,6 +238,20 @@ export const loadLife = (): LifeEntry => {
 }
 
 export const saveLife = (entry: LifeEntry) => write(LIFE_KEY, entry)
+
+export const loadBizModel = (): BizModel => {
+  const stored = read<Partial<BizModel>>(BIZ_KEY)
+  if (!stored) return emptyBizModel()
+  const base = emptyBizModel()
+  return {
+    ...base,
+    ...stored,
+    // 標籤盤缺就補預設（舊資料/半殘資料防呆）
+    tags: stored.tags?.length ? stored.tags : base.tags,
+  }
+}
+
+export const saveBizModel = (model: BizModel) => write(BIZ_KEY, model)
 
 const HABITS_RESTORED_KEY = 'pp:habitsAutoRestored'
 

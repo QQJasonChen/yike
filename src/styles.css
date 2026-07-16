@@ -4513,3 +4513,322 @@ button.mc-month:disabled { cursor: default; }
     letter-spacing: 0.06em;
   }
 }
+
+/* ============ 獲利模式九宮格（Business Model You） ============ */
+.biz-intro {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  max-width: 760px;
+  margin: 0 auto 18px;
+  text-align: center;
+}
+.biz-intro b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* 圖例／標籤盤 */
+.biz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.biz-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper-card);
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+.biz-legend-chip:hover {
+  border-color: var(--gold-soft);
+}
+.biz-legend-chip.active {
+  border-color: var(--gold);
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(60, 48, 30, 0.1);
+}
+.biz-legend-chip.off {
+  opacity: 0.4;
+}
+.biz-legend-chip.editing {
+  cursor: default;
+  padding: 4px 6px 4px 4px;
+  gap: 5px;
+}
+
+.biz-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.biz-dot.empty {
+  border: 1.5px dashed var(--ink-faint);
+  background: transparent;
+}
+
+/* 標籤編輯 */
+.biz-tag-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+.biz-tag-swatch input[type='color'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+.biz-tag-name {
+  width: 64px;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  background: transparent;
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--ink);
+  padding: 1px 2px;
+}
+.biz-tag-name:focus {
+  outline: none;
+  border-bottom-color: var(--gold);
+}
+.biz-tag-del,
+.biz-item-del {
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 3px;
+}
+.biz-tag-del:hover,
+.biz-item-del:hover {
+  color: var(--terra);
+}
+
+.biz-legend-tool {
+  border: none;
+  background: transparent;
+  color: var(--gold-deep);
+  font-family: var(--serif);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 6px;
+}
+.biz-legend-tool:hover {
+  background: var(--paper-deep);
+}
+.biz-legend-tool.done {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* 九宮格 */
+.biz-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-areas:
+    'partners activities value relationships segments'
+    'partners resources value channels segments'
+    'costs costs revenue revenue revenue';
+}
+.biz-b-partners {
+  grid-area: partners;
+}
+.biz-b-activities {
+  grid-area: activities;
+}
+.biz-b-resources {
+  grid-area: resources;
+}
+.biz-b-value {
+  grid-area: value;
+}
+.biz-b-relationships {
+  grid-area: relationships;
+}
+.biz-b-channels {
+  grid-area: channels;
+}
+.biz-b-segments {
+  grid-area: segments;
+}
+.biz-b-costs {
+  grid-area: costs;
+}
+.biz-b-revenue {
+  grid-area: revenue;
+}
+.biz-block {
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 12px 10px;
+  min-height: 128px;
+  display: flex;
+  flex-direction: column;
+}
+.biz-block-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: 0.08em;
+  color: var(--gold-deep);
+}
+.biz-block-hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin: 2px 0 8px;
+  line-height: 1.4;
+}
+.biz-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.biz-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  transition: opacity 0.15s;
+}
+.biz-item.dim {
+  opacity: 0.25;
+}
+.biz-item-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px dashed var(--ink-faint);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.biz-item-dot:hover {
+  border-style: solid;
+}
+.biz-item-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  font-family: var(--hand);
+  font-size: 14px;
+  color: var(--ink-write);
+  padding: 3px 2px;
+}
+.biz-item-input:focus {
+  outline: none;
+  border-bottom-color: var(--gold-soft);
+}
+.biz-item-input::placeholder {
+  color: var(--ink-faint);
+  opacity: 0.6;
+}
+.biz-item-del {
+  opacity: 0;
+}
+.biz-item:hover .biz-item-del,
+.biz-item-del:focus {
+  opacity: 1;
+}
+
+.biz-add {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--gold-deep);
+  font-family: var(--serif);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 2px;
+  margin-top: 2px;
+  opacity: 0.75;
+}
+.biz-add:hover {
+  opacity: 1;
+}
+
+/* 顏色挑選 popover */
+.biz-picker {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(60, 48, 30, 0.18);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 118px;
+}
+.biz-picker.up {
+  top: auto;
+  bottom: 20px;
+}
+.biz-picker-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 6px 9px;
+  border-radius: 5px;
+  text-align: left;
+}
+.biz-picker-opt:hover {
+  background: var(--paper-deep);
+}
+.biz-picker-opt.none {
+  color: var(--ink-faint);
+}
+
+/* 手機：九宮格改直排（清掉 grid-area 命名，讓九格照 DOM 順序單欄堆疊） */
+@media (max-width: 780px) {
+  .biz-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas: none;
+  }
+  .biz-grid .biz-block {
+    grid-area: auto;
+  }
+}

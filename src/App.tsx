@@ -7,6 +7,7 @@ import QuarterView from './QuarterView'
 import YearView from './YearView'
 import ScheduleView from './ScheduleView'
 import LifeView from './LifeView'
+import BizModelView from './BizModelView'
 import HistoryView from './HistoryView'
 import SettingsPanel from './SettingsPanel'
 import FocusTimer, { TimerState } from './FocusTimer'
@@ -27,7 +28,7 @@ import {
 } from './storage'
 import { Settings } from './types'
 
-type Tab = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'schedule' | 'life' | 'history'
+type Tab = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'schedule' | 'life' | 'biz' | 'history'
 
 // 把命中的關鍵字標色
 const highlightMatch = (text: string, q: string): React.ReactNode => {
@@ -221,6 +222,9 @@ export default function App() {
           <button className={tab === 'life' ? 'active' : ''} onClick={() => setTab('life')}>
             願景
           </button>
+          <button className={tab === 'biz' ? 'active' : ''} onClick={() => setTab('biz')}>
+            獲利模式
+          </button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
             回顧
           </button>
@@ -316,6 +320,7 @@ export default function App() {
       )}
       {tab === 'schedule' && <ScheduleView />}
       {tab === 'life' && <LifeView />}
+      {tab === 'biz' && <BizModelView />}
       {tab === 'history' && (
         <HistoryView
           onOpenDay={(k) => {
@@ -346,7 +351,7 @@ export default function App() {
           </button>
         ))}
         <button
-          className={['quarter', 'year', 'life', 'history'].includes(tab) ? 'active' : ''}
+          className={['quarter', 'year', 'life', 'biz', 'history'].includes(tab) ? 'active' : ''}
           onClick={() => setMoreOpen((v) => !v)}
         >
           更多
@@ -359,6 +364,7 @@ export default function App() {
                 ['quarter', '季'],
                 ['year', '年'],
                 ['life', '願景'],
+                ['biz', '獲利模式'],
                 ['history', '回顧'],
               ] as [Tab, string][]).map(([t, label]) => (
                 <button

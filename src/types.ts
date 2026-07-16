@@ -146,6 +146,37 @@ export interface LifeEntry {
   reflection?: string // 願景頁最底的一句總心得（自己或 AI 的觀察）；可選，loadLife 合併自動補預設
 }
 
+/** 獲利模式圖的一個顏色標籤（使用者可自訂：改名、改色、增減）。
+ *  預設 4 個：正職／副業／現在／未來。item.tag 指向 BizTag.id */
+export interface BizTag {
+  id: string // 穩定 key（例：'job'|'side'|'now'|'future' 或 t1/t2…），item.tag 對應它
+  label: string // 顯示名（可改）
+  color: string // hex 顏色（可改）
+}
+
+/** 九宮格裡的一條項目；tag = 某個 BizTag.id（undefined = 沒貼標籤） */
+export interface BizItem {
+  text: string
+  tag?: string
+}
+
+/** 九宮格的九個區塊 key（Business Model You 個人版）。 */
+export type BizBlockKey =
+  | 'partners' // 關鍵合作夥伴
+  | 'activities' // 關鍵活動
+  | 'resources' // 關鍵資源
+  | 'value' // 價值主張
+  | 'relationships' // 客戶關係
+  | 'channels' // 通路
+  | 'segments' // 目標客群
+  | 'costs' // 成本結構
+  | 'revenue' // 收益
+
+/** 個人獲利模式圖（Business Model You 九宮格）。整個 app 只有一份。 */
+export type BizModel = Record<BizBlockKey, BizItem[]> & {
+  tags: BizTag[] // 顏色標籤盤（可自訂）
+}
+
 export const emptyTask = (): Task => ({
   text: '',
   target: null,
@@ -186,6 +217,27 @@ export const emptyLife = (): LifeEntry => ({
   ],
   odysseyOpen: true,
   reflection: '',
+})
+
+// 獲利模式圖預設標籤：正職／副業／現在／未來（顏色融入暖紙色系，四色一眼可分）
+export const DEFAULT_BIZ_TAGS: BizTag[] = [
+  { id: 'job', label: '正職', color: '#3a6ea5' }, // 藍
+  { id: 'side', label: '副業', color: '#2e7d3f' }, // 綠
+  { id: 'now', label: '現在', color: '#b8923e' }, // 金
+  { id: 'future', label: '未來', color: '#7d5a8a' }, // 紫
+]
+
+export const emptyBizModel = (): BizModel => ({
+  partners: [],
+  activities: [],
+  resources: [],
+  value: [],
+  relationships: [],
+  channels: [],
+  segments: [],
+  costs: [],
+  revenue: [],
+  tags: DEFAULT_BIZ_TAGS.map((t) => ({ ...t })),
 })
 
 export const emptyWeek = (): WeekEntry => ({
