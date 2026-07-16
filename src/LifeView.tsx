@@ -216,6 +216,19 @@ export default function LifeView() {
             ))}
           </div>
         )}
+
+        {/* 總心得：整張願景頁看下來，最想記住的一句觀察（自己或 AI 的） */}
+        <div className="label">總心得 · 這一切看下來，你發現了什麼</div>
+        <div className="northstar-box">
+          <span className="northstar-star">✎</span>
+          <TextArea
+            className="northstar-input"
+            rows={3}
+            placeholder="三條路重複出現的東西、某個分數為什麼那麼低、或這次寫完最想記住的一句話⋯（你的或 AI 的觀察都可以寫在這）"
+            value={entry.reflection ?? ''}
+            onValue={(v) => update({ reflection: v })}
+          />
+        </div>
       </div>
     </div>
   )

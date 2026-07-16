@@ -143,6 +143,7 @@ export interface LifeEntry {
   startYear: number // 十年甘特的起始年
   odyssey: OdysseyPath[] // 固定 3 條路
   odysseyOpen: boolean // 奧德賽區塊是否展開
+  reflection?: string // 願景頁最底的一句總心得（自己或 AI 的觀察）；可選，loadLife 合併自動補預設
 }
 
 export const emptyTask = (): Task => ({
@@ -184,6 +185,7 @@ export const emptyLife = (): LifeEntry => ({
     { title: '不管錢與面子', body: '', excitement: 0, resources: 0, confidence: 0, coherence: 0, questions: '' },
   ],
   odysseyOpen: true,
+  reflection: '',
 })
 
 export const emptyWeek = (): WeekEntry => ({
