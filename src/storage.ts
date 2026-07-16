@@ -25,6 +25,8 @@ const SETTINGS_KEY = 'pp:settings'
 const LIFE_KEY = 'pp:life' // 願景維度——整個 app 只有一份
 const BIZ_KEY = 'pp:bizmodel' // 個人獲利模式九宮格——整個 app 只有一份
 const SYNC_KEY = 'pp:sync' // 同步設定（含 token）——絕不進匯出檔
+// Notion integration token（對用戶 Notion 有寫入權）——只留本機，絕不上雲、不進匯出檔
+const INTEGRATIONS_KEY = 'pp:integrations'
 const CLOUD_BOUND_KEY = 'pp:cloudBound' // 此裝置曾登入雲端帳號的標記（裝置本地，不同步）
 const BACKUP_PREFIX = 'pp:bk:' // 每日本機快照（pp:bk:<date>）——純本機、不同步、不匯出
 const LAST_BACKUP_KEY = 'pp:lastBackup' // 上次自動備份的日期（一天只備一次）
@@ -429,6 +431,7 @@ export const allDataKeys = (): string[] => {
     if (
       k?.startsWith('pp:') &&
       k !== SYNC_KEY &&
+      k !== INTEGRATIONS_KEY && // Notion token 只留本機：不上雲同步、不進匯出檔
       k !== META_KEY &&
       k !== CLOUD_BOUND_KEY &&
       k !== HABITS_RESTORED_KEY &&

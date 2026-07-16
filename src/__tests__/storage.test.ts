@@ -194,6 +194,16 @@ describe('export / import', () => {
   it('importAll throws on malformed payload', () => {
     expect(() => importAll('{"nope":1}')).toThrow()
   })
+
+  it('never syncs or exports the Notion integration token', () => {
+    saveDay('2026-06-13', emptyDay())
+    localStorage.setItem('pp:integrations', JSON.stringify({ token: 'ntn_secret_token', parentPageId: 'x' }))
+
+    // 不進 sync/export 掃描的 key 集合
+    expect(allDataKeys()).not.toContain('pp:integrations')
+    // 不出現在匯出檔（否則明文 Notion 憑證會外流）
+    expect(exportAll()).not.toContain('ntn_secret_token')
+  })
 })
 
 describe('habit auto-recovery', () => {
