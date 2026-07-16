@@ -24,6 +24,7 @@ export default function BizModelView() {
   const [filter, setFilter] = useState<Set<string>>(new Set()) // 只看哪些標籤層（空＝全部）
   const [editTags, setEditTags] = useState(false)
   const [picker, setPicker] = useState<{ block: BizBlockKey; i: number } | null>(null)
+  const [showHelp, setShowHelp] = useState(false) // 「怎麼運作」詳細說明是否展開
 
   // 換頁回來時重新讀（雲端同步可能拉到新資料）
   useEffect(() => {
@@ -91,6 +92,43 @@ export default function BizModelView() {
         <p className="biz-intro">
           用顏色標出<b>現在 vs 未來</b>、<b>正職 vs 副業</b>——點圖例某個顏色，就能<b>只看那一層</b>，看哪些跟客群、價值對不上，那就是可以砍的。
         </p>
+
+        <button className="biz-help-toggle" onClick={() => setShowHelp((v) => !v)}>
+          <span className={`biz-help-caret ${showHelp ? 'open' : ''}`}>▸</span>
+          這張商模怎麼運作？
+        </button>
+        {showHelp && (
+          <div className="biz-help">
+            <p>
+              把「你這個人」當成一張商業模式圖（<i>Business Model You</i>，就是企業版九宮格的個人版）。
+              正職＋副業畫在同一張——因為餵飽你的是<b>同一個人</b>，不是兩個分開的身分。
+            </p>
+            <p>
+              <b>九格分三區：</b>
+            </p>
+            <ul>
+              <li>
+                <b>右半（你幫助誰・你如何幫助・通路・客戶關係）</b>＝你對外提供的價值，先想清楚「你到底在幫誰、幫他們完成什麼」。
+              </li>
+              <li>
+                <b>左半（你做什麼・你是誰＋擁有什麼・誰幫助你）</b>＝你靠什麼做到。<b>「你是誰＋你擁有什麼」是個人版的心臟</b>：興趣、技能、個性、經驗、人脈都算資源。
+              </li>
+              <li>
+                <b>底部（付出什麼・得到什麼）</b>＝划不划算。不只錢——付出含<b>壓力</b>，收穫含<b>成長、成就感、滿足</b>。
+              </li>
+            </ul>
+            <p>
+              <b>怎麼讀：</b>從右邊「你幫助誰」開始往左推——給他們什麼價值？靠哪些活動、資源、夥伴做到？最後看底部值不值得。
+            </p>
+            <p>
+              <b>顏色疊圖（這是關鍵）：</b>用標籤標出「正職／副業」「現在／未來」，點圖例某色就<b>只看那一層</b>。
+              檢查每一格：<b>每條項目都要能連回你的目標客群和價值主張</b>；連不上、孤立的那條，就是可以砍的。
+            </p>
+            <p>
+              <b>四步用法：</b>① 先畫<u>現在</u>的你 → ② 反思哪裡順、哪裡卡 → ③ 把想做的用<u>未來</u>色標上去（從你想要的五年後倒推）→ ④ 挑一個假設，用小實驗去測（例：找活在那條路上的人聊 30 分鐘）。
+            </p>
+          </div>
+        )}
 
         {/* 圖例／顏色標籤盤：平常是「只看這層」的篩選器，按「編輯」可改名、改色、增減 */}
         <div className="biz-legend">

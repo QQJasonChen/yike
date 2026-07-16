@@ -4528,6 +4528,70 @@ button.mc-month:disabled { cursor: default; }
   font-weight: 600;
 }
 
+/* 「怎麼運作」可展開說明 */
+.biz-help-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto 14px;
+  border: none;
+  background: transparent;
+  color: var(--gold-deep);
+  font-family: var(--serif);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.biz-help-toggle:hover {
+  color: var(--gold);
+}
+.biz-help-caret {
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 11px;
+}
+.biz-help-caret.open {
+  transform: rotate(90deg);
+}
+.biz-help {
+  max-width: 720px;
+  margin: -4px auto 20px;
+  padding: 16px 20px;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--gold-soft);
+  border-radius: 8px;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--ink-soft);
+  animation: pageIn 0.3s ease both;
+}
+.biz-help p {
+  margin: 0 0 9px;
+}
+.biz-help p:last-child {
+  margin-bottom: 0;
+}
+.biz-help ul {
+  margin: 0 0 9px;
+  padding-left: 18px;
+}
+.biz-help li {
+  margin-bottom: 6px;
+}
+.biz-help b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.biz-help i {
+  font-family: var(--eng);
+}
+.biz-help u {
+  text-decoration-color: var(--gold-soft);
+  text-underline-offset: 2px;
+}
+
 /* 圖例／標籤盤 */
 .biz-legend {
   display: flex;
