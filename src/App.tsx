@@ -223,7 +223,7 @@ export default function App() {
             願景
           </button>
           <button className={tab === 'biz' ? 'active' : ''} onClick={() => setTab('biz')}>
-            獲利模式
+            商模
           </button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
             回顧
@@ -364,7 +364,7 @@ export default function App() {
                 ['quarter', '季'],
                 ['year', '年'],
                 ['life', '願景'],
-                ['biz', '獲利模式'],
+                ['biz', '商模'],
                 ['history', '回顧'],
               ] as [Tab, string][]).map(([t, label]) => (
                 <button

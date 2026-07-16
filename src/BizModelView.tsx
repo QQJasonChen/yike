@@ -3,17 +3,18 @@ import { TextField } from './fields'
 import { loadBizModel, saveBizModel } from './storage'
 import { BizBlockKey, BizItem, BizModel } from './types'
 
-// 九宮格區塊：DOM 順序＝手機直排的閱讀順序；area 決定桌機九宮格位置（見 styles.css .biz-grid）
-const BLOCKS: { key: BizBlockKey; area: string; title: string; hint: string }[] = [
-  { key: 'value', area: 'value', title: '價值主張', hint: '你提供什麼獨到價值？非你不可的是什麼' },
-  { key: 'segments', area: 'segments', title: '目標客群', hint: '你幫助誰？把最關鍵的人圈出來' },
-  { key: 'channels', area: 'channels', title: '通路', hint: '怎麼把價值送到他們面前' },
-  { key: 'relationships', area: 'relationships', title: '客戶關係', hint: '怎麼跟他們互動、維繫' },
-  { key: 'activities', area: 'activities', title: '關鍵活動', hint: '你固定要做的核心動作' },
-  { key: 'resources', area: 'resources', title: '關鍵資源', hint: '你的技能、經驗、身分、內容' },
-  { key: 'partners', area: 'partners', title: '關鍵合作夥伴', hint: '幫得上你的工具、人、平台' },
-  { key: 'costs', area: 'costs', title: '成本結構', hint: '你付出的時間、金錢、心力' },
-  { key: 'revenue', area: 'revenue', title: '收益', hint: '你得到的——錢、成長、成就感' },
+// 九宮格區塊：DOM 順序＝手機直排的閱讀順序。
+// title＝企業版原名（跟一般商模圖對得上）；hint＝《Business Model You》個人版「以人為主」的問法。
+const BLOCKS: { key: BizBlockKey; title: string; hint: string }[] = [
+  { key: 'value', title: '價值主張', hint: '你如何幫助？他們「雇用」你來完成什麼工作' },
+  { key: 'segments', title: '目標客群', hint: '你幫助誰？把最關鍵的人圈出來' },
+  { key: 'channels', title: '通路', hint: '別人怎麼認識你、你怎麼把價值交付給他們' },
+  { key: 'relationships', title: '客戶關係', hint: '你怎麼跟他們互動、維繫關係' },
+  { key: 'activities', title: '關鍵活動', hint: '你做什麼？（從「你是誰」自然長出來的事）' },
+  { key: 'resources', title: '關鍵資源', hint: '你是誰＋你擁有什麼：興趣、技能、個性、經驗、人脈' },
+  { key: 'partners', title: '關鍵合作夥伴', hint: '誰幫助你：夥伴、貴人、工具、平台' },
+  { key: 'costs', title: '成本結構', hint: '你付出什麼：時間、精力、金錢，還有壓力' },
+  { key: 'revenue', title: '收益', hint: '你得到什麼：收入，還有成長、成就感、滿足' },
 ]
 
 const newTagId = () => `t${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
@@ -85,11 +86,10 @@ export default function BizModelView() {
     <div className="page">
       <div className="page-inner" onClick={() => picker && setPicker(null)}>
         <h2 className="section-title">Business Model You</h2>
-        <p className="section-sub">獲利模式 — 把「你這個人」當成一個模式，正職＋副業畫在同一張圖上。</p>
+        <p className="section-sub">商模 — 把「你這個人」畫成一張商業模式圖，正職＋副業放一起。</p>
 
         <p className="biz-intro">
-          填九宮格：右邊<b>你幫助誰</b>、中間<b>給他們什麼價值</b>、左邊<b>你靠什麼做到</b>、底下<b>付出與收穫</b>。
-          用顏色標出「正職／副業」「現在／未來」——點圖例的顏色，就能<b>只看某一層</b>，看哪些項目跟客群、價值對不上，那就是可以砍的。
+          用顏色標出<b>現在 vs 未來</b>、<b>正職 vs 副業</b>——點圖例某個顏色，就能<b>只看那一層</b>，看哪些跟客群、價值對不上，那就是可以砍的。
         </p>
 
         {/* 圖例／顏色標籤盤：平常是「只看這層」的篩選器，按「編輯」可改名、改色、增減 */}
