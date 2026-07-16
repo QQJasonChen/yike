@@ -17,19 +17,22 @@ const BLOCKS: { key: BizBlockKey; title: string; hint: string }[] = [
   { key: 'revenue', title: '收益', hint: '你得到什麼：收入，還有成長、成就感、滿足' },
 ]
 
-// 「怎麼運作」示意圖：九格 mini 版，短標＋三區底色（zone）。
+// 「怎麼運作」示意圖：九格 mini 版，短標＋小副標＋三區底色（zone）＋格內小箭頭。
 // zone: how＝你靠什麼做到（左）／out＝你對外的價值（右＋中）／econ＝划不划算（底）
-const DIAG: { key: BizBlockKey; label: string; zone: 'how' | 'out' | 'econ' }[] = [
-  { key: 'partners', label: '誰幫你', zone: 'how' },
-  { key: 'activities', label: '你做什麼', zone: 'how' },
-  { key: 'resources', label: '你是誰＋擁有什麼', zone: 'how' },
-  { key: 'value', label: '你如何幫助', zone: 'out' },
-  { key: 'relationships', label: '怎麼互動', zone: 'out' },
-  { key: 'channels', label: '怎麼認識·交付', zone: 'out' },
-  { key: 'segments', label: '你幫助誰', zone: 'out' },
-  { key: 'costs', label: '付出什麼', zone: 'econ' },
-  { key: 'revenue', label: '得到什麼', zone: 'econ' },
+// arrows＝價值流動方向：你是誰＋擁有的 → 做出價值 → 送到你幫助的人；左花成本、右帶收穫
+type Arrow = 'right' | 'down' | 'up'
+const DIAG: { key: BizBlockKey; label: string; sub: string; zone: 'how' | 'out' | 'econ'; arrows?: Arrow[] }[] = [
+  { key: 'partners', label: '誰幫你', sub: '貴人·工具·平台', zone: 'how', arrows: ['right'] },
+  { key: 'activities', label: '你做什麼', sub: '固定的核心動作', zone: 'how', arrows: ['right'] },
+  { key: 'resources', label: '你是誰＋擁有什麼', sub: '興趣·技能·經驗·人脈', zone: 'how', arrows: ['up', 'down'] },
+  { key: 'value', label: '你如何幫助', sub: '幫他們完成什麼', zone: 'out', arrows: ['right', 'down'] },
+  { key: 'relationships', label: '怎麼互動', sub: '維繫關係', zone: 'out', arrows: ['right'] },
+  { key: 'channels', label: '怎麼認識·交付', sub: '怎麼被看見', zone: 'out', arrows: ['right'] },
+  { key: 'segments', label: '你幫助誰', sub: '最關鍵的那些人', zone: 'out' },
+  { key: 'costs', label: '付出什麼', sub: '時間·精力·壓力', zone: 'econ' },
+  { key: 'revenue', label: '得到什麼', sub: '錢·成長·滿足', zone: 'econ' },
 ]
+const ARROW_GLYPH: Record<Arrow, string> = { right: '→', down: '↓', up: '↑' }
 
 const newTagId = () => `t${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 
@@ -114,28 +117,33 @@ export default function BizModelView() {
         {showHelp && (
           <div className="biz-help">
             <p className="biz-help-lead">
-              把「你這個人」畫成一張商業模式圖（<i>Business Model You</i>）——正職＋副業放一起，因為餵飽你的是<b>同一個人</b>。
+              把「你這個人」畫成一張商業模式圖（<i>Business Model You</i>）——正職、副業⋯⋯全放一起，因為<b>這些合起來，才是完整的「You」這個模式</b>。
             </p>
 
-            {/* 讀圖方向：右 → 左 */}
+            {/* 三區彩標 */}
             <div className="biz-diagram-flow">
-              <span className="zone-tag how">② 你靠什麼做到</span>
-              <span className="biz-flow-arrow">←</span>
-              <span className="zone-tag out">① 你幫誰、給什麼價值</span>
+              <span className="zone-tag how">你靠什麼做到</span>
+              <span className="zone-tag out">你的價值 · 給誰</span>
+              <span className="zone-tag econ">划不划算</span>
             </div>
 
-            {/* 九格 mini 示意圖 */}
+            {/* 九格 mini 示意圖：格內小箭頭＝價值流動方向 */}
             <div className="biz-diagram">
               {DIAG.map((d) => (
                 <div key={d.key} className={`biz-diag-box biz-b-${d.key} zone-${d.zone}`}>
-                  {d.label}
+                  <span className="biz-diag-title">{d.label}</span>
+                  <span className="biz-diag-sub">{d.sub}</span>
+                  {d.arrows?.map((a) => (
+                    <span key={a} className={`biz-diag-arrow arr-${a}`}>
+                      {ARROW_GLYPH[a]}
+                    </span>
+                  ))}
                 </div>
               ))}
             </div>
-            <div className="biz-diagram-econ">
-              <span className="zone-tag econ">③ 划不划算</span>
-              付出（時間·壓力） vs 得到（錢·成長·滿足）
-            </div>
+            <p className="biz-diagram-econ">
+              跟著<b>箭頭</b>看：你是誰＋擁有的 → 做出價值 → 送到你幫助的人；左邊花<b>成本</b>、右邊帶來<b>收穫</b>。
+            </p>
 
             <p className="biz-help-note">
               <b>用顏色疊圖：</b>標出「正職／副業」「現在／未來」，點圖例只看那一層。

@@ -4623,7 +4623,7 @@ button.mc-month:disabled { cursor: default; }
 /* 九格 mini 示意圖 */
 .biz-diagram {
   display: grid;
-  gap: 5px;
+  gap: 9px;
   grid-template-columns: repeat(5, 1fr);
   grid-template-areas:
     'partners activities value relationships segments'
@@ -4631,18 +4631,29 @@ button.mc-month:disabled { cursor: default; }
     'costs costs revenue revenue revenue';
 }
 .biz-diag-box {
+  position: relative;
   border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 6px 5px;
-  min-height: 44px;
+  border-radius: 7px;
+  padding: 9px 7px;
+  min-height: 58px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   text-align: center;
-  font-family: var(--serif);
-  font-size: 11.5px;
-  line-height: 1.3;
   color: var(--ink);
+}
+.biz-diag-title {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+.biz-diag-sub {
+  font-size: 10px;
+  line-height: 1.25;
+  color: var(--ink-faint);
 }
 .biz-diag-box.zone-how {
   background: rgba(58, 110, 165, 0.08);
@@ -4653,14 +4664,44 @@ button.mc-month:disabled { cursor: default; }
 .biz-diag-box.zone-econ {
   background: rgba(46, 125, 63, 0.08);
 }
-.biz-diagram-econ {
+
+/* 格內小箭頭：價值流動方向，浮在格子邊緣的缺口上 */
+.biz-diag-arrow {
+  position: absolute;
+  z-index: 2;
+  width: 17px;
+  height: 17px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 7px 0 2px;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  background: var(--paper-card);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--gold-soft);
+}
+.biz-diag-arrow.arr-right {
+  right: -13px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.biz-diag-arrow.arr-down {
+  bottom: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.biz-diag-arrow.arr-up {
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.biz-diagram-econ {
+  margin: 10px auto 2px;
+  max-width: 620px;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.6;
   color: var(--ink-soft);
 }
 
