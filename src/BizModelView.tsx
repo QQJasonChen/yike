@@ -17,6 +17,20 @@ const BLOCKS: { key: BizBlockKey; title: string; hint: string }[] = [
   { key: 'revenue', title: '收益', hint: '你得到什麼：收入，還有成長、成就感、滿足' },
 ]
 
+// 「怎麼運作」示意圖：九格 mini 版，短標＋三區底色（zone）。
+// zone: how＝你靠什麼做到（左）／out＝你對外的價值（右＋中）／econ＝划不划算（底）
+const DIAG: { key: BizBlockKey; label: string; zone: 'how' | 'out' | 'econ' }[] = [
+  { key: 'partners', label: '誰幫你', zone: 'how' },
+  { key: 'activities', label: '你做什麼', zone: 'how' },
+  { key: 'resources', label: '你是誰＋擁有什麼', zone: 'how' },
+  { key: 'value', label: '你如何幫助', zone: 'out' },
+  { key: 'relationships', label: '怎麼互動', zone: 'out' },
+  { key: 'channels', label: '怎麼認識·交付', zone: 'out' },
+  { key: 'segments', label: '你幫助誰', zone: 'out' },
+  { key: 'costs', label: '付出什麼', zone: 'econ' },
+  { key: 'revenue', label: '得到什麼', zone: 'econ' },
+]
+
 const newTagId = () => `t${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 
 export default function BizModelView() {
@@ -99,34 +113,52 @@ export default function BizModelView() {
         </button>
         {showHelp && (
           <div className="biz-help">
-            <p>
-              把「你這個人」當成一張商業模式圖（<i>Business Model You</i>，就是企業版九宮格的個人版）。
-              正職＋副業畫在同一張——因為餵飽你的是<b>同一個人</b>，不是兩個分開的身分。
+            <p className="biz-help-lead">
+              把「你這個人」畫成一張商業模式圖（<i>Business Model You</i>）——正職＋副業放一起，因為餵飽你的是<b>同一個人</b>。
             </p>
-            <p>
-              <b>九格分三區：</b>
+
+            {/* 讀圖方向：右 → 左 */}
+            <div className="biz-diagram-flow">
+              <span className="zone-tag how">② 你靠什麼做到</span>
+              <span className="biz-flow-arrow">←</span>
+              <span className="zone-tag out">① 你幫誰、給什麼價值</span>
+            </div>
+
+            {/* 九格 mini 示意圖 */}
+            <div className="biz-diagram">
+              {DIAG.map((d) => (
+                <div key={d.key} className={`biz-diag-box biz-b-${d.key} zone-${d.zone}`}>
+                  {d.label}
+                </div>
+              ))}
+            </div>
+            <div className="biz-diagram-econ">
+              <span className="zone-tag econ">③ 划不划算</span>
+              付出（時間·壓力） vs 得到（錢·成長·滿足）
+            </div>
+
+            <p className="biz-help-note">
+              <b>用顏色疊圖：</b>標出「正職／副業」「現在／未來」，點圖例只看那一層。
+              每條都要能連回<b>目標客群</b>和<b>價值主張</b>，連不上的那條就是可以砍的。
             </p>
-            <ul>
-              <li>
-                <b>右半（你幫助誰・你如何幫助・通路・客戶關係）</b>＝你對外提供的價值，先想清楚「你到底在幫誰、幫他們完成什麼」。
-              </li>
-              <li>
-                <b>左半（你做什麼・你是誰＋擁有什麼・誰幫助你）</b>＝你靠什麼做到。<b>「你是誰＋你擁有什麼」是個人版的心臟</b>：興趣、技能、個性、經驗、人脈都算資源。
-              </li>
-              <li>
-                <b>底部（付出什麼・得到什麼）</b>＝划不划算。不只錢——付出含<b>壓力</b>，收穫含<b>成長、成就感、滿足</b>。
-              </li>
-            </ul>
-            <p>
-              <b>怎麼讀：</b>從右邊「你幫助誰」開始往左推——給他們什麼價值？靠哪些活動、資源、夥伴做到？最後看底部值不值得。
-            </p>
-            <p>
-              <b>顏色疊圖（這是關鍵）：</b>用標籤標出「正職／副業」「現在／未來」，點圖例某色就<b>只看那一層</b>。
-              檢查每一格：<b>每條項目都要能連回你的目標客群和價值主張</b>；連不上、孤立的那條，就是可以砍的。
-            </p>
-            <p>
-              <b>四步用法：</b>① 先畫<u>現在</u>的你 → ② 反思哪裡順、哪裡卡 → ③ 把想做的用<u>未來</u>色標上去（從你想要的五年後倒推）→ ④ 挑一個假設，用小實驗去測（例：找活在那條路上的人聊 30 分鐘）。
-            </p>
+
+            <div className="biz-steps">
+              <span>
+                <em>畫現在</em>的你
+              </span>
+              <span className="biz-step-arrow">→</span>
+              <span>
+                <em>反思</em>哪裡卡
+              </span>
+              <span className="biz-step-arrow">→</span>
+              <span>
+                想做的標<em>未來</em>色
+              </span>
+              <span className="biz-step-arrow">→</span>
+              <span>
+                挑一個<em>小實驗</em>去測
+              </span>
+            </div>
           </div>
         )}
 

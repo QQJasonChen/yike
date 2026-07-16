@@ -4567,19 +4567,6 @@ button.mc-month:disabled { cursor: default; }
   color: var(--ink-soft);
   animation: pageIn 0.3s ease both;
 }
-.biz-help p {
-  margin: 0 0 9px;
-}
-.biz-help p:last-child {
-  margin-bottom: 0;
-}
-.biz-help ul {
-  margin: 0 0 9px;
-  padding-left: 18px;
-}
-.biz-help li {
-  margin-bottom: 6px;
-}
 .biz-help b {
   color: var(--ink);
   font-weight: 600;
@@ -4587,9 +4574,115 @@ button.mc-month:disabled { cursor: default; }
 .biz-help i {
   font-family: var(--eng);
 }
-.biz-help u {
-  text-decoration-color: var(--gold-soft);
-  text-underline-offset: 2px;
+.biz-help-lead {
+  margin: 0 0 12px;
+  text-align: center;
+}
+.biz-help-note {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+/* 三區彩標（跟示意圖底色同系）*/
+.zone-tag {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.zone-tag.how {
+  background: rgba(58, 110, 165, 0.14);
+  color: #2f5a86;
+}
+.zone-tag.out {
+  background: rgba(184, 146, 62, 0.18);
+  color: var(--gold-deep);
+}
+.zone-tag.econ {
+  background: rgba(46, 125, 63, 0.14);
+  color: #266334;
+}
+
+/* 讀圖方向：右 → 左 */
+.biz-diagram-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+.biz-flow-arrow {
+  color: var(--gold);
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* 九格 mini 示意圖 */
+.biz-diagram {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-areas:
+    'partners activities value relationships segments'
+    'partners resources value channels segments'
+    'costs costs revenue revenue revenue';
+}
+.biz-diag-box {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 6px 5px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.biz-diag-box.zone-how {
+  background: rgba(58, 110, 165, 0.08);
+}
+.biz-diag-box.zone-out {
+  background: rgba(184, 146, 62, 0.1);
+}
+.biz-diag-box.zone-econ {
+  background: rgba(46, 125, 63, 0.08);
+}
+.biz-diagram-econ {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 7px 0 2px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* 四步流程 */
+.biz-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px 8px;
+  margin-top: 12px;
+  font-family: var(--serif);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.biz-steps em {
+  font-style: normal;
+  color: var(--gold-deep);
+  font-weight: 600;
+}
+.biz-step-arrow {
+  color: var(--ink-faint);
 }
 
 /* 圖例／標籤盤 */
