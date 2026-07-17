@@ -42,6 +42,7 @@ export default function BizModelView() {
   const [editTags, setEditTags] = useState(false)
   const [picker, setPicker] = useState<{ block: BizBlockKey; i: number } | null>(null)
   const [showHelp, setShowHelp] = useState(false) // 「怎麼運作」詳細說明是否展開
+  const [stack, setStack] = useState(false) // 手機：false＝完整九宮格(可左右滑)、true＝逐格直排編輯
 
   // 換頁回來時重新讀（雲端同步可能拉到新資料）
   useEffect(() => {
@@ -229,9 +230,21 @@ export default function BizModelView() {
           )}
         </div>
 
-        {/* 九宮格 */}
-        <div className="biz-grid">
-          {BLOCKS.map((b) => (
+        {/* 手機專用：完整九宮格(左右滑) ↔ 逐格編輯(直排) 切換 */}
+        <div className="biz-mobile-toggle">
+          <button className={!stack ? 'on' : ''} onClick={() => setStack(false)}>
+            ▦ 完整九宮格
+          </button>
+          <button className={stack ? 'on' : ''} onClick={() => setStack(true)}>
+            ☰ 逐格編輯
+          </button>
+          {!stack && <span className="biz-scroll-hint">← 左右滑動看全貌 →</span>}
+        </div>
+
+        {/* 九宮格（手機非直排時，外層可左右捲動，保留完整畫布）*/}
+        <div className="biz-canvas-wrap">
+          <div className={`biz-grid ${stack ? 'stacked' : ''}`}>
+            {BLOCKS.map((b) => (
             <section key={b.key} className={`biz-block biz-b-${b.key}`}>
               <div className="biz-block-title">{b.title}</div>
               <div className="biz-block-hint">{b.hint}</div>
@@ -300,7 +313,8 @@ export default function BizModelView() {
                 </button>
               </div>
             </section>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>

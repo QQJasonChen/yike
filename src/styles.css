@@ -5093,13 +5093,55 @@ button.mc-month:disabled { cursor: default; }
   color: var(--ink-faint);
 }
 
-/* 手機：九宮格改直排（清掉 grid-area 命名，讓九格照 DOM 順序單欄堆疊） */
+/* 手機切換鈕：桌機隱藏（桌機九宮格本來就放得下）*/
+.biz-mobile-toggle {
+  display: none;
+}
+.biz-canvas-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 @media (max-width: 780px) {
-  .biz-grid {
+  .biz-mobile-toggle {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .biz-mobile-toggle button {
+    border: 1px solid var(--rule);
+    background: var(--paper-card);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-family: var(--serif);
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .biz-mobile-toggle button.on {
+    border-color: var(--gold);
+    background: #fff;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .biz-scroll-hint {
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+  }
+
+  /* 完整九宮格：保留 5 欄真實佈局，靠外層左右捲動看全貌 */
+  .biz-grid:not(.stacked) {
+    min-width: 620px;
+  }
+  /* 逐格編輯：改單欄直排，好打字 */
+  .biz-grid.stacked {
     grid-template-columns: 1fr;
     grid-template-areas: none;
   }
-  .biz-grid .biz-block {
+  .biz-grid.stacked .biz-block {
     grid-area: auto;
   }
 }
