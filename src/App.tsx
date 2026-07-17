@@ -355,7 +355,7 @@ export default function App() {
           ['day', '今天'],
           ['week', '週'],
           ['month', '月'],
-          ['schedule', '時程'],
+          ['history', '回顧'],
         ] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
@@ -369,7 +369,7 @@ export default function App() {
           </button>
         ))}
         <button
-          className={['quarter', 'year', 'life', 'biz', 'history'].includes(tab) ? 'active' : ''}
+          className={['quarter', 'year', 'schedule', 'life', 'biz'].includes(tab) ? 'active' : ''}
           onClick={() => setMoreOpen((v) => !v)}
         >
           更多
@@ -381,9 +381,9 @@ export default function App() {
               {([
                 ['quarter', '季'],
                 ['year', '年'],
+                ['schedule', '時程'],
                 ['life', '願景'],
                 ['biz', '商模'],
-                ['history', '回顧'],
               ] as [Tab, string][]).map(([t, label]) => (
                 <button
                   key={t}

@@ -668,14 +668,13 @@ textarea.line-area {
   transform: translate(-50%, -50%);
 }
 
-.task-play:hover:not(:disabled) {
+.task-play:not(.muted):hover {
   border-color: var(--terra);
 }
 
-/* 還沒寫任務時：淡化 + 禁用游標，讓人一眼看出「先寫任務才能按」而不是壞掉 */
-.task-play:disabled {
-  opacity: 0.32;
-  cursor: not-allowed;
+/* 還沒寫任務時：淡化提示「先寫任務」，但仍可按——按了會把游標帶到任務欄引導 */
+.task-play.muted {
+  opacity: 0.4;
 }
 
 .task-play.running {

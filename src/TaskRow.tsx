@@ -169,10 +169,16 @@ export default function TaskRow({
       </div>
 
       <button
-        className={`task-play ${isRunning ? 'running' : ''}`}
-        onClick={onStartFocus}
+        className={`task-play ${isRunning ? 'running' : ''} ${!task.text.trim() ? 'muted' : ''}`}
+        onClick={(e) => {
+          if (!task.text.trim()) {
+            // 還沒寫任務就按 ▶：不當死鍵，改成把游標帶到任務欄引導
+            ;(e.currentTarget.closest('.task-row')?.querySelector('input') as HTMLInputElement | null)?.focus()
+            return
+          }
+          onStartFocus()
+        }}
         title={task.text.trim() ? '開始番茄鐘專注' : '先寫下這格任務，才能開始番茄鐘'}
-        disabled={!task.text.trim()}
       >
         {isRunning ? '◉' : '▶'}
       </button>
