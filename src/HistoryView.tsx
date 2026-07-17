@@ -177,24 +177,30 @@ export default function HistoryView({ onOpenDay, settings }: Props) {
         )}
 
         <div className="label">近 14 天生產力評分</div>
-        <div className="chart">
-          {chartDays.map((k) => {
-            const score = days.get(k)?.score ?? 0
-            return (
-              <div
-                key={k}
-                className={`bar ${score === 0 ? 'empty-bar' : ''}`}
-                style={{ height: `${Math.max(4, score * 20)}%` }}
-                title={`${k}：${score || '未評分'}`}
-              />
-            )
-          })}
-        </div>
-        <div className="chart-labels">
-          {chartDays.map((k) => (
-            <span key={k}>{WD[new Date(`${k}T12:00:00`).getDay()]}</span>
-          ))}
-        </div>
+        {chartDays.some((k) => (days.get(k)?.score ?? 0) > 0) ? (
+          <>
+            <div className="chart">
+              {chartDays.map((k) => {
+                const score = days.get(k)?.score ?? 0
+                return (
+                  <div
+                    key={k}
+                    className={`bar ${score === 0 ? 'empty-bar' : ''}`}
+                    style={{ height: `${Math.max(4, score * 20)}%` }}
+                    title={`${k}：${score || '未評分'}`}
+                  />
+                )
+              })}
+            </div>
+            <div className="chart-labels">
+              {chartDays.map((k) => (
+                <span key={k}>{WD[new Date(`${k}T12:00:00`).getDay()]}</span>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="chart-empty">還沒有評分紀錄——每天回顧時給自己打一分（1–5），這裡就會長出近 14 天的趨勢。</p>
+        )}
 
         <div className="label">
           活動統計 <span className="hint">同名才會合併——輸入時點選建議名稱，數據就會對齊</span>
@@ -266,7 +272,7 @@ export default function HistoryView({ onOpenDay, settings }: Props) {
 
         <div className="data-actions">
           <button onClick={copyCoach} title="複製近 7 天記錄＋分析指令，貼到 Claude / ChatGPT">
-            {coachCopied ? '✓ 已複製，貼到 AI 即可' : '🤖 AI 教練分析'}
+            {coachCopied ? '✓ 已複製，貼到 AI 即可' : '🤖 複製給 AI 教練分析'}
           </button>
           <button onClick={doExport}>匯出備份 JSON</button>
           <label>

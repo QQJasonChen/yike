@@ -79,19 +79,22 @@ export default function App() {
     autoBackup(toDateKey(new Date()))
   }, [])
 
-  // ⌘K / Ctrl+K 開搜尋；Esc 關
+  // ⌘K / Ctrl+K 開搜尋；Esc 關掉「最上層」的浮層（搜尋 → 設定 → 更多）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
+        setShowSettings(false) // 開搜尋時關設定，避免兩個浮層疊在一起
         setSearchOpen((v) => !v)
       } else if (e.key === 'Escape') {
-        setSearchOpen(false)
+        if (searchOpen) setSearchOpen(false)
+        else if (showSettings) setShowSettings(false)
+        else if (moreOpen) setMoreOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [searchOpen, showSettings, moreOpen])
 
   const [copiedMsg, setCopiedMsg] = useState('')
   const flashCopied = (msg: string) => {
@@ -233,7 +236,10 @@ export default function App() {
           {cloudEnabled() && (
             <button
               className={`cloud-badge ${cloudIn ? 'on' : ''}`}
-              onClick={() => setShowSettings(true)}
+              onClick={() => {
+                setSearchOpen(false)
+                setShowSettings(true)
+              }}
               title={cloudIn ? '雲端同步中，點擊管理' : '登入帳號，啟用全裝置自動同步'}
             >
               {cloudIn ? '☁ 同步中' : '☁ 登入'}
@@ -241,7 +247,10 @@ export default function App() {
           )}
           <button
             className="gear-btn"
-            onClick={() => setSearchOpen(true)}
+            onClick={() => {
+              setShowSettings(false)
+              setSearchOpen(true)
+            }}
             title="搜尋全部紀錄（⌘K）"
             aria-label="搜尋全部紀錄"
           >
@@ -249,7 +258,10 @@ export default function App() {
           </button>
           <button
             className="gear-btn"
-            onClick={() => setShowSettings(true)}
+            onClick={() => {
+              setSearchOpen(false)
+              setShowSettings(true)
+            }}
             title="設定"
             aria-label="設定"
           >

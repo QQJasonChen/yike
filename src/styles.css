@@ -546,6 +546,7 @@ textarea.line-area {
   color: transparent;
   flex-shrink: 0;
   transition: all 0.25s;
+  position: relative;
 }
 
 .task-check.on {
@@ -652,6 +653,19 @@ textarea.line-area {
   border: 1.5px solid transparent;
   flex-shrink: 0;
   transition: all 0.2s;
+  position: relative;
+}
+
+/* 觸控命中區放大到 ≥44px（視覺不變，透明外擴，不影響排版）*/
+.task-play::after,
+.task-check::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 
 .task-play:hover:not(:disabled) {
@@ -2731,6 +2745,17 @@ button.wk-head:hover {
 .timer-actions .stop {
   border-color: rgba(230, 120, 90, 0.55);
   color: #e89b7d;
+  /* 把「結束/放棄」跟旁邊的「✓ 提前完成」拉開，避免誤觸（放棄會枯樹）*/
+  margin-left: 14px;
+  position: relative;
+}
+.timer-actions .stop::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 20%;
+  height: 60%;
+  border-left: 1px solid rgba(245, 240, 230, 0.18);
 }
 
 /* 計時進度環 */
@@ -2866,6 +2891,19 @@ button.wk-head:hover {
   margin: 18px 0 6px;
   padding: 0 4px;
   border-bottom: 1px solid var(--ink-soft);
+}
+
+/* 還沒資料時，取代空白圖表的引導（不然看起來像壞掉）*/
+.chart-empty {
+  margin: 16px 0 6px;
+  padding: 22px 18px;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink-faint);
+  background: var(--paper-card);
+  border: 1px dashed var(--rule);
+  border-radius: 10px;
 }
 
 .chart .bar {
@@ -3810,7 +3848,7 @@ button.wk-head:hover {
 
 .sq-adj {
   display: inline-flex;
-  gap: 3px;
+  gap: 6px;
   opacity: 0.6; /* 常駐可見，新手才看得到能調目標；hover 再強調 */
   transition: opacity 0.2s;
 }
@@ -3818,12 +3856,12 @@ button.wk-head:hover {
 .task-row:hover .sq-adj { opacity: 1; }
 
 .sq-adj button {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: 1px solid var(--rule);
   color: var(--ink-faint);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
 }
 
@@ -3847,6 +3885,13 @@ button.wk-head:hover {
 }
 
 .plant-cell:hover { transform: scale(1.18); }
+
+/* 手機：把最常按的小控制項加大，好按不誤觸 */
+@media (max-width: 560px) {
+  .plant-cell { width: 26px; height: 26px; }
+  .sq-adj button { width: 30px; height: 30px; font-size: 15px; }
+  .timer-actions button { width: 44px; height: 44px; font-size: 15px; }
+}
 
 .plant-cell svg { width: 100%; height: 100%; display: block; }
 
