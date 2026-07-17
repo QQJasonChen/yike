@@ -101,6 +101,12 @@ export default function App() {
     setCopiedMsg(msg)
     setTimeout(() => setCopiedMsg(''), 1500)
   }
+  // 完成一段專注的慶祝浮字（種樹主題＝種下一棵樹）——專注的情感回饋
+  const [focusToast, setFocusToast] = useState('')
+  const celebrate = (msg: string) => {
+    setFocusToast(msg)
+    setTimeout(() => setFocusToast(''), 2200)
+  }
   const copyHit = (h: { when: string; text: string }) => {
     navigator.clipboard
       .writeText(`[${h.when}] ${h.text}`)
@@ -403,13 +409,18 @@ export default function App() {
           focusMinutes={settings.focusMinutes}
           autoLoop={settings.autoLoop}
           lockApps={settings.focusLock}
-          onSessionDone={(ti, s, e) => sessionSink.current?.(ti, s, e)}
+          onSessionDone={(ti, s, e) => {
+            sessionSink.current?.(ti, s, e)
+            celebrate(settings.focusStyle === 'tree' ? '🌲 種下一棵樹，繼續加油！' : '✓ 完成一段專注！')
+          }}
           onAbandon={(ti) => abandonSink.current?.(ti)}
           treeStyle={settings.focusStyle === 'tree'}
         />
       )}
 
       {showOnboarding && <Onboarding onClose={dismissOnboarding} />}
+
+      {focusToast && <div className="focus-toast">{focusToast}</div>}
 
       {searchOpen && (
         <div className="search-overlay" onClick={() => setSearchOpen(false)}>
