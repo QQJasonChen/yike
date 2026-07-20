@@ -30,6 +30,14 @@ import { Settings } from './types'
 
 type Tab = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'schedule' | 'life' | 'biz' | 'history'
 
+// 分頁 ↔ 網址 hash：每個分頁有自己的小網址（yikeday.com/#biz 直接開商模）
+const TAB_IDS: Tab[] = ['day', 'week', 'month', 'quarter', 'year', 'schedule', 'life', 'biz', 'history']
+const isTab = (s: string): s is Tab => (TAB_IDS as string[]).includes(s)
+const tabFromHash = (): Tab => {
+  const h = decodeURIComponent(location.hash.replace(/^#\/?/, '').trim())
+  return isTab(h) ? h : 'day'
+}
+
 // 把命中的關鍵字標色
 const highlightMatch = (text: string, q: string): React.ReactNode => {
   const ql = q.trim().toLowerCase()
@@ -55,7 +63,7 @@ const highlightMatch = (text: string, q: string): React.ReactNode => {
 
 export default function App() {
   const todayKey = toDateKey(new Date())
-  const [tab, setTab] = useState<Tab>('day')
+  const [tab, setTab] = useState<Tab>(tabFromHash)
   const [dateKey, setDateKey] = useState(todayKey)
   const [mondayKey, setMondayKey] = useState(() => mondayOf(todayKey))
   const [monthKey, setMonthKey] = useState(() => monthOf(todayKey))
@@ -95,6 +103,22 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [searchOpen, showSettings, moreOpen])
+
+  // 分頁 → 網址：切分頁就把網址 hash 同步過去（今天＝預設，保持乾淨網址，不加 #day）
+  useEffect(() => {
+    if (tab === 'day') {
+      if (location.hash) history.replaceState(null, '', location.pathname + location.search)
+    } else if (location.hash !== `#${tab}`) {
+      history.replaceState(null, '', `#${tab}`)
+    }
+  }, [tab])
+
+  // 網址 → 分頁：有人貼帶 hash 的連結或手動改網址時，跳到對應分頁
+  useEffect(() => {
+    const onHash = () => setTab((cur) => (tabFromHash() !== cur ? tabFromHash() : cur))
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   const [copiedMsg, setCopiedMsg] = useState('')
   const flashCopied = (msg: string) => {
