@@ -30,12 +30,24 @@ import { Settings } from './types'
 
 type Tab = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'schedule' | 'life' | 'biz' | 'history'
 
-// 分頁 ↔ 網址 hash：每個分頁有自己的小網址（yikeday.com/#biz 直接開商模）
-const TAB_IDS: Tab[] = ['day', 'week', 'month', 'quarter', 'year', 'schedule', 'life', 'biz', 'history']
-const isTab = (s: string): s is Tab => (TAB_IDS as string[]).includes(s)
+// 分頁 ↔ 網址 hash：每個分頁有自己「一看就懂」的小網址（yikeday.com/#business 直接開商模）
+const TAB_SLUG: Record<Tab, string> = {
+  day: 'today',
+  week: 'week',
+  month: 'month',
+  quarter: 'quarter',
+  year: 'year',
+  schedule: 'schedule',
+  life: 'vision',
+  biz: 'business',
+  history: 'review',
+}
+const SLUG_TAB: Record<string, Tab> = Object.fromEntries(
+  Object.entries(TAB_SLUG).map(([t, s]) => [s, t as Tab])
+) as Record<string, Tab>
 const tabFromHash = (): Tab => {
-  const h = decodeURIComponent(location.hash.replace(/^#\/?/, '').trim())
-  return isTab(h) ? h : 'day'
+  const h = decodeURIComponent(location.hash.replace(/^#\/?/, '').trim()).toLowerCase()
+  return SLUG_TAB[h] ?? 'day'
 }
 
 // 把命中的關鍵字標色
@@ -104,12 +116,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [searchOpen, showSettings, moreOpen])
 
-  // 分頁 → 網址：切分頁就把網址 hash 同步過去（今天＝預設，保持乾淨網址，不加 #day）
+  // 分頁 → 網址：切分頁就把網址 hash 同步過去（今天＝預設，保持乾淨網址；#today 也能開）
   useEffect(() => {
+    const slug = TAB_SLUG[tab]
     if (tab === 'day') {
       if (location.hash) history.replaceState(null, '', location.pathname + location.search)
-    } else if (location.hash !== `#${tab}`) {
-      history.replaceState(null, '', `#${tab}`)
+    } else if (location.hash !== `#${slug}`) {
+      history.replaceState(null, '', `#${slug}`)
     }
   }, [tab])
 
