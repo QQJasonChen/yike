@@ -137,6 +137,34 @@ footer{text-align:center;padding:44px 0 36px;color:var(--ink-faint);font-size:12
 footer a{color:var(--ink-faint)}
 .reveal{opacity:0;transform:translateY(22px);transition:all .7s cubic-bezier(.2,.7,.3,1)}
 .reveal.in{opacity:1;transform:none}
+/* nav CTA */
+.nav-cta{background:var(--ink);color:var(--paper)!important;border-radius:999px;padding:8px 18px;letter-spacing:.08em}
+.nav-cta:hover{background:var(--gold-deep)}
+/* floating right side-nav (Notion-like) */
+.sidenav{position:fixed;right:22px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:14px;align-items:flex-end}
+.sidenav a{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink-faint);font-size:12.5px;letter-spacing:.1em;transition:color .2s}
+.sidenav a .dot{width:8px;height:8px;border-radius:50%;background:var(--rule);transition:all .2s;flex-shrink:0}
+.sidenav a .lbl{opacity:0;transform:translateX(6px);transition:all .2s;white-space:nowrap}
+.sidenav a:hover{color:var(--gold-deep)}
+.sidenav a:hover .lbl{opacity:1;transform:none}
+.sidenav a:hover .dot{background:var(--gold)}
+.sidenav a.active{color:var(--gold-deep)}
+.sidenav a.active .dot{background:var(--gold);box-shadow:0 0 0 4px rgba(184,146,62,.18)}
+.sidenav a.active .lbl{opacity:1;transform:none}
+@media(max-width:1180px){.sidenav{display:none}}
+/* two focus styles callout */
+.styles{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.styles .sty{background:var(--paper);border:1px solid var(--rule);border-radius:9px;padding:14px 16px}
+.styles .sty b{font-size:14.5px;letter-spacing:.04em}
+.styles .sty p{font-size:12.5px;color:var(--ink-soft);margin-top:3px;font-family:var(--hand)}
+.styles .sty .sw{font-size:16px;margin-right:6px}
+@media(max-width:520px){.styles{grid-template-columns:1fr}}
+/* odyssey explanation */
+.ody-lead{font-size:14.5px;color:var(--ink-soft);margin:24px 0 6px;font-family:var(--hand);line-height:1.75;text-align:center;max-width:640px;margin-left:auto;margin-right:auto}
+.ody-lead b{color:var(--gold-deep)}
+.od-card h5 .num{font-family:var(--eng);font-style:italic;color:var(--gold);margin-right:6px}
+.ody-take{font-size:13.5px;color:var(--ink-soft);margin-top:18px;padding-top:15px;border-top:1px dashed var(--rule);font-family:var(--hand);text-align:center;line-height:1.7}
+.ody-take b{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -144,8 +172,18 @@ footer a{color:var(--ink-faint)}
   <nav>
     <span class="brand">一刻手帳 Yike</span>
     <span class="links">
-      <a href="#method">方法</a><a href="#horizons">五種尺度</a><a href="#vision">願景</a><a href="#biz">商模</a><a href="#price">取得</a><a href="manual.html">手冊</a>
+      <a href="manual.html">手冊</a><a href="./" class="nav-cta">免費使用 →</a>
     </span>
+  </nav>
+
+  <!-- 章節側欄導覽（桌機浮在右側，捲動時高亮當前段；手機隱藏）-->
+  <nav class="sidenav" aria-label="章節導覽">
+    <a href="#method"><span class="lbl">方法</span><span class="dot"></span></a>
+    <a href="#grove"><span class="lbl">種樹</span><span class="dot"></span></a>
+    <a href="#horizons"><span class="lbl">五種尺度</span><span class="dot"></span></a>
+    <a href="#vision"><span class="lbl">願景・奧德賽</span><span class="dot"></span></a>
+    <a href="#biz"><span class="lbl">商模</span><span class="dot"></span></a>
+    <a href="#price"><span class="lbl">取得</span><span class="dot"></span></a>
   </nav>
 
   <header class="hero">
@@ -195,8 +233,12 @@ footer a{color:var(--ink-faint)}
       </div>
       <div>
         <h3><em>GROVE</em>越專注，越華麗</h3>
-        <p>25 分松樹、更久長成茂密樹、兩小時開一棵櫻花；中途放棄，樹會枯萎。</p>
-        <ul><li>日→週→月→季→年都有<b>樹林總結</b>，看你的森林一路長大——這是別的計時器給不了的縱深</li><li>禪模式：整個畫面變一張紙，品牌墨圈隨倒數慢慢畫滿</li><li>不愛遊戲化？設定裡一鍵切回純粹的稿紙塗圈</li></ul>
+        <p>25 分松樹、更久長成茂密樹、兩小時開一棵櫻花；中途放棄，樹會枯萎。日→週→月→季→年都有<b>樹林總結</b>，看你的森林一路長大。</p>
+        <div class="styles">
+          <div class="sty"><b><span class="sw">🌲</span>種樹版</b><p>遊戲化：完成一段就長一棵樹，越專注越華麗，放棄會枯萎。</p></div>
+          <div class="sty"><b><span class="sw">▦</span>方格版</b><p>極簡：純粹的稿紙塗圈，一格一段、不遊戲化。</p></div>
+        </div>
+        <p style="font-size:13px;color:var(--ink-faint);margin-top:12px">兩種塗格風格，設定裡<b>一鍵切換</b>——選你喜歡的那一種。</p>
       </div>
     </div>
   </section>
@@ -236,11 +278,13 @@ footer a{color:var(--ink-faint)}
         <span class="gm-label">出一門線上課</span><i class="gm-bar" style="grid-column:5/9;background:var(--tree)"></i>
         <span class="gm-label">十年後的自己</span><i class="gm-bar" style="grid-column:9/12;background:var(--terra)"></i>
       </div>
+      <p class="ody-lead"><b>奧德賽計劃</b>：同時規劃三個平行的五年人生。不是要你選一條，而是先看見「人生本來就有好幾個可行版本」——焦慮，往往來自誤以為只有一條路。用三個鏡頭，逼出三種真實的可能：</p>
       <div class="odyssey-mini">
-        <div class="od-card"><h5>現在這條路</h5><p>照現在的方向認真走五年，最好會長成什麼樣？</p></div>
-        <div class="od-card"><h5>如果它消失了</h5><p>這條路突然不能走，你靠什麼活？盤點第二專長。</p></div>
-        <div class="od-card"><h5>不管錢與面子</h5><p>不用賺錢、沒人評價，你會怎麼過這五年？</p></div>
+        <div class="od-card"><h5><span class="num">①</span>現在這條路</h5><p>照現在的方向認真走五年，最好會長成什麼樣？把手上的計畫展開。</p></div>
+        <div class="od-card"><h5><span class="num">②</span>如果它消失了</h5><p>這條路明天突然不能走（產業變了、平台死了），你靠什麼活？盤點第二專長。</p></div>
+        <div class="od-card"><h5><span class="num">③</span>不管錢與面子</h5><p>不用賺錢、也沒人評價你，你會怎麼過這五年？挖出被你審查掉的真實渴望。</p></div>
       </div>
+      <p class="ody-take">三條都認真寫完，那些<b>重複出現</b>的東西，就是你真正的核心。每條路再挑 2–3 個「最想驗證的問題」用小實驗去測——焦慮，就變成了行動。</p>
     </div>
   </section>
 
@@ -358,6 +402,13 @@ footer a{color:var(--ink-faint)}
 <script>
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
 document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+// 側欄捲動高亮：哪個章節在畫面中央，就亮哪個點
+const navLinks=[...document.querySelectorAll('.sidenav a')];
+const secFor=id=>document.getElementById(id);
+const spy=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){const id=e.target.id;navLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));}
+}),{rootMargin:'-45% 0px -45% 0px'});
+navLinks.forEach(a=>{const s=secFor(a.getAttribute('href').slice(1));if(s)spy.observe(s);});
 </script>
 <script data-goatcounter="https://yike.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>

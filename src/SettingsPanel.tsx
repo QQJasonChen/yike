@@ -361,7 +361,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
             >
               {settings.focusStyle === 'tree' ? '🌱 種樹' : '▦ 方格'}
             </button>
-            <span className="hint fl-hint">種樹：專注越久種出越厲害的樹，計時中放棄會枯萎</span>
+            <span className="hint fl-hint">點按鈕切換兩種塗格風格：🌱 <b>種樹</b>＝完成一段專注長出樹（越久越厲害、放棄會枯萎）；▦ <b>方格</b>＝純粹稿紙塗圈、極簡不遊戲化。</span>
           </div>
 
           {settings.focusStyle === 'tree' && <PlantLegend />}
