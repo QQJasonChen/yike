@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>一刻手帳 Yike — 一天，刻下一件最重要的事</title>
-<meta name="description" content="紙本手帳質感的每日專注手帳：最重要任務 × 30 分鐘專注塗圈 × 彩色時間軸（時間塊可寫筆記、設提醒）× 每日反思（可手寫）× 全域搜尋 × 願景十年甘特。每日自動本機備份，從今天到十年，資料完全屬於你。" />
+<meta name="description" content="紙本手帳質感的每日專注手帳：最重要任務 × 30 分鐘專注種樹 × 彩色時間軸 × 每日反思 × 日週月季年五種尺度 × 願景十年甘特與奧德賽人生設計 × 商模個人商業模式圖。資料預設只存在你的裝置，從今天到十年，完全屬於你。" />
 <link rel="icon" type="image/svg+xml" href="icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,8 +13,8 @@
 :root{
   --paper:#f5f0e6; --paper-deep:#ede6d6; --card:#faf7ef;
   --ink:#2b2620; --ink-soft:#5c5347; --ink-faint:#9a8f7d;
-  --rule:#d8cfba; --gold:#b8923e; --gold-deep:#96732b;
-  --terra:#b65c38; --sage:#9d7a2c; --orange:#db6e1c;
+  --rule:#d8cfba; --gold:#b8923e; --gold-deep:#96732b; --gold-soft:#e6d4a8;
+  --terra:#b65c38; --sage:#9d7a2c; --orange:#db6e1c; --tree:#2e7d3f;
   --serif:'Noto Serif TC',serif; --hand:'LXGW WenKai TC',serif; --eng:'EB Garamond',Georgia,serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -26,20 +26,19 @@ body{
 }
 a{color:var(--gold-deep)}
 .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
-/* nav */
 nav{display:flex;justify-content:space-between;align-items:center;padding:22px 0}
 .brand{font-family:var(--eng);font-style:italic;font-size:17px;letter-spacing:.08em;color:var(--gold-deep)}
-nav .links a{font-size:14px;letter-spacing:.12em;color:var(--ink-soft);text-decoration:none;margin-left:22px}
+nav .links a{font-size:14px;letter-spacing:.1em;color:var(--ink-soft);text-decoration:none;margin-left:20px}
 nav .links a:hover{color:var(--gold-deep)}
-/* hero */
-.hero{text-align:center;padding:64px 0 36px;position:relative}
+@media(max-width:680px){nav .links a:nth-child(n+3){display:none}}
+.hero{text-align:center;padding:60px 0 30px;position:relative}
 .hero .kicker{font-family:var(--eng);font-style:italic;font-size:15px;letter-spacing:.2em;color:var(--gold-deep)}
 .hero h1{font-size:clamp(40px,7vw,76px);font-weight:900;letter-spacing:.06em;line-height:1.2;margin:14px 0 6px}
 .hero h1 .ink{position:relative}
 .hero h1 .ink::after{content:'';position:absolute;left:0;right:0;bottom:8px;height:14px;background:rgba(184,146,62,.3);z-index:-1;transform:rotate(-1deg)}
-.hero .lead{font-size:clamp(17px,2.6vw,22px);color:var(--ink);max-width:620px;margin:18px auto 0;line-height:1.6;letter-spacing:.01em}
+.hero .lead{font-size:clamp(17px,2.6vw,22px);color:var(--ink);max-width:640px;margin:18px auto 0;line-height:1.6;letter-spacing:.01em}
 .hero .lead b{color:var(--gold-deep);font-weight:800}
-.hero .sub{font-family:var(--hand);font-size:clamp(16px,2.3vw,20px);color:var(--ink-soft);max-width:560px;margin:12px auto 0}
+.hero .sub{font-family:var(--hand);font-size:clamp(16px,2.3vw,20px);color:var(--ink-soft);max-width:600px;margin:12px auto 0}
 .cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:34px 0 10px}
 .btn{display:inline-block;text-decoration:none;border-radius:999px;padding:15px 34px;font-size:16px;letter-spacing:.14em;transition:all .25s}
 .btn-primary{background:var(--ink);color:var(--paper);box-shadow:0 8px 24px rgba(43,38,32,.3)}
@@ -47,30 +46,24 @@ nav .links a:hover{color:var(--gold-deep)}
 .btn-ghost{border:1.5px solid var(--gold);color:var(--gold-deep)}
 .btn-ghost:hover{background:rgba(184,146,62,.1)}
 .hero .note{font-size:12.5px;color:var(--ink-faint);letter-spacing:.08em}
-/* hero shot */
 .hero-shot{margin:48px auto 0;max-width:920px;position:relative}
 .hero-shot img{width:100%;border-radius:8px;box-shadow:0 30px 80px rgba(50,40,24,.35);border:1px solid var(--rule)}
 .hero-shot .float{position:absolute;right:-8px;bottom:-34px;width:150px;border-radius:18px;box-shadow:0 18px 50px rgba(50,40,24,.4);border:1px solid var(--rule);transform:rotate(3deg)}
-/* sections */
-section{padding:84px 0 0}
+section{padding:82px 0 0}
 .sec-kicker{font-family:var(--eng);font-style:italic;text-align:center;font-size:14px;letter-spacing:.22em;color:var(--gold-deep);text-transform:uppercase}
 h2{font-size:clamp(26px,4vw,38px);font-weight:700;text-align:center;letter-spacing:.08em;margin:8px 0 8px}
-.sec-sub{text-align:center;font-family:var(--hand);color:var(--ink-soft);max-width:600px;margin:0 auto 44px;font-size:16.5px}
-/* method steps */
+.sec-sub{text-align:center;font-family:var(--hand);color:var(--ink-soft);max-width:640px;margin:0 auto 44px;font-size:16.5px}
 .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
 .step{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:28px 24px;position:relative;box-shadow:0 2px 12px rgba(60,48,30,.07)}
 .step .n{font-family:var(--eng);font-style:italic;font-size:42px;color:rgba(184,146,62,.4);line-height:1;position:absolute;top:16px;right:20px}
 .step h3{font-size:17.5px;letter-spacing:.1em;margin-bottom:8px}
 .step p{font-size:14.5px;color:var(--ink-soft)}
 .step .circles{margin-top:14px;display:flex;gap:5px;align-items:center}
-.step .c{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--ink-soft)}
-.step .c.f{background:var(--ink)}
 .step .sqd{width:15px;height:15px;border-radius:3px;border:1.5px solid #a4977f}
 .step .sqd.f{background:var(--orange);border-color:var(--orange)}
 .step .sqd.g{background:var(--gold);border-color:var(--gold-deep)}
-/* features alternating */
-.feature{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;margin-bottom:64px}
-.feature:nth-child(even) .f-img{order:2}
+.feature{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;margin-bottom:20px}
+.feature.rev .f-img{order:2}
 .feature .f-img img{width:100%;border-radius:8px;border:1px solid var(--rule);box-shadow:0 18px 48px rgba(50,40,24,.22)}
 .feature h3{font-size:24px;letter-spacing:.08em;margin-bottom:12px}
 .feature h3 em{font-family:var(--eng);font-style:italic;color:var(--gold-deep);display:block;font-size:14px;letter-spacing:.2em;margin-bottom:6px;font-weight:400}
@@ -78,20 +71,48 @@ h2{font-size:clamp(26px,4vw,38px);font-weight:700;text-align:center;letter-spaci
 .feature ul{margin-top:12px;list-style:none}
 .feature li{font-size:14.5px;color:var(--ink-soft);padding-left:22px;position:relative;margin-bottom:6px}
 .feature li::before{content:'✦';position:absolute;left:0;color:var(--gold)}
-@media(max-width:760px){.feature{grid-template-columns:1fr;gap:20px}.feature:nth-child(even) .f-img{order:0}}
-.grove-showcase{background:var(--paper-card,#faf7ef);border:1px solid var(--rule);border-radius:12px;box-shadow:0 18px 48px rgba(50,40,24,.14);padding:34px 20px;display:flex;align-items:center;justify-content:center}
+@media(max-width:760px){.feature{grid-template-columns:1fr;gap:22px}.feature.rev .f-img{order:0}}
+.grove-showcase{background:var(--card);border:1px solid var(--rule);border-radius:12px;box-shadow:0 18px 48px rgba(50,40,24,.14);padding:34px 20px;display:flex;align-items:center;justify-content:center}
 .grove-row{display:flex;align-items:flex-end;gap:6px}
 .grove-row figure{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0}
 .grove-row svg{width:56px;height:56px;display:block}
 .grove-row figcaption{font-size:12.5px;color:var(--ink-faint);text-align:center;line-height:1.3;letter-spacing:.04em}
 .grove-arrow{color:var(--gold);font-size:18px;padding-bottom:24px}
 @media(max-width:760px){.grove-row svg{width:44px;height:44px}.grove-arrow{font-size:14px}}
-/* data ownership strip */
-.strip{background:var(--ink);color:var(--paper);border-radius:10px;padding:44px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:28px;margin-top:10px}
+.ladder{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin:0 auto 34px;max-width:760px}
+.ladder .rung{background:var(--card);border:1px solid var(--rule);border-radius:999px;padding:9px 18px;font-size:15px;letter-spacing:.1em;box-shadow:0 2px 10px rgba(60,48,30,.06)}
+.ladder .rung.far{border-color:var(--gold);color:var(--gold-deep);font-weight:600}
+.ladder .arr{color:var(--gold);font-size:15px}
+.showbox{background:var(--card);border:1px solid var(--rule);border-radius:14px;box-shadow:0 20px 54px rgba(50,40,24,.16);padding:30px 28px}
+.northstar{display:flex;align-items:center;gap:10px;justify-content:center;font-family:var(--hand);color:var(--ink-soft);font-size:15.5px;margin-bottom:22px;text-align:center}
+.northstar .star{color:var(--gold)}
+.gantt-mini{display:grid;grid-template-columns:118px repeat(10,1fr);gap:8px 4px;align-items:center}
+.gm-head{font-family:var(--eng);font-size:11px;font-style:italic;color:var(--ink-faint);text-align:center}
+.gm-label{grid-column:1;font-size:12.5px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gm-bar{height:13px;border-radius:999px;background:var(--orange);opacity:.85}
+.odyssey-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}
+.od-card{background:var(--paper);border:1px solid var(--rule);border-radius:9px;padding:15px}
+.od-card h5{font-size:14px;letter-spacing:.06em;color:var(--ink);margin-bottom:5px}
+.od-card p{font-size:12.5px;color:var(--ink-soft);line-height:1.5;font-family:var(--hand)}
+@media(max-width:640px){.gantt-mini{grid-template-columns:88px repeat(10,1fr)}.gm-label{font-size:10.5px}.odyssey-mini{grid-template-columns:1fr}}
+.biz-mini{display:grid;gap:6px;grid-template-columns:repeat(5,1fr);grid-template-areas:'p a v r s' 'p rs v c s' 'co co re re re'}
+.bm{border:1px solid var(--rule);border-radius:7px;padding:9px 8px;min-height:54px;display:flex;flex-direction:column;justify-content:center;text-align:center;background:var(--paper)}
+.bm b{font-size:12.5px;color:var(--ink)}
+.bm span{font-size:10px;color:var(--ink-faint);margin-top:2px}
+.bm.zh{background:rgba(58,110,165,.08)}.bm.zo{background:rgba(184,146,62,.1)}.bm.ze{background:rgba(46,125,63,.08)}
+.bm-p{grid-area:p}.bm-a{grid-area:a}.bm-rs{grid-area:rs}.bm-v{grid-area:v}.bm-r{grid-area:r}.bm-c{grid-area:c}.bm-s{grid-area:s}.bm-co{grid-area:co}.bm-re{grid-area:re}
+@media(max-width:640px){.biz-mini{grid-template-columns:1fr 1fr;grid-template-areas:'v v' 's r' 'a rs' 'c p' 'co re'}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.fcard{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:24px 22px;box-shadow:0 2px 12px rgba(60,48,30,.06)}
+.fcard .em{font-family:var(--eng);font-style:italic;font-size:12px;letter-spacing:.2em;color:var(--gold-deep);text-transform:uppercase}
+.fcard h3{font-size:18px;letter-spacing:.06em;margin:6px 0 8px}
+.fcard p{font-size:14px;color:var(--ink-soft)}
+.fcard .soon{display:inline-block;font-size:10.5px;letter-spacing:.14em;color:var(--gold-deep);border:1px solid var(--gold-soft);border-radius:999px;padding:1px 9px;margin-left:6px;vertical-align:middle}
+.strip{background:var(--ink);color:var(--paper);border-radius:10px;padding:44px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:28px;margin-top:20px}
 .strip h4{font-size:16px;letter-spacing:.14em;color:var(--paper);margin-bottom:6px}
 .strip h4 span{color:#e6d4a8;margin-right:8px}
 .strip p{font-size:13.5px;color:rgba(245,240,230,.7)}
-/* pricing */
+.strip a{color:#e6d4a8}
 .prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:22px;max-width:780px;margin:0 auto}
 .price{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:36px 30px;text-align:center;position:relative;box-shadow:0 2px 12px rgba(60,48,30,.07)}
 .price.hot{border:1.5px solid var(--gold);box-shadow:0 14px 44px rgba(150,115,43,.2)}
@@ -99,22 +120,20 @@ h2{font-size:clamp(26px,4vw,38px);font-weight:700;text-align:center;letter-spaci
 .price h3{font-size:18px;letter-spacing:.14em}
 .price .amount{font-family:var(--eng);font-size:46px;font-style:italic;color:var(--gold-deep);margin:10px 0 2px}
 .price .per{font-size:12px;color:var(--ink-faint);letter-spacing:.1em;margin-bottom:18px}
-.price ul{list-style:none;text-align:left;margin:0 auto 24px;max-width:240px}
+.price ul{list-style:none;text-align:left;margin:0 auto 24px;max-width:250px}
 .price li{font-size:14px;color:var(--ink-soft);padding-left:20px;position:relative;margin-bottom:8px}
 .price li::before{content:'✓';position:absolute;left:0;color:var(--sage)}
-/* faq */
 .faq{max-width:680px;margin:0 auto}
 .faq details{border-bottom:1px solid var(--rule);padding:18px 4px}
-.faq summary{cursor:pointer;font-size:16.5px;letter-spacing:.06em;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.faq summary{cursor:pointer;font-size:16.5px;letter-spacing:.06em;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:14px}
 .faq summary::after{content:'＋';color:var(--gold-deep);font-size:18px}
 .faq details[open] summary::after{content:'−'}
 .faq p{font-size:14.5px;color:var(--ink-soft);padding-top:10px;font-family:var(--hand)}
-/* final cta + footer */
 .final{text-align:center;padding:90px 0 30px}
 .final .quote{font-family:var(--hand);font-size:19px;color:var(--ink-soft);max-width:520px;margin:0 auto 8px}
 .final .author{font-family:var(--eng);font-style:italic;font-size:13px;color:var(--gold-deep);letter-spacing:.1em}
 .final h2{margin-top:28px}
-footer{text-align:center;padding:44px 0 36px;color:var(--ink-faint);font-size:12.5px;letter-spacing:.08em}
+footer{text-align:center;padding:44px 0 36px;color:var(--ink-faint);font-size:12.5px;letter-spacing:.06em;line-height:1.7}
 footer a{color:var(--ink-faint)}
 .reveal{opacity:0;transform:translateY(22px);transition:all .7s cubic-bezier(.2,.7,.3,1)}
 .reveal.in{opacity:1;transform:none}
@@ -125,7 +144,7 @@ footer a{color:var(--ink-faint)}
   <nav>
     <span class="brand">一刻手帳 Yike</span>
     <span class="links">
-      <a href="#method">方法</a><a href="#features">功能</a><a href="#price">取得</a><a href="manual.html">使用手冊</a>
+      <a href="#method">方法</a><a href="#horizons">五種尺度</a><a href="#vision">願景</a><a href="#biz">商模</a><a href="#price">取得</a><a href="manual.html">手冊</a>
     </span>
   </nav>
 
@@ -133,72 +152,35 @@ footer a{color:var(--ink-faint)}
     <div class="kicker">A DAILY FOCUS JOURNAL</div>
     <h1>一天，<span class="ink">刻下一件</span><br/>最重要的事。</h1>
     <p class="lead">別的工具幫你把每天塞得更滿。<br/>一刻只問你一句：<b>今天最重要的一件事，是什麼？</b></p>
-    <p class="sub">待辦清單永遠做不完，是因為什麼都「重要」。一刻手帳把紙本手帳的儀式感搬進螢幕：每天先選一件事，專注、塗圈、反思——其他的，等它做完再說。</p>
+    <p class="sub">從今天最重要的一件事，一路對齊到週、月、季、年，再到十年後的你——一個工具，看見從今天到一生的縱深。</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="./">免費開始使用 →</a>
       <a class="btn btn-ghost" href="manual.html">看使用手冊</a>
     </div>
-    <p class="note">免註冊・免下載・手機加入主畫面即是 App・資料 100% 存在你的裝置</p>
+    <p class="note">免註冊・免下載・手機加入主畫面即是 App・資料預設 100% 存在你的裝置</p>
     <div class="hero-shot reveal">
-      <img src="img/shot-day.png?v=4" alt="一刻手帳每日頁面" />
-      <img class="float" src="img/shot-mobile.png?v=4" alt="手機版畫面" />
+      <img src="img/shot-day.png?v=5" alt="一刻手帳每日頁面" />
+      <img class="float" src="img/shot-mobile.png?v=5" alt="手機版畫面" />
     </div>
   </header>
 
   <section id="method">
-    <div class="sec-kicker">The Method</div>
+    <div class="sec-kicker">The Daily Loop</div>
     <h2>方法很老派，因為老派有效</h2>
     <p class="sec-sub">源自紙本生產力手帳百年不變的循環——只是現在它會自己計時、自己塗圈、自己統計。</p>
     <div class="steps">
-      <div class="step reveal"><span class="n">1</span><h3>★ 最重要任務</h3><p>每天先回答一題：「今天就算只做成這一件，也值得了」——通常是最不舒服、最常拖延的那件。最多五項任務，少即是多。</p></div>
-      <div class="step reveal"><span class="n">2</span><h3>一格一段，塗墨前進</h3><p>像稿紙一樣：要做幾段 30 分鐘就排幾格，每完成一段塗滿一格，超出目標的格子是金色。按 ▶ 倒數結束自動塗格。</p>
+      <div class="step reveal"><span class="n">1</span><h3>★ 最重要任務</h3><p>每天先回答一題：「今天就算只做成這一件，也值得了」——通常是最不舒服、最常拖延的那件。最多五項，少即是多。</p></div>
+      <div class="step reveal"><span class="n">2</span><h3>一格一段，塗墨前進</h3><p>像稿紙一樣排幾格 30 分鐘，每完成一段塗滿一格，超標的是金色。按 ▶ 番茄鐘倒數，結束自動塗格。</p>
         <div class="circles"><span class="sqd f"></span><span class="sqd f"></span><span class="sqd f"></span><span class="sqd"></span><span class="sqd g"></span></div></div>
-      <div class="step reveal"><span class="n">3</span><h3>拖出今天的形狀</h3><p>像 Google 日曆一樣把任務拖進時間軸，看見一天真實的樣子。每個時間塊都能<b>寫筆記</b>、設<b>開始前提醒</b>（準時／提前 10 分／30 分／1 小時）。紅線走到哪，你就在哪。</p></div>
-      <div class="step reveal"><span class="n">4</span><h3>晚間三問</h3><p>今日亮點？學到什麼？想記住什麼？加上心情與 1–5 評分。每一題都能<b>打字或手寫</b>（iPad 用 Apple Pencil、手機/電腦用手指或滑鼠）。晨晚問題<b>完全可自訂</b>——把它變成你自己的方法。</p></div>
+      <div class="step reveal"><span class="n">3</span><h3>拖出今天的形狀</h3><p>像 Google 日曆一樣把任務拖進時間軸。每個時間塊都能<b>寫筆記</b>、設<b>開始前提醒</b>。紅線走到哪，你就在哪。</p></div>
+      <div class="step reveal"><span class="n">4</span><h3>晚間三問</h3><p>今日亮點？學到什麼？想記住什麼？加上心情與 1–5 評分。每題都能<b>打字或手寫</b>，問題還能<b>完全自訂</b>。</p></div>
     </div>
   </section>
 
-  <section id="features">
-    <div class="sec-kicker">Seven Horizons</div>
-    <h2>日・週・月・季・年・願景・回顧</h2>
-    <p class="sec-sub">一個節奏，七種尺度——從今天，到十年。每一層都向上對齊：今天做的事，推進的是這週、這月、這季的目標，最後通往你的人生願景。另有「<b>時程</b>」分頁，把週／月／季／年的甘特集中在一處，一眼看見計畫的全貌。</p>
-
-    <div class="feature reveal">
-      <div class="f-img"><img src="img/shot-week.png?v=4" alt="週檢視" /></div>
-      <div>
-        <h3><em>WEEKLY</em>無印手帳式的一週直式時間格</h3>
-        <p>七天並排的垂直時間軸，點任何空格快速排程。上方的搜尋框能搜遍所有歷史記錄——任務、時間塊、反思，命中的會在格子裡亮起來。</p>
-        <ul><li>點空格 1 秒新增時間塊・<b>全域搜尋</b>遍及任務/時間塊/筆記/反思，命中高亮、<b>一鍵複製</b>整批貼給 AI 分析</li><li>時間軸<b>一鍵快填日常 routine</b>（通勤/午餐/運動…可自訂），<b>色彩編碼</b>一眼分辨</li><li>三個月迷你月曆（含 wk 週數）＋多習慣一週檢視＋半年熱力圖</li><li>週・月・年三層<b>甘特圖</b>：在任務列上一拖，畫出起訖，計畫躺在眼前</li><li>本週總結自動生成：活動時數排行，一鍵交給 AI 寫週報</li></ul>
-      </div>
-    </div>
-
-    <div class="feature reveal">
-      <div class="f-img"><img src="img/shot-month.png?v=4" alt="月檢視" /></div>
-      <div>
-        <h3><em>MONTHLY</em>一眼看完整個月</h3>
-        <p>每一天的最重要任務、心情、評分都濃縮在月曆格子裡。配上「本月優先事項」與「本月亮點」，月底回顧不用翻三十頁。</p>
-        <ul><li>頂部微型年曆列：12 個月一排、點月即跳</li><li>每日 MIT／心情／評分總覽＋本月總結自動統計</li><li>「年」分頁：One Year at a Glance 整年熱力格＋年度目標＋每日一句話</li><li><b>「願景」分頁</b>：北極星一句話方向＋想完成的大事<b>十年甘特</b>＋奧德賽三條五年路（《做自己的生命設計師》框架）——比「年」更遠的北極星</li></ul>
-      </div>
-    </div>
-
-    <div class="feature reveal">
-      <div class="f-img"><img src="img/shot-review.png?v=4" alt="回顧統計" /></div>
-      <div>
-        <h3><em>REVIEW</em>看見自己的模式</h3>
-        <p>連續記錄天數、平均生產力、累計專注小時、任務完成率、心情分布、近 14 天圖表。誠實是最好的策略——尤其是對自己。</p>
-        <ul><li>活動統計：「讀荷蘭文」這個月到底花了幾小時，一查便知——週/月/年計畫也算進來，計畫 vs 投入一張表</li><li>🤖 AI 教練＋週/月總結：數據自動算，AI 幫你寫成誠實的回顧</li><li>Markdown 匯出到 Heptabase / Notion・JSON 備份・昨日未完成一鍵帶入</li></ul>
-      </div>
-    </div>
-
-    <div class="feature reveal">
-      <div class="f-img"><img src="img/shot-zen.png?v=4" alt="禪模式全螢幕專注" /></div>
-      <div>
-        <h3><em>FOCUS</em>禪模式：墨圈親手畫完的 30 分鐘</h3>
-        <p>按下專注，整個畫面變成一張紙。品牌的那一筆墨圈，隨著倒數慢慢畫滿——畫滿的瞬間，金點落下、鐘聲響起、進度自動記錄到時間軸。</p>
-        <ul><li>倒數結束自動塗格＋寫進時間軸（計畫 vs 實際自動對照）</li><li>休息模式金圈緩慢呼吸</li><li>預設小列不打擾，想沉浸再展開</li></ul>
-      </div>
-    </div>
-
+  <section id="grove">
+    <div class="sec-kicker">The Grove</div>
+    <h2>認真活過的每一天，長成一片樹林</h2>
+    <p class="sec-sub">每完成一段專注就種下一棵樹——這不是「為了種樹而分心地專注」，是先做好最重要的事，樹只是你認真活過的證據。</p>
     <div class="feature reveal">
       <div class="f-img grove-showcase">
         <div class="grove-row">
@@ -212,16 +194,94 @@ footer a{color:var(--ink-faint)}
         </div>
       </div>
       <div>
-        <h3><em>GROVE</em>認真活過的每一天，長成一片樹林</h3>
-        <p>每完成一段專注，就種下一棵樹——25 分鐘松樹、專注更久長出茂密樹、兩小時開一棵櫻花；中途放棄，樹會枯萎。<b>這不是「為了種樹而分心地專注」（那是別人的把戲）</b>——是先做好今天最重要的一件事，樹，只是你認真活過的證據。</p>
-        <ul><li>專注時長決定樹種：松樹 → 茂密樹 → 櫻花，越專注越華麗</li><li>日→週→月→季→年都有<b>樹林總結</b>：看你的森林一路長大，這是別的計時器給不了的縱深</li><li>不愛遊戲化？設定裡一鍵切回純粹的稿紙塗圈</li></ul>
+        <h3><em>GROVE</em>越專注，越華麗</h3>
+        <p>25 分松樹、更久長成茂密樹、兩小時開一棵櫻花；中途放棄，樹會枯萎。</p>
+        <ul><li>日→週→月→季→年都有<b>樹林總結</b>，看你的森林一路長大——這是別的計時器給不了的縱深</li><li>禪模式：整個畫面變一張紙，品牌墨圈隨倒數慢慢畫滿</li><li>不愛遊戲化？設定裡一鍵切回純粹的稿紙塗圈</li></ul>
       </div>
     </div>
+  </section>
 
+  <section id="horizons">
+    <div class="sec-kicker">Five Horizons</div>
+    <h2>一個節奏，五種尺度</h2>
+    <p class="sec-sub">每一層都向上對齊：今天做的事，推進的是這週、這月、這季的目標，最後通往你的人生願景。另有「時程」把各層甘特集中一處，一眼看見全貌。</p>
+    <div class="ladder reveal">
+      <span class="rung">今天</span><span class="arr">→</span>
+      <span class="rung">週</span><span class="arr">→</span>
+      <span class="rung">月</span><span class="arr">→</span>
+      <span class="rung">季</span><span class="arr">→</span>
+      <span class="rung">年</span><span class="arr">→</span>
+      <span class="rung far">願景・十年</span>
+    </div>
+    <div class="feature reveal">
+      <div class="f-img"><img src="img/shot-month.png?v=5" alt="月檢視" /></div>
+      <div>
+        <h3><em>ZOOM OUT</em>從今天，拉遠到整年</h3>
+        <p>每一天的最重要任務、心情、評分都濃縮進月曆格；「年」是整年熱力格；回顧頁看見自己真正的模式。</p>
+        <ul><li>週：無印式一週直式時間格＋三個月迷你月曆＋多習慣檢視</li><li>月／年：一眼看完，自動統計，不用翻三十頁</li><li>各層<b>甘特圖</b>：在任務列上一拖，畫出起訖，計畫躺在眼前</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="vision">
+    <div class="sec-kicker">Vision &amp; Odyssey</div>
+    <h2>比明年更遠的北極星</h2>
+    <p class="sec-sub">「願景」分頁：一句話的方向、想完成大事的十年甘特，加上《做自己的生命設計師》的<b>奧德賽計劃</b>——同時寫下三個五年後的你，焦慮才會鬆。</p>
+    <div class="showbox reveal">
+      <div class="northstar"><span class="star">✦</span>北極星：成為對重要的人和事，都能好好專注的人</div>
+      <div class="gantt-mini">
+        <span></span><b class="gm-head">'26</b><b class="gm-head"></b><b class="gm-head">'28</b><b class="gm-head"></b><b class="gm-head">'30</b><b class="gm-head"></b><b class="gm-head"></b><b class="gm-head">'33</b><b class="gm-head"></b><b class="gm-head">'35</b>
+        <span class="gm-label">養成每天運動</span><i class="gm-bar" style="grid-column:2/5"></i>
+        <span class="gm-label">存到第一桶金</span><i class="gm-bar" style="grid-column:2/8;background:var(--gold)"></i>
+        <span class="gm-label">出一門線上課</span><i class="gm-bar" style="grid-column:5/9;background:var(--tree)"></i>
+        <span class="gm-label">十年後的自己</span><i class="gm-bar" style="grid-column:9/12;background:var(--terra)"></i>
+      </div>
+      <div class="odyssey-mini">
+        <div class="od-card"><h5>現在這條路</h5><p>照現在的方向認真走五年，最好會長成什麼樣？</p></div>
+        <div class="od-card"><h5>如果它消失了</h5><p>這條路突然不能走，你靠什麼活？盤點第二專長。</p></div>
+        <div class="od-card"><h5>不管錢與面子</h5><p>不用賺錢、沒人評價，你會怎麼過這五年？</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="biz">
+    <div class="sec-kicker">Business Model You</div>
+    <h2>把「你這個人」畫成一張商業模式圖</h2>
+    <p class="sec-sub">「商模」分頁：用《一個人的獲利模式》九宮格，把正職＋副業畫在同一張圖，用顏色標出現在／未來、正職／副業——看哪些跟你的價值、客群對不上，那就是可以砍的。</p>
+    <div class="showbox reveal">
+      <div class="biz-mini">
+        <div class="bm zh bm-p"><b>誰幫你</b><span>貴人·工具</span></div>
+        <div class="bm zh bm-a"><b>你做什麼</b><span>核心動作</span></div>
+        <div class="bm zh bm-rs"><b>你是誰＋擁有</b><span>技能·經驗</span></div>
+        <div class="bm zo bm-v"><b>你如何幫助</b><span>你的價值</span></div>
+        <div class="bm zo bm-r"><b>怎麼互動</b><span>維繫關係</span></div>
+        <div class="bm zo bm-c"><b>怎麼認識</b><span>通路</span></div>
+        <div class="bm zo bm-s"><b>你幫助誰</b><span>最關鍵的人</span></div>
+        <div class="bm ze bm-co"><b>付出什麼</b><span>時間·精力·壓力</span></div>
+        <div class="bm ze bm-re"><b>得到什麼</b><span>錢·成長·滿足</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-kicker">And More</div>
+    <h2>把工具收好，讓你只看見今天</h2>
+    <p class="sec-sub">深度都在，但不擋路。需要時它們在，不需要時它們安靜。</p>
+    <div class="cards">
+      <div class="fcard reveal"><div class="em">Second Brain</div><h3>匯出到第二大腦</h3><p>一鍵把整天記錄複製成乾淨 Markdown，或直送你的 Notion／Heptabase、下載 .md／.ics 行事曆。</p></div>
+      <div class="fcard reveal"><div class="em">Review</div><h3>回顧 × AI 教練</h3><p>連續天數、專注時數、完成率、心情分布自動算；一鍵把數據交給你自己的 AI 寫成誠實回顧。</p></div>
+      <div class="fcard reveal"><div class="em">Search</div><h3>全域搜尋</h3><p>搜遍所有任務、時間塊、筆記、反思，命中高亮，一鍵整批複製給 AI 分析。</p></div>
+      <div class="fcard reveal"><div class="em">Handwrite</div><h3>手寫便箋</h3><p>反思與便箋都能手寫——iPad 用 Apple Pencil，手機／電腦用手指或滑鼠。</p></div>
+      <div class="fcard reveal"><div class="em">Timeline</div><h3>彩色時間軸</h3><p>拖拉排程、色彩編碼、時間塊寫筆記設提醒，一鍵快填日常 routine。</p></div>
+      <div class="fcard reveal"><div class="em">iOS Widget</div><h3>桌面小工具 <span class="soon">即將</span></h3><p>主畫面＋鎖定畫面顯示今天最重要的一件事與塗圈進度，不用打開 App 也看得到。</p></div>
+    </div>
+  </section>
+
+  <section id="privacy">
     <div class="strip reveal">
-      <div><h4><span>◆</span>資料完全屬於你</h4><p>所有記錄存在你的裝置上，沒有伺服器、沒有帳號、沒有人看得到你的日記。</p></div>
-      <div><h4><span>◆</span>全裝置自動同步</h4><p>註冊一個帳號，手機、電腦、iPad 即時同步——寫完上雲，打開就有。</p></div>
-      <div><h4><span>◆</span>離線可用</h4><p>PWA 加入主畫面後，飛機上也能寫。打開就是今天，零載入焦慮。</p></div>
+      <div><h4><span>◆</span>資料預設只在你裝置</h4><p>沒開同步時，記錄只存你的裝置，沒有伺服器、沒有帳號，我們看不到你的日記。</p></div>
+      <div><h4><span>◆</span>選擇性雲端同步</h4><p>想跨裝置就登入一個帳號：傳輸加密、逐使用者隔離，手機電腦 iPad 即時同步。</p></div>
+      <div><h4><span>◆</span>離線可用・你完全掌控</h4><p>PWA 加主畫面飛機上也能寫；隨時匯出、一鍵永久刪帳號。<a href="security.html">安全與隱私 →</a></p></div>
     </div>
   </section>
 
@@ -235,12 +295,11 @@ footer a{color:var(--ink-faint)}
         <div class="amount">NT$0</div>
         <div class="per">永久免費・無功能閹割</div>
         <ul>
-          <li>日／週／月／季／年／願景／回顧 全部視圖</li>
-          <li>Focus 計時器＋塗圈追蹤</li>
+          <li>日／週／月／季／年／願景／商模／回顧 全部視圖</li>
+          <li>番茄鐘＋種樹＋塗圈追蹤</li>
           <li>拖拉時間軸＋時間塊筆記與提醒</li>
-          <li>全域搜尋＋一鍵複製給 AI</li>
-          <li>手寫便箋（iPad Apple Pencil／手機／電腦）</li>
-          <li>每日自動本機備份（留 7 份）＋Markdown／JSON 匯出</li>
+          <li>全域搜尋＋匯出第二大腦</li>
+          <li>手寫便箋＋每日本機自動備份</li>
         </ul>
         <a class="btn btn-primary" href="./">立即開始 →</a>
       </div>
@@ -263,13 +322,12 @@ footer a{color:var(--ink-faint)}
   <section>
     <div class="sec-kicker">FAQ</div>
     <h2>常見問題</h2>
-    <p class="sec-sub"></p>
-    <div class="faq">
-      <details class="reveal"><summary>需要註冊帳號嗎？</summary><p>不用。打開就能寫，所有資料存在你的瀏覽器裡。建議手機用 Safari／Chrome 開啟後選「加入主畫面」，就跟原生 App 一樣。</p></details>
-      <details class="reveal"><summary>換手機或電腦，資料怎麼帶走？</summary><p>右上角「☁ 登入」註冊帳號（Email＋密碼），所有裝置自動同步。不想註冊也可以在「回顧」頁一鍵匯出／匯入 JSON 備份。</p></details>
-      <details class="reveal"><summary>可以接到 Heptabase 或 Notion 嗎？</summary><p>可以。每日頁右上角的「⧉ MD」按鈕會把整天的記錄（任務、塗圈數、時間軸、反思）複製成乾淨的 Markdown，直接貼上即可，格式完美呈現。</p></details>
-      <details class="reveal"><summary>清除瀏覽器資料會不會把記錄洗掉？</summary><p>本機資料若被清除確實會消失，但一刻會<b>每天自動在本機備份一份（保留最近 7 份）</b>，設定頁可一鍵還原；更保險的做法是登入雲端帳號自動同步，或在「回顧」頁定期匯出 JSON。你的日記值得多一層備份。</p></details>
-      <details class="reveal"><summary>跟紙本手帳有什麼不同？</summary><p>方法一樣老派，但它會自己倒數計時、自動塗圈、自動算統計、可以搜尋三個月前的任何一句話——而且永遠不會寫到最後一頁。</p></details>
+    <div class="faq" style="margin-top:14px">
+      <details class="reveal"><summary>需要註冊帳號嗎？</summary><p>不用。打開就能寫，所有資料存在你的瀏覽器裡。手機用 Safari／Chrome 開啟後選「加入主畫面」，就跟原生 App 一樣。</p></details>
+      <details class="reveal"><summary>「願景」跟「商模」是做什麼的？</summary><p>願景是你比年更遠的北極星：一句話方向＋十年甘特＋奧德賽三條五年路（同時想像三個五年後的你）。商模是《一個人的獲利模式》九宮格，把正職＋副業畫成一張個人商業模式圖，看清自己在為誰創造什麼價值。兩者都免費、都在網頁與 App 裡。</p></details>
+      <details class="reveal"><summary>換手機或電腦，資料怎麼帶走？</summary><p>右上角「☁ 登入」註冊帳號，所有裝置自動同步。不想註冊也可在「回顧」頁一鍵匯出／匯入 JSON 備份。</p></details>
+      <details class="reveal"><summary>可以接到 Heptabase 或 Notion 嗎？</summary><p>可以。每日頁「⧉ MD」把整天記錄複製成乾淨 Markdown 直接貼；也能直送 Notion／下載 .md。</p></details>
+      <details class="reveal"><summary>跟紙本手帳有什麼不同？</summary><p>方法一樣老派，但它會自己倒數、自動塗圈、自動算統計、可以搜三個月前的任何一句話——而且永遠寫不到最後一頁。</p></details>
     </div>
   </section>
 
@@ -294,7 +352,7 @@ footer a{color:var(--ink-faint)}
 
   <footer>
     一刻手帳 Yike ・ <a href="manual.html">使用手冊</a> ・ <a href="security.html">安全與隱私</a> ・ <a href="privacy.html">隱私政策</a> ・ <a href="https://github.com/QQJasonChen/yike" target="_blank" rel="noreferrer">GitHub</a><br/>
-    方法論受紙本生產力手帳傳統啟發；種樹專注概念受 Forest 等專注 app 啟發。本專案為獨立實作，與任何上述品牌無關聯，樹木圖示皆為原創繪製。
+    方法論受紙本生產力手帳傳統啟發；種樹專注概念受 Forest 等專注 app 啟發；願景奧德賽受《做自己的生命設計師》、商模受《一個人的獲利模式》啟發。本專案為獨立實作，與上述品牌無關聯，圖示皆為原創。
   </footer>
 </div>
 <script>
