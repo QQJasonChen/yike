@@ -1,11 +1,12 @@
-# iOS Widget 組裝手冊（v1.1 招牌功能）
+# iOS Widget 組裝手冊（v1.2 招牌功能：桌面直接記錄）
 
-> 程式碼已全部寫好：JS 橋 `src/widgetSync.ts`（已接進 main.tsx）、原生橋 `ios/App/App/WidgetBridgePlugin.swift`、widget 本體 `ios/YikeWidget/`（4 個 Swift 檔）。
+> 程式碼已全部寫好：JS 橋 `src/widgetSync.ts`（已接進 main.tsx）、原生橋 `ios/App/App/WidgetBridgePlugin.swift`、widget 本體 `ios/YikeWidget/`（**6 個 Swift 檔**：YikeWidgetBundle / Model / TodayWidget / TimelineWidget / WeekWidget ＋ 新增 **WidgetActions / YikeIntents**）。
 > 剩下的是 Xcode GUI 操作（簽章/target 只能人做），照下面點，約 15 分鐘。
 > 三個 widget：**今天的一刻**（主畫面小格＋鎖定畫面）／**今日時間軸**（中/大）／**本週規劃**（中/大）。
 
 ## 運作原理（30 秒版）
-你在 app 寫手帳 → 切到背景的瞬間，JS 把「今天＋本週」快照經 WidgetBridge 寫進 **App Group** 共享容器 → WidgetKit 讀快照重畫。widget 端不碰 localStorage、不連網。
+**App → widget（顯示）**：你在 app 寫手帳 → 切到背景的瞬間，JS 把「今天＋本週」快照經 WidgetBridge 寫進 **App Group** 共享容器 → WidgetKit 讀快照重畫。
+**widget → App（記錄，iOS 17+）**：桌面點「今天的一刻」小格上的圈打勾完成、點「＋」塗一格、空的點「✏️ 寫下」→ AppIntent 把動作丟進 App Group 佇列並樂觀改快照（桌面立刻反映）→ 下次開 App，`drainWidgetActions()` 把佇列套回 localStorage（權威）再回推正確快照。widget 端不碰 localStorage、不連網。
 
 ---
 
@@ -26,10 +27,11 @@
 
 ## 步驟 3：換上寫好的程式碼 🙋
 1. 在 Xcode 左側 Project navigator，展開 **YikeWidget** group → 刪掉 Xcode 生成的範本 `YikeWidget.swift`（其他 Info.plist / Assets 留著）
-2. 開 Finder 到 `ios/YikeWidget/`，把 **4 個 .swift 檔**（YikeWidgetBundle / Model / TodayWidget / TimelineWidget / WeekWidget…共 4 檔）拖進 Xcode 的 YikeWidget group
+2. 開 Finder 到 `ios/YikeWidget/`，把 **全部 6 個 .swift 檔**（YikeWidgetBundle / Model / TodayWidget / TimelineWidget / WeekWidget / **WidgetActions / YikeIntents**）拖進 Xcode 的 YikeWidget group
    - 跳出對話框：✅ Copy items if needed 不勾也行（已在 repo 內）、**Target 勾 YikeWidget**（只勾這個）
+   - ⚠️ `WidgetActions.swift`＋`YikeIntents.swift` 是新的互動按鈕邏輯，漏拖 = 桌面按鈕沒反應／編譯錯
 3. 把 `ios/App/App/WidgetBridgePlugin.swift` 拖進 **App** group（App/App 底下）
-   - Target 勾 **App**（只勾這個）
+   - Target 勾 **App**（只勾這個）；此檔已加 `drainActions`（App 回前景吸收 widget 動作）
 
 ## 步驟 4：重 build web + sync 🙋
 ```bash
@@ -46,13 +48,16 @@ npm run build:ios     # CAP_BUILD=1 vite build && cap sync ios（把 widgetSync.
 
 **驗收清單**
 - [ ] 小格顯示 MIT + 塗圈；app 裡塗一圈 → 回主畫面 → widget 幾秒內更新
+- [ ] **桌面點 MIT 左邊的圈 → 立刻打勾（刪節線）；開 App 確認也已完成**（互動記錄，iOS 17+）
+- [ ] **桌面點「＋」→ 塗圈 +1；開 App 確認 done 有加**
+- [ ] **MIT 空的時候桌面點「✏️ 寫下」→ App 開到今天、游標落在最重要任務輸入框**
 - [ ] 時間軸中格顯示接下來的塊、進行中的塊有金點
 - [ ] 本週格顯示 7 天 MIT，今天那行金色
 - [ ] 鎖定畫面矩形有 MIT
 - [ ] 跨日後（隔天早上）widget 顯示空狀態引導語，不是昨天的 MIT
 
 ## 步驟 6：上 TestFlight（要發布時）🙋
-1. App target → General → **Build 號 +1**（下一個是 6；MARKETING_VERSION 改 1.1）
+1. App target → General → **Build 號 +1**、MARKETING_VERSION 改 **1.2**（這版同時帶：商模＋UX＋分頁網址＋互動 widget）
 2. YikeWidget target 的版本號跟主 app 一致
 3. Archive → Distribute → Upload（跟之前一樣）
 

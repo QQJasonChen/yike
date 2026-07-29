@@ -46,6 +46,8 @@ interface Props {
   registerSessionSink: (fn: (taskIndex: number, startMs: number, endMs: number) => void) => void
   /** 計時中按 ✕ 放棄時，由 App 呼叫記枯樹 */
   registerAbandonSink: (fn: (taskIndex: number) => void) => void
+  /** widget「✏️ 寫下」進來時遞增；用來聚焦最重要任務輸入框 */
+  focusMitSignal?: number
 }
 
 export default function DayView({
@@ -57,6 +59,7 @@ export default function DayView({
   onSettingsChange,
   registerSessionSink,
   registerAbandonSink,
+  focusMitSignal,
 }: Props) {
   const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
   const [copied, setCopied] = useState(false)
@@ -192,6 +195,27 @@ export default function DayView({
   useEffect(() => {
     setEntry(loadDay(dateKey))
   }, [dateKey])
+
+  // widget 在桌面改了今天的資料（打勾/塗格）→ 若正看該日就重載，避免畫面與 storage 脫節
+  useEffect(() => {
+    const onExternal = (e: Event) => {
+      const date = (e as CustomEvent<{ date: string }>).detail?.date
+      if (date === dateKey) setEntry(loadDay(dateKey))
+    }
+    window.addEventListener('yike:external-day-change', onExternal)
+    return () => window.removeEventListener('yike:external-day-change', onExternal)
+  }, [dateKey])
+
+  // widget「✏️ 寫下」進來：聚焦最重要任務輸入框（App 已切到今天）
+  useEffect(() => {
+    if (!focusMitSignal) return
+    const t = setTimeout(() => {
+      const input = taskListRef.current?.querySelector<HTMLInputElement>('input.task-name')
+      input?.focus()
+      input?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 250)
+    return () => clearTimeout(t)
+  }, [focusMitSignal])
 
   // 任何修改即時存檔（零儲存按鈕）
   const update = (patch: Partial<DayEntry>) => {

@@ -87,6 +87,18 @@ export default function App() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [focusMitSignal, setFocusMitSignal] = useState(0)
+
+  // widget 桌面「✏️ 寫下」→ 開到今天並聚焦最重要任務輸入框
+  useEffect(() => {
+    const onWriteMit = () => {
+      setDateKey(todayKey)
+      setTab('day')
+      setFocusMitSignal((n) => n + 1)
+    }
+    window.addEventListener('yike:write-mit', onWriteMit)
+    return () => window.removeEventListener('yike:write-mit', onWriteMit)
+  }, [todayKey])
   const [searchSel, setSearchSel] = useState(0)
   const searchHits = useMemo(() => (searchOpen ? searchAll(searchQuery) : []), [searchOpen, searchQuery])
   // 選取項捲進視野
@@ -330,6 +342,7 @@ export default function App() {
           onSettingsChange={updateSettings}
           registerSessionSink={registerSessionSink}
           registerAbandonSink={registerAbandonSink}
+          focusMitSignal={focusMitSignal}
         />
       )}
       {tab === 'week' && (

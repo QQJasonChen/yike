@@ -11,11 +11,14 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "WidgetBridge"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "update", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "drainActions", returnType: CAPPluginReturnPromise),
     ]
 
     // ⚠️ 要跟 Xcode 兩個 target 勾的 App Group 名稱一致（docs/WIDGET-SETUP.md 步驟 2）
     static let appGroup = "group.com.qqchen.inkday"
     static let snapshotKey = "widgetSnapshot"
+    static let queueKey = "widgetActionQueue"
+    static let openIntentKey = "widgetOpenIntent"
 
     @objc func update(_ call: CAPPluginCall) {
         guard let snapshot = call.getString("snapshot") else {
@@ -32,5 +35,21 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
             WidgetCenter.shared.reloadAllTimelines()
         }
         call.resolve()
+    }
+
+    // widget 互動按鈕（AppIntent）累積的動作 → 交給 JS 套用到 localStorage，並清空佇列。
+    // 回傳 { actions: [{type,date,taskIndex?}], openIntent?: String }
+    @objc func drainActions(_ call: CAPPluginCall) {
+        guard let defaults = UserDefaults(suiteName: Self.appGroup) else {
+            call.resolve(["actions": []])
+            return
+        }
+        let queue = (defaults.array(forKey: Self.queueKey) as? [[String: Any]]) ?? []
+        let openIntent = defaults.string(forKey: Self.openIntentKey)
+        defaults.removeObject(forKey: Self.queueKey)
+        defaults.removeObject(forKey: Self.openIntentKey)
+        var result: [String: Any] = ["actions": queue]
+        if let oi = openIntent { result["openIntent"] = oi }
+        call.resolve(result)
     }
 }

@@ -4,11 +4,17 @@
 // 純 web / 桌機下是 no-op。widget 端程式在 ios/YikeWidget/，組裝步驟見 docs/WIDGET-SETUP.md。
 
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { addDays, currentStreak, loadDay, mondayOf, toDateKey } from './storage'
-import { colorHex } from './types'
+import { addDays, currentStreak, loadDay, mondayOf, saveDay, toDateKey } from './storage'
+import { colorHex, MAX_SEGS, type DayEntry } from './types'
+
+/** widget 互動按鈕（AppIntent）產生的動作，App 回前景時套用到 localStorage */
+export type WidgetAction =
+  | { type: 'toggleMit'; date: string }
+  | { type: 'tick'; date: string; taskIndex?: number }
 
 interface WidgetBridgeNative {
   update(options: { snapshot: string }): Promise<void>
+  drainActions(): Promise<{ actions: WidgetAction[]; openIntent?: string }>
 }
 
 const native = registerPlugin<WidgetBridgeNative>('WidgetBridge')
@@ -72,13 +78,59 @@ export const pushWidgetSnapshot = async (): Promise<void> => {
   }
 }
 
-// 自初始化：進背景時推（使用者剛寫完手帳離開 app 的瞬間，正是 widget 該更新的時刻）
+/** 把單一 widget 動作套到某天的資料上（純函數，可測）。找不到對應任務就原樣回傳。 */
+export const applyWidgetAction = (day: DayEntry, action: WidgetAction): DayEntry => {
+  const tasks = day.tasks.map((t) => ({ ...t }))
+  if (action.type === 'toggleMit') {
+    if (tasks[0]) tasks[0] = { ...tasks[0], completed: !tasks[0].completed }
+  } else if (action.type === 'tick') {
+    const i = action.taskIndex ?? 0
+    const t = tasks[i]
+    if (t) tasks[i] = { ...t, done: Math.min(t.done + 1, MAX_SEGS), actual: t.done + 1 }
+  }
+  return { ...day, tasks }
+}
+
+/**
+ * 吸乾 widget 動作佇列：套用到今天的 localStorage、回推權威快照、通知 UI 重載。
+ * openIntent==='writeMit' → 發事件請 App 開到今天並聚焦最重要任務輸入框。
+ */
+export const drainWidgetActions = async (): Promise<void> => {
+  if (!Capacitor.isNativePlatform()) return
+  try {
+    const { actions, openIntent } = await native.drainActions()
+    const todayKey = toDateKey(new Date())
+    const valid = (actions ?? []).filter((a) => a.date === todayKey)
+    if (valid.length) {
+      let day = loadDay(todayKey)
+      for (const a of valid) day = applyWidgetAction(day, a)
+      saveDay(todayKey, day)
+      window.dispatchEvent(new CustomEvent('yike:external-day-change', { detail: { date: todayKey } }))
+      await pushWidgetSnapshot() // 用權威資料覆蓋 widget 端的樂觀值
+    }
+    if (openIntent === 'writeMit') {
+      window.dispatchEvent(new CustomEvent('yike:write-mit'))
+    }
+  } catch {
+    // 原生端沒 drainActions（widget 未組裝或舊版）——靜默
+  }
+}
+
+// 自初始化：
+// - 進背景時「推」快照（剛寫完手帳離開 app 的瞬間，正是 widget 該更新的時刻）
+// - 回前景時先「吸」widget 上按過的動作，再撿回別台裝置同步下來的變更
 if (Capacitor.isNativePlatform()) {
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') void pushWidgetSnapshot()
+    if (document.visibilityState === 'hidden') {
+      void pushWidgetSnapshot()
+    } else {
+      void drainWidgetActions()
+    }
   })
-  // 啟動後也推一次（撿回「上次在別台裝置改的、剛同步下來」的變更）
   window.addEventListener('load', () => {
-    setTimeout(() => void pushWidgetSnapshot(), 3000)
+    setTimeout(() => {
+      void drainWidgetActions()
+      void pushWidgetSnapshot()
+    }, 3000)
   })
 }
