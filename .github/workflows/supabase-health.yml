@@ -1,0 +1,99 @@
+# Supabase 保活 ＋ 每日健康檢查（一個排程做兩件事）
+#
+# 為什麼存在：2026-08-03 踩到 Supabase 免費方案「閒置約 7 天自動暫停」——
+# 專案狀態變 INACTIVE、網域直接 NXDOMAIN，結果 app 的雲端功能整組死：
+# 開通／登入／跨裝置同步／AI 教練／Gumroad 買完自動開通。
+# 最糟的是它「靜默」發生：沒有任何通知，使用者只看到「Failed to fetch」，
+# 買家付了錢開不通，而我們完全不知道。
+#
+# 這個 workflow 每天跑一次：
+#   1. 保活——對 Postgres 送一個極輕的讀取，讓專案永遠不進入閒置
+#   2. 健康檢查——驗證「收錢/開通」這條金流路徑上的每個端點都活著
+# 任何一項掛掉 → workflow 紅燈 → GitHub 寄信通知（從靜默壞掉變成你會知道）。
+#
+# 設定來源：網址與 anon key 直接從 src/cloudConfig.ts 讀，單一來源，
+# 換專案或輪替金鑰時自動跟上。anon key 本來就是公開的（安全靠 RLS）。
+#
+# ⚠️ GitHub 會停用「連續 60 天沒有 commit」的 repo 的排程。yike 平常有在動，
+#    但真的長期停更，記得手動來按 Actions → 這個 workflow → Run workflow。
+
+name: Supabase 保活與健康檢查
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # 每天 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 從 src/cloudConfig.ts 讀出 Supabase 設定
+        id: cfg
+        run: |
+          URL=$(grep -oE 'https://[a-z0-9]+\.supabase\.co' src/cloudConfig.ts | head -1)
+          KEY=$(grep -oE 'eyJ[A-Za-z0-9_.-]+' src/cloudConfig.ts | head -1)
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::從 src/cloudConfig.ts 抓不到 URL 或 anon key（檔案格式改了？）"
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "目標：$URL"
+
+      - name: 保活＋健康檢查
+        env:
+          URL: ${{ steps.cfg.outputs.url }}
+          KEY: ${{ steps.cfg.outputs.key }}
+        run: |
+          FAILED=""
+
+          # 送一個請求，最多重試 3 次（避免偶發網路波動誤報）。$1=標籤 $2=期望碼 之後=curl 參數
+          check() {
+            local label="$1" want="$2"; shift 2
+            local code
+            for i in 1 2 3; do
+              code=$(curl -s -o /tmp/out.txt -w '%{http_code}' --max-time 30 "$@")
+              if echo "$want" | tr ',' '\n' | grep -qx "$code"; then
+                echo "  ✅ $label  (HTTP $code)"
+                return 0
+              fi
+              [ $i -lt 3 ] && sleep 20
+            done
+            echo "  ❌ $label  (HTTP $code，期望 $want)"
+            echo "     回應：$(head -c 200 /tmp/out.txt)"
+            FAILED="$FAILED\n  - $label (HTTP $code)"
+            return 1
+          }
+
+          echo "── 1. 保活：讀 Postgres（RLS 會擋掉資料，只是製造活動）──"
+          check "Postgres / PostgREST" 200 \
+            "$URL/rest/v1/journal?select=user_id&limit=1" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" || true
+
+          echo "── 2. 健康：登入與帳號系統 ──"
+          # /auth/v1/health 需要 apikey 標頭，少了會回 401（不是真的掛）
+          check "Auth 服務" 200 "$URL/auth/v1/health" -H "apikey: $KEY" || true
+
+          echo "── 3. 健康：金流／開通路徑（買家付錢後靠這些）──"
+          # 用 OPTIONS 探每個 function 是否還在。可接受的「活著」回應：
+          #   200/204 = 有處理 CORS 預檢（前端會直接呼叫的 function）
+          #   405     = 只收 POST 的 webhook（如 gumroad-ping），不處理 CORS 但確實部署著
+          # 沒部署／被刪掉的 function 一律回 404，所以這個檢查仍抓得到真問題（實測驗證過）。
+          for fn in activate gumroad-ping iap-activate; do
+            check "Edge function: $fn" 200,204,405 -X OPTIONS "$URL/functions/v1/$fn" \
+              -H "Origin: https://yikeday.com" \
+              -H "Access-Control-Request-Method: POST" \
+              -H "Access-Control-Request-Headers: content-type,authorization" || true
+          done
+
+          if [ -n "$FAILED" ]; then
+            echo ""
+            echo "::error::Supabase 有端點掛了：$(echo -e "$FAILED")"
+            echo "先去 dashboard 看專案是不是又被暫停：https://supabase.com/dashboard/project/ofhupqifavtafiylehkj"
+            exit 1
+          fi
+          echo ""
+          echo "🎉 全部正常——專案活著，開通與同步路徑暢通。"
