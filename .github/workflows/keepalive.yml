@@ -1,0 +1,59 @@
+# Supabase 保活：免費方案的專案閒置約 7 天會自動暫停（狀態變 INACTIVE、
+# 網域停止解析），結果就是 app 端所有雲端功能一起死：開通／登入／同步／
+# AI 教練／Gumroad 買完自動開通。使用者只會看到「Failed to fetch」。
+#
+# 這個排程每 2 天對 PostgREST 送一個極輕的讀取（journal 表 limit 1）。
+# RLS 會擋掉資料（anon 讀到空陣列），但請求確實打到 Postgres，
+# 足以讓 Supabase 認定專案「有活動」而不暫停。零成本、不碰任何資料。
+#
+# 網址與 anon key 直接從 src/cloudConfig.ts 讀，單一來源；換專案或換金鑰
+# 時這裡自動跟上，不用兩邊改。anon key 本來就是公開的（安全靠 RLS）。
+#
+# ⚠️ GitHub 會把「連續 60 天沒有任何 commit」的 repo 的排程停掉。
+#    yike 平常有在動所以沒問題；真的長期停更，記得手動來按一次
+#    Actions → Supabase keepalive → Run workflow。
+
+name: Supabase keepalive
+
+on:
+  schedule:
+    - cron: '0 6 */2 * *' # 每 2 天 06:00 UTC（最大間隔 2 天，離 7 天大限很遠）
+  workflow_dispatch: # 也可以到 Actions 分頁手動按
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 從 src/cloudConfig.ts 讀出 Supabase 設定
+        id: cfg
+        run: |
+          URL=$(grep -oE 'https://[a-z0-9]+\.supabase\.co' src/cloudConfig.ts | head -1)
+          KEY=$(grep -oE 'eyJ[A-Za-z0-9_.-]+' src/cloudConfig.ts | head -1)
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::從 src/cloudConfig.ts 抓不到 URL 或 anon key（檔案格式是不是改了？）"
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "將 ping：$URL"
+
+      - name: Ping 資料庫（3 次重試，避免偶發網路波動誤報）
+        run: |
+          URL='${{ steps.cfg.outputs.url }}'
+          KEY='${{ steps.cfg.outputs.key }}'
+          for i in 1 2 3; do
+            CODE=$(curl -s -o /tmp/out.txt -w '%{http_code}' --max-time 30 \
+              "$URL/rest/v1/journal?select=user_id&limit=1" \
+              -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+            echo "第 $i 次：HTTP $CODE"
+            if [ "$CODE" = "200" ]; then
+              echo "✅ Supabase 活著，專案不會被暫停"
+              exit 0
+            fi
+            echo "回應內容：$(head -c 300 /tmp/out.txt)"
+            [ $i -lt 3 ] && sleep 30
+          done
+          echo "::error::Supabase 沒回 200——專案可能已被暫停，或金鑰／網址失效。去 dashboard 看一眼：$URL"
+          exit 1
