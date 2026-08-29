@@ -48,7 +48,14 @@ Deno.serve(async (req) => {
     headers: { apikey: srk, Authorization: `Bearer ${srk}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ uid, cap: DAILY_CAP }),
   })
-  if (bump.ok && (await bump.json()) === false)
+  // fail-closed：計數器查不到／出錯就擋下。以前寫成 `bump.ok && ...`，
+  // 2026-06 的 ai_usage migration 其實沒跑到 production，RPC 不存在 → bump.ok=false
+  // → 條件短路 → 上限完全沒生效，站方的 OpenAI key 等於無限開放。
+  if (!bump.ok) {
+    console.error('ai_usage_bump 失敗', bump.status, await bump.text().catch(() => ''))
+    return json(503, { error: 'AI 服務暫時無法使用，請稍後再試。' })
+  }
+  if ((await bump.json()) === false)
     return json(429, { error: `今天的 AI 次數用完了（每天 ${DAILY_CAP} 次），明天再來。` })
 
   // 3) 取輸入

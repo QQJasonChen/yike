@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import {
   activateWithCode,
@@ -20,7 +20,11 @@ import {
   BackupMeta,
   clearAllLocalData,
   clearSupabaseTokens,
+  daysSinceExport,
+  exportBackupAsFile,
+  importAll,
   listBackups,
+  markExported,
   restoreBackup,
 } from './storage'
 import {
@@ -445,16 +449,67 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
   )
 }
 
-// 資料備份/還原：列出本機每日快照，可一鍵還原（安全網）
+// 資料備份/還原：列出本機每日快照，可一鍵還原、可存成檔案帶離這台裝置（安全網）
 function BackupSettings() {
   const [items, setItems] = useState<BackupMeta[]>(() => listBackups())
   const [msg, setMsg] = useState('')
+  const [stale, setStale] = useState<number | null>(() => daysSinceExport())
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // 把備份帶離這台裝置。網頁用下載；iOS 原生 WKWebView 的 <a download> 常常
+  // 靜默失敗，那種「按了說成功、其實什麼都沒存」比不給按更糟——
+  // 所以原生一律走剪貼簿，並如實告訴使用者東西在哪。
+  const takeOffDevice = async (date: string) => {
+    let text: string
+    try {
+      text = exportBackupAsFile(date)
+    } catch (e) {
+      setMsg(`✗ ${e instanceof Error ? e.message : '匯出失敗'}`)
+      return
+    }
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await navigator.clipboard.writeText(text)
+        markExported()
+        setStale(daysSinceExport())
+        setMsg(`✓ ${date} 的備份已複製到剪貼簿（${Math.round(text.length / 1024)}KB）——貼到備忘錄或 Email 給自己存著`)
+      } catch {
+        setMsg('✗ 複製失敗——請改用網頁版 yikeday.com 下載備份檔')
+      }
+      return
+    }
+    try {
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+      a.download = `yike-backup-${date}.json`
+      a.click()
+      URL.revokeObjectURL(a.href)
+      markExported()
+      setStale(daysSinceExport())
+      setMsg(`✓ 已下載 yike-backup-${date}.json——存到雲端硬碟或寄給自己，別只放在這台`)
+    } catch {
+      setMsg('✗ 下載失敗，請換個瀏覽器再試')
+    }
+  }
+
   return (
     <div className="data-actions backup-box" style={{ marginTop: 18, display: 'block' }}>
       <div className="label">資料備份（本機自動，每天一份，留最近 7 份）</div>
       <p className="sync-help">
-        同步出錯或資料被清掉時的安全網。只存在這台裝置、不上傳。還原會用該份覆蓋目前資料。
+        同步出錯或資料被清掉時的安全網。這些備份<b>只存在這台裝置</b>——
+        清瀏覽器資料、換手機、系統清理儲存空間，備份會跟資料一起消失。
+        真的重要的話，用「存成檔案」把它帶離這台裝置。
       </p>
+      {stale === null && items.length > 0 && (
+        <p className="hint" style={{ marginTop: 6 }}>
+          ⚠️ 你還沒把任何備份存出去過。備份跟資料放在同一個地方，不算備份。
+        </p>
+      )}
+      {stale !== null && stale >= 30 && (
+        <p className="hint" style={{ marginTop: 6 }}>
+          ⚠️ 距離上次存出備份已經 {stale} 天了。
+        </p>
+      )}
       {items.length === 0 ? (
         <p className="hint" style={{ marginTop: 8 }}>
           還沒有備份——有資料時開站會自動建立第一份。
@@ -483,10 +538,41 @@ function BackupSettings() {
               >
                 還原
               </button>
+              <button className="link-btn" onClick={() => void takeOffDevice(b.date)}>
+                存成檔案
+              </button>
             </li>
           ))}
         </ul>
       )}
+      <div style={{ marginTop: 10 }}>
+        <button
+          className="link-btn"
+          onClick={() => fileRef.current?.click()}
+        >
+          從備份檔還原
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            e.target.value = '' // 允許連選同一個檔
+            if (!f) return
+            void f.text().then((txt) => {
+              try {
+                const n = importAll(txt)
+                setMsg(`✓ 已從檔案還原 ${n} 筆，即將重新整理…`)
+                setTimeout(() => location.reload(), 900)
+              } catch (err) {
+                setMsg(`✗ 這個檔看起來不是一刻的備份：${err instanceof Error ? err.message : ''}`)
+              }
+            })
+          }}
+        />
+      </div>
       {msg && (
         <p className="hint" style={{ marginTop: 6 }}>
           {msg}

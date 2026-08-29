@@ -528,6 +528,39 @@ export const listBackups = (): BackupMeta[] => {
   return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 }
 
+/** 把某份每日快照打包成可下載的 JSON 文字（跟 exportAll 同格式，importAll 吃得下）。
+ *  存在的理由：pp:bk:* 只活在 localStorage，跟本體同一個籃子——清瀏覽器資料、
+ *  換手機、或 Safari 的儲存清理一來，備份會跟資料一起消失。備份要離開這台裝置才算數。 */
+export const exportBackupAsFile = (date: string): string => {
+  const raw = localStorage.getItem(BACKUP_PREFIX + date)
+  if (!raw) throw new Error('找不到該備份')
+  const snap = JSON.parse(raw) as Record<string, string>
+  const data: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(snap)) {
+    try {
+      data[k] = JSON.parse(v)
+    } catch {
+      /* 單筆壞掉：跳過，不要讓一筆爛資料害整份匯不出來 */
+    }
+  }
+  return JSON.stringify(
+    { app: 'inkday-planner', version: 1, exportedAt: new Date().toISOString(), backupOf: date, data },
+    null,
+    2
+  )
+}
+
+const LAST_EXPORT_KEY = 'pp:lastExport' // 最後一次把資料帶離這台裝置的日期
+
+export const markExported = () => localStorage.setItem(LAST_EXPORT_KEY, toDateKey(new Date()))
+export const lastExportDate = (): string | null => localStorage.getItem(LAST_EXPORT_KEY)
+/** 距上次匯出幾天（從沒匯出過回 null）。UI 用它決定要不要提醒。 */
+export const daysSinceExport = (): number | null => {
+  const d = lastExportDate()
+  if (!d) return null
+  return Math.floor((Date.parse(toDateKey(new Date())) - Date.parse(d)) / 86400000)
+}
+
 /** 還原某份快照：清掉目前資料 key（不動 sync/meta/backup），寫回快照並 bump meta（讓它同步上雲）。
  *  回傳還原的 key 數。這是使用者明確觸發的還原動作。 */
 export const restoreBackup = (date: string): number => {
