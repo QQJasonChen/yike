@@ -9,7 +9,7 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({ auth }),
 }))
 
-import { activateLicense, signInOrUp } from '../cloud'
+import { activateLicense, activateWithCode, signInOrUp } from '../cloud'
 
 const fetchMock = vi.fn()
 beforeEach(() => {
@@ -83,5 +83,38 @@ describe('activateLicense', () => {
   it('throws the server error when activation fails', async () => {
     fetchMock.mockResolvedValueOnce(okJson({ error: '序號無效' }, false, 403))
     await expect(activateLicense('BAD', 'buyer@b.com', 'password123')).rejects.toThrow(/序號無效/)
+  })
+})
+
+describe('activateWithCode 空序號（買家用購買 Email 開通）', () => {
+  it("留空序號時走白名單，開通成功回 'up'", async () => {
+    fetchMock.mockResolvedValueOnce(okJson({ ok: true }))
+    auth.signInWithPassword.mockResolvedValueOnce({ error: null })
+    await expect(activateWithCode('', 'buyer@b.com', 'password123')).resolves.toBe('up')
+    // 送給 activate 的 licenseKey 必須是空字串，才會命中 edge function 的白名單路徑
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    expect(body.licenseKey).toBe('')
+    expect(body.email).toBe('buyer@b.com')
+  })
+
+  it('只打空白也視為留空', async () => {
+    fetchMock.mockResolvedValueOnce(okJson({ ok: true }))
+    auth.signInWithPassword.mockResolvedValueOnce({ error: null })
+    await expect(activateWithCode('   ', 'buyer@b.com', 'password123')).resolves.toBe('up')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).licenseKey).toBe('')
+  })
+
+  it('沒買過時給看得懂的指引，不是丟 not-entitled', async () => {
+    fetchMock.mockResolvedValueOnce(okJson({ error: 'not-entitled' }, false, 403))
+    await expect(activateWithCode('', 'nobody@b.com', 'password123')).rejects.toThrow(
+      /購買時填的那個 Email/
+    )
+  })
+
+  it('有填序號時照舊走 Gumroad 驗證', async () => {
+    fetchMock.mockResolvedValueOnce(okJson({ ok: true }))
+    auth.signInWithPassword.mockResolvedValueOnce({ error: null })
+    await expect(activateWithCode('QQVIP', 'friend@b.com', 'password123')).resolves.toBe('up')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).licenseKey).toBe('QQVIP')
   })
 })

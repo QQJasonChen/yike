@@ -110,13 +110,14 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                     {!isNative && authMode === 'activate' ? (
                       <>
                         <p className="sync-help">
-                          想跨裝置用同一份資料？<b>輸入邀請碼</b>（朋友跟我拿），再設一組<b>你自己的</b> Email＋密碼就開通——
-                          換裝置用這組登入即可。本機與全部功能<b>永久免費</b>。
+                          想跨裝置用同一份資料？<b>買過的人</b>：序號欄留空，Email 直接填<b>購買時填的那個</b>，
+                          再設一組你自己的密碼就開通。<b>朋友</b>：填我給你的邀請碼。
+                          換裝置用這組 Email＋密碼登入即可。本機與全部功能<b>永久免費</b>。
                         </p>
-                        <div className="label" style={{ marginTop: 6 }}>邀請碼或購買序號</div>
+                        <div className="label" style={{ marginTop: 6 }}>邀請碼或購買序號（買過的人免填）</div>
                         <div className="line-input sync-token">
                           <input
-                            placeholder="邀請碼或購買序號"
+                            placeholder="有邀請碼才填，買過的人留空"
                             value={license}
                             onChange={(e) => setLicense(e.target.value.trim())}
                           />
@@ -141,7 +142,6 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                           <button
                             onClick={() =>
                               cloudAct(async () => {
-                                if (license.trim().length < 2) throw new Error('請先填邀請碼或購買序號')
                                 if (!cloudEmail.includes('@')) throw new Error('請填你的 Email')
                                 if (cloudPw.length < 8) throw new Error('密碼至少 8 碼')
                                 const mode = await activateWithCode(license, cloudEmail, cloudPw)

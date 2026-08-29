@@ -95,8 +95,25 @@ export const activateWithCode = async (
   email: string,
   password: string
 ): Promise<'in' | 'up'> => {
-  if (code.trim().toUpperCase() === FRIEND_CODE) return signInOrUp(email, password)
-  await activateLicense(code, email, password)
+  const c = code.trim()
+  if (c.toUpperCase() === FRIEND_CODE) return signInOrUp(email, password)
+  // 沒填序號 → 走付費白名單：買家用「購買時填的 Email」直接開通（Gumroad Ping / Portaly 寫入）。
+  // 這條路以前被前端擋著，導致交付信寫的「用購買 Email 設密碼」根本做不到。
+  if (!c) {
+    try {
+      await activateLicense('', email, password)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ''
+      if (msg === 'not-entitled')
+        throw new Error(
+          '這個 Email 查不到購買紀錄。請改填「購買時填的那個 Email」；' +
+            '若剛買完幾分鐘內請稍等再試，仍不行請來信 qqleveragelearning@gmail.com，我手動幫你開通。'
+        )
+      throw e
+    }
+    return 'up'
+  }
+  await activateLicense(c, email, password)
   return 'up'
 }
 
