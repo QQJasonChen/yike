@@ -34,6 +34,30 @@ Deno.serve(async (req) => {
   const url = Deno.env.get('SUPABASE_URL')!
   const srk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+  // 節流。activate 是唯一不需登入、卻能建立帳號並打外部 API 的入口，
+  // 沒有節流時：共用邀請碼可被腳本無限開帳號（每個帳號每天 15 次 AI，燒站方的
+  // OpenAI key）、Gumroad 序號可被無限暴力猜、409/403 的差異可用來列舉 email。
+  // 真人一輩子只會開通一兩次，所以額度可以抓得很緊。
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    req.headers.get('cf-connecting-ip') ||
+    'unknown'
+  const bump = async (key: string, cap: number) => {
+    const r = await fetch(`${url}/rest/v1/rpc/rate_limit_bump`, {
+      method: 'POST',
+      headers: { apikey: srk, Authorization: `Bearer ${srk}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ k: key, cap, window_seconds: 3600 }),
+    })
+    // fail-closed：計數器壞掉就擋，不要因為節流故障而變成完全不設防
+    if (!r.ok) {
+      console.error('rate_limit_bump 失敗', r.status, await r.text().catch(() => ''))
+      return false
+    }
+    return (await r.json()) === true
+  }
+  if (!(await bump(`act:ip:${ip}`, 20)) || !(await bump(`act:email:${email}`, 5)))
+    return json(429, { error: '嘗試次數過多，請一小時後再試。若你是剛付款的買家，直接回覆購買信我手動幫你開通。' })
+
   // 路徑 A：沒帶序號 → 查付費白名單（Portaly / 手動邀請）
   if (!licenseKey) {
     const q = await fetch(
