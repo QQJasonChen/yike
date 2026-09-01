@@ -144,10 +144,18 @@ const markDirty = (key: string) => {
   localStorage.setItem(DIRTY_KEY, JSON.stringify(d))
 }
 
-/** push 成功後：清掉髒標記，並把 meta 對齊伺服器回傳的時間戳（讓兩邊用同一個時鐘）。 */
-export const markSynced = (rows: { key: string; updated_at: string }[]): void => {
+/** push 成功後：清掉髒標記，並把 meta 對齊伺服器回傳的時間戳（讓兩邊用同一個時鐘）。
+ *  pushedKeys 是「這次確實送出去的 key」；rows 是伺服器回傳的結果。
+ *  兩者分開的原因：upsert 成功但 .select() 沒回內容時（RLS/PostgREST 設定差異），
+ *  只靠 rows 會讓髒標記永遠清不掉 → 那些 key 每次同步都重推一遍。
+ *  這時仍要清髒標記（東西確實上去了），但不動 meta——留給下次 pull 從伺服器補正。 */
+export const markSynced = (
+  rows: { key: string; updated_at: string }[],
+  pushedKeys: string[] = []
+): void => {
   const d = loadDirty()
   const m = loadMeta()
+  for (const k of pushedKeys) delete d[k]
   for (const r of rows) {
     delete d[r.key]
     m[r.key] = new Date(r.updated_at).getTime()

@@ -67,3 +67,31 @@ describe('同步不再信任裝置時鐘', () => {
     expect(upserted).toEqual([])
   })
 })
+
+describe('push 的失敗與邊界', () => {
+  it('upsert 出錯時髒標記必須留著（否則這筆改動永遠上不去）', async () => {
+    const { saveDay, loadDirty, setDataOwner } = await import('../storage')
+    localStorage.clear()
+    setDataOwner(ME)
+    from.mockReturnValue({
+      select: async () => ({ data: [], error: null }),
+      upsert: () => ({ select: async () => ({ data: null, error: { message: '網路斷線' } }) }),
+    })
+    saveDay('2026-09-02', day('上傳會失敗'))
+    await expect(syncNow()).rejects.toThrow('上傳失敗')
+    expect(loadDirty()['pp:day:2026-09-02']).toBe(true)
+  })
+
+  it('upsert 成功但伺服器沒回內容時，髒標記仍要清掉（否則每次同步都重推）', async () => {
+    const { saveDay, loadDirty, setDataOwner } = await import('../storage')
+    localStorage.clear()
+    setDataOwner(ME)
+    from.mockReturnValue({
+      select: async () => ({ data: [], error: null }),
+      upsert: () => ({ select: async () => ({ data: [], error: null }) }), // 成功但回空
+    })
+    saveDay('2026-09-03', day('伺服器沒回內容'))
+    await syncNow()
+    expect(loadDirty()['pp:day:2026-09-03']).toBeUndefined()
+  })
+})

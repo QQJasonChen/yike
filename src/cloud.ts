@@ -227,7 +227,10 @@ export const syncNow = async (opts?: {
     if (upErr) throw new Error(`上傳失敗：${upErr.message}`)
     // 用伺服器回傳的時間戳對齊本機 meta，並清掉髒標記。
     // 沒有這一步，本機 meta 會停在客戶端時鐘，下次 pull 又會誤判。
-    markSynced((saved ?? []) as { key: string; updated_at: string }[])
+    markSynced(
+      (saved ?? []) as { key: string; updated_at: string }[],
+      toPush.map((r) => r.key)
+    )
   }
 
   return { pulled, pushed: toPush.length }
