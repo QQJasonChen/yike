@@ -21,7 +21,7 @@ import { syncNow } from '../cloud'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import {
   autoBackup, clearAllLocalData, discardLocalForNewOwner, getOpenAIKey,
-  listBackups, loadDirty, loadDay, saveDay, setDataOwner, setOpenAIKey,
+  loadDirty, loadDay, saveDay, setDataOwner, setOpenAIKey, toDateKey,
 } from '../storage'
 
 const ME = 'me-uid'
@@ -57,15 +57,34 @@ describe('Codex #1：同步途中再編輯，不能被當成已同步', () => {
 })
 
 describe('Codex #2：放棄本機資料前一定要有當下的快照', () => {
+  // 用「真正的今天」建第一張快照。原本寫死 2026-09-01，過了那天之後
+  // discard 會因為「今天還沒備份過」而自然建新快照，就算 force 拿掉也照樣綠——
+  // 那條斷言從隔天起就不再分辨對錯（Codex 互審第 2 輪指出）。
+  const TODAY = toDateKey(new Date())
+
   it('今天已經備份過，仍要重照一張才清資料', () => {
-    saveDay('2026-09-01', day('早上寫的'))
-    autoBackup('2026-09-01') // 早上那張
-    saveDay('2026-09-01', day('備份之後才寫的，最重要的一句'))
+    saveDay(TODAY, day('早上寫的'))
+    autoBackup(TODAY) // 早上那張
+    saveDay(TODAY, day('備份之後才寫的，最重要的一句'))
     discardLocalForNewOwner(OTHER)
-    const snaps = listBackups()
-    expect(snaps.length).toBeGreaterThan(0)
-    const raw = localStorage.getItem('pp:bk:' + snaps[0].date)!
+    const raw = localStorage.getItem('pp:bk:' + TODAY)!
     expect(raw).toContain('備份之後才寫的，最重要的一句')
+  })
+
+  it('備份失敗時必須拒絕刪資料（不能無聲刪掉沒備份的日記）', () => {
+    saveDay(TODAY, day('唯一的一份'))
+    const orig = Storage.prototype.setItem
+    // 模擬 localStorage 滿了／Safari 拒寫：只讓快照那次失敗
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (k.startsWith('pp:bk:')) throw new DOMException('QuotaExceededError')
+      return orig.call(this, k, v)
+    }
+    try {
+      expect(() => discardLocalForNewOwner(OTHER)).toThrow('backup-failed-before-discard')
+    } finally {
+      Storage.prototype.setItem = orig
+    }
+    expect(loadDay(TODAY).tasks[0].text).toBe('唯一的一份') // 資料還在
   })
 })
 

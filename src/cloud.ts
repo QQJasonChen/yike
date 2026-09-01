@@ -161,7 +161,25 @@ interface Row {
 }
 
 /** 雙向同步：回傳 { pulled, pushed } */
-export const syncNow = async (opts?: {
+// 同步一次只跑一個。自動 timer、visibility handler、手動按鈕都可能同時發動，
+// 兩個同步互相超車時：A 送出 revision 1 → 使用者改成 revision 2 → B 送出並先完成、
+// 清掉 dirty → A 的舊 upsert 後落庫。伺服器留下 revision 1，而 revision 2 已經
+// 沒有 dirty 可以重推，那筆編輯就永遠消失了。版號只保護「單一請求期間又編輯」，
+// 保護不了兩個請求交錯（Codex 互審第 2 輪 P1）。序列化最省事也最可靠。
+let syncChain: Promise<unknown> = Promise.resolve()
+
+export const syncNow = (opts?: {
+  onUnclaimed?: 'claim' | 'reject'
+}): Promise<{ pulled: number; pushed: number }> => {
+  const run = syncChain.then(
+    () => syncNowInner(opts),
+    () => syncNowInner(opts) // 前一次失敗不該卡住後面的同步
+  )
+  syncChain = run.catch(() => {})
+  return run
+}
+
+const syncNowInner = async (opts?: {
   onUnclaimed?: 'claim' | 'reject'
 }): Promise<{ pulled: number; pushed: number }> => {
   const onUnclaimed = opts?.onUnclaimed ?? 'claim'

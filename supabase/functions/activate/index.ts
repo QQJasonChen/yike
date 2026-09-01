@@ -116,17 +116,11 @@ Deno.serve(async (req) => {
   const purchase = gum.purchase ?? {}
   if (purchase.refunded || purchase.chargebacked)
     return json(403, { error: '此序號的訂單已退款，無法啟用' })
-  // 一筆購買開一個帳號；留 3 次是給換裝置、打錯、重設密碼的空間。
-  // 原本是 10，等於一組序號可以分給 9 個朋友共用。
-  //
-  // 用資料庫的原子計數器，不是只看 Gumroad 回報的 uses（Codex 互審 #6）：
-  // 「查 uses → 建帳號 → 回頭計次」中間有窗，同一組序號用不同 email 並行送進來，
-  // 每一個都會看到 uses < 3 而全部放行。rate_limit_bump 是 insert…on conflict…
-  // returning 後才判斷，先加再比，沒有這個窗。窗期設一年當作「總量」用。
-  if ((gum.uses ?? 0) >= 3)
-    return json(403, {
-      error: '此序號的啟用次數已用完。如果你是本人要重新開通，直接回覆購買信給我。',
-    })
+  // 額度的單一真相源＝資料庫的原子計數器（見下方建立帳號後）。
+  // 不再另外用 gum.uses 當閘門：兩套計數會互相疊加而過度限制——
+  // 例如 uses=2 時 cap 只剩 1，但資料庫那邊還允許 3，兩邊都對不上真實張數
+  // （Codex 互審第 2 輪 P1）。Gumroad 這裡只負責「序號是否有效／有沒有退款」，
+  // 計次仍照送，供對帳用。
 
   // 2) 建立帳號（service role）
   const created = await createUser(url, srk, email, password)
@@ -139,11 +133,28 @@ Deno.serve(async (req) => {
   if (created.ok && created.userId) {
     const within = await bump(`lic:${licenseKey.toUpperCase()}`, 3, 31536000)
     if (!within) {
-      // 並行競爭輸了：把剛建的帳號收回去，不留下一個超額的帳號
-      await fetch(`${url}/auth/v1/admin/users/${created.userId}`, {
-        method: 'DELETE',
-        headers: { apikey: srk, Authorization: `Bearer ${srk}` },
-      }).catch(() => {})
+      // 並行競爭輸了：把剛建的帳號收回去。要檢查刪除結果——原本只 catch fetch
+      // 的 rejection、不看 HTTP status，DELETE 回 401/500 時帳號其實還在，
+      // 卻回報「額度已用完」，等於留下一個超額帳號而且沒人知道
+      //（Codex 互審第 2 輪 P1）。
+      let rolledBack = false
+      try {
+        const del = await fetch(`${url}/auth/v1/admin/users/${created.userId}`, {
+          method: 'DELETE',
+          headers: { apikey: srk, Authorization: `Bearer ${srk}` },
+        })
+        rolledBack = del.ok
+        if (!del.ok)
+          console.error('超額帳號回收失敗', created.userId, del.status, await del.text().catch(() => ''))
+      } catch (e) {
+        console.error('超額帳號回收例外', created.userId, String(e))
+      }
+      if (!rolledBack) {
+        // 帳號還在。與其謊稱失敗讓使用者以為沒開通，不如放行並留下告警——
+        // 站方看 log 就知道要人工處理，使用者也不會付了錢卻進不去。
+        console.error('序號超額但帳號無法回收，已放行：', email, licenseKey.slice(0, 8))
+        return created.response
+      }
       return json(403, {
         error: '此序號的啟用次數已用完。如果你是本人要重新開通，直接回覆購買信給我。',
       })

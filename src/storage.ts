@@ -579,11 +579,11 @@ const pruneBackups = () => {
 
 /** 每天自動快照一次本機所有資料到 pp:bk:<today>，保留最近 7 份。純本機、不同步、不匯出。
  *  寫入型操作、不碰既有資料；空資料不備份。配額/序列化失敗一律靜默。 */
-export const autoBackup = (todayKey: string, force = false): void => {
+export const autoBackup = (todayKey: string, force = false): boolean => {
   try {
     // force：要清資料之前必須無條件重照一張。原本「今天備過就 return」會讓
     // 早上那張快照之後寫的東西完全沒進備份，而呼叫端以為有得後悔。
-    if (!force && localStorage.getItem(LAST_BACKUP_KEY) === todayKey) return
+    if (!force && localStorage.getItem(LAST_BACKUP_KEY) === todayKey) return true
     const data: Record<string, string> = {}
     let has = false
     for (const k of allDataKeys()) {
@@ -593,12 +593,15 @@ export const autoBackup = (todayKey: string, force = false): void => {
         has = true
       }
     }
-    if (!has) return // 全空（新裝置同步前/已清空）：先不備份也不標記，等資料載入後再試
+    if (!has) return true // 全空（新裝置同步前/已清空）：沒東西可備份，不算失敗
     localStorage.setItem(BACKUP_PREFIX + todayKey, JSON.stringify(data))
     localStorage.setItem(LAST_BACKUP_KEY, todayKey)
     pruneBackups()
+    return true
   } catch {
-    /* 配額或序列化失敗：靜默略過，不影響 app */
+    // 配額滿、Safari 拒絕寫入、序列化失敗。平常靜默略過不影響 app，
+    // 但呼叫端如果是「備份完就要刪資料」，必須知道這次其實沒備到。
+    return false
   }
 }
 
@@ -635,7 +638,11 @@ export const localDataCount = (): number => allDataKeys().length
 
 /** 放棄這台裝置的本機資料改用雲端那份。先存一份快照再清，才有得後悔。 */
 export const discardLocalForNewOwner = (uid: string): void => {
-  autoBackup(toDateKey(new Date()), true) // 無條件重照，早上那張不算數
+  // 備份失敗就不准刪。原本吞掉 autoBackup 的錯誤直接往下刪，
+  // localStorage 滿了或 Safari 拒寫時，使用者的資料會在沒有任何備份的情況下消失
+  //（Codex 互審第 2 輪 P1）。寧可讓登入失敗，也不要無聲刪掉別人的日記。
+  if (!autoBackup(toDateKey(new Date()), true))
+    throw new Error('backup-failed-before-discard')
   for (const k of allDataKeys()) localStorage.removeItem(k)
   localStorage.removeItem(META_KEY)
   // dirty 也要清。沒清的話：pull 會因為「這個 key 是髒的」而跳過新帳號的雲端版本，

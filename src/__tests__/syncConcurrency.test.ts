@@ -6,10 +6,13 @@ const auth = { getSession: vi.fn() }
 type Row = { key: string; value: unknown; updated_at: string }
 let server: Record<string, Row> = {}
 let delayMs = 0
+let trackUpsert: ((delta: number) => void) | null = null
 const from = vi.fn(() => ({
   select: async () => ({ data: Object.values(server), error: null }),
   upsert: (rows: { key: string; value: unknown }[]) => ({
     select: async () => {
+      trackUpsert?.(1)
+      try {
       if (delayMs) await new Promise((r) => setTimeout(r, delayMs))
       const out: { key: string; updated_at: string }[] = []
       for (const r of rows) {
@@ -19,6 +22,9 @@ const from = vi.fn(() => ({
         out.push({ key: r.key, updated_at: ts })
       }
       return { data: out, error: null }
+      } finally {
+        trackUpsert?.(-1)
+      }
     },
   }),
 }))
@@ -110,5 +116,28 @@ describe('pull 不得蓋掉本機未上傳的編輯', () => {
     expect((server['pp:day:2026-09-01'].value as DayEntry).tasks[0].text).toBe(
       '我在這台剛寫的，還沒上傳'
     )
+  })
+})
+
+describe('syncNow 必須序列化（兩個同步不得互相超車）', () => {
+  it('任何時刻只能有一個同步在途', async () => {
+    // 直接數「同時進行中的 upsert 數」。先前寫成比較完成順序，
+    // 但 Promise 的解析順序在未序列化時也常常剛好是先進先出，
+    // 那條斷言分辨不出對錯（拿掉序列化仍然綠）。改成量真正的重疊。
+    let inFlight = 0
+    let maxInFlight = 0
+    trackUpsert = (delta) => {
+      inFlight += delta
+      maxInFlight = Math.max(maxInFlight, inFlight)
+    }
+    saveDay('2026-09-01', day('第一次'))
+    delayMs = 40
+    const a = syncNow()
+    saveDay('2026-09-02', day('第二次'))
+    const b = syncNow()
+    await Promise.all([a, b])
+    trackUpsert = null
+    expect(maxInFlight).toBe(1) // 沒序列化的話會是 2
+    expect((server['pp:day:2026-09-02'].value as DayEntry).tasks[0].text).toBe('第二次')
   })
 })
