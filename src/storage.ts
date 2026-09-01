@@ -501,6 +501,25 @@ export const recentNames = (): string[] => nameStats().slice(0, 40).map((s) => s
 
 /** 清掉這台裝置上所有本機資料（pp:*，含 settings/meta/sync）。
  *  登出時用：雲端帳號的資料不受影響，重新登入即可從雲端還原。 */
+/** session 失效時的清理：保留每日快照，且有未同步內容時拒絕清除。
+ *  舊版直接呼叫 clearAllLocalData，註解寫「資料都在雲端，重新登入即還原」——
+ *  那個假設是錯的：dirty 的內容正是「還沒上雲」的那些。離線寫了日記、token
+ *  剛好過期，開 app 就會連同 pp:bk:* 七天備份一起刪光，無法復原
+ *  （Codex 上架前互審第 3 輪 P0）。
+ *  回傳 false = 有未同步資料，呼叫端不該清、應該請使用者重新登入。 */
+export const clearCloudDataOnSessionLoss = (): boolean => {
+  if (Object.keys(loadDirty()).length > 0) return false
+  const keys: string[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (!k) continue
+    if (k.startsWith(BACKUP_PREFIX)) continue // 備份是最後一道安全網，不能跟著清
+    if (k.startsWith('pp:') || k.startsWith(LOCAL_ONLY_PREFIX)) keys.push(k)
+  }
+  for (const k of keys) localStorage.removeItem(k)
+  return true
+}
+
 export const clearAllLocalData = () => {
   const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {

@@ -1,6 +1,6 @@
 // Codex 上架前互審第 1 輪的 DO-NOT-SHIP 發現，逐條釘住。
 // 每一條都經過證偽：把原本的 bug 放回去，對應的斷言必須變紅。
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const auth = { getSession: vi.fn() }
 let serverRows: { key: string; value: unknown; updated_at: string }[] = []
@@ -57,10 +57,16 @@ describe('Codex #1：同步途中再編輯，不能被當成已同步', () => {
 })
 
 describe('Codex #2：放棄本機資料前一定要有當下的快照', () => {
-  // 用「真正的今天」建第一張快照。原本寫死 2026-09-01，過了那天之後
-  // discard 會因為「今天還沒備份過」而自然建新快照，就算 force 拿掉也照樣綠——
-  // 那條斷言從隔天起就不再分辨對錯（Codex 互審第 2 輪指出）。
-  const TODAY = toDateKey(new Date())
+  // 凍結時鐘。用真正的今天仍有跨午夜風險：TODAY 在模組載入時算，
+  // production code 在呼叫當下重新取時間，剛好跨過午夜就會寫到隔天的 key
+  // 而讓測試因為錯的理由變紅（Codex 互審第 3 輪指出）。
+  const FROZEN = new Date('2026-09-01T10:00:00')
+  const TODAY = toDateKey(FROZEN)
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(FROZEN)
+  })
+  afterEach(() => vi.useRealTimers())
 
   it('今天已經備份過，仍要重照一張才清資料', () => {
     saveDay(TODAY, day('早上寫的'))

@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL, cloudEnabled } from './cloudConfig'
 import {
   allDataKeys,
-  clearAllLocalData,
+  clearCloudDataOnSessionLoss,
   clearSupabaseTokens,
   getDataOwner,
   hasCloudArtifact,
@@ -167,6 +167,11 @@ interface Row {
 // 沒有 dirty 可以重推，那筆編輯就永遠消失了。版號只保護「單一請求期間又編輯」，
 // 保護不了兩個請求交錯（Codex 互審第 2 輪 P1）。序列化最省事也最可靠。
 let syncChain: Promise<unknown> = Promise.resolve()
+export let syncSlotTimeoutMs = 30_000
+/** 測試用：把「佔用同步 queue 的上限」調短，免得單元測試真的等 30 秒。 */
+export const __setSyncSlotTimeout = (ms: number) => {
+  syncSlotTimeoutMs = ms
+}
 
 export const syncNow = (opts?: {
   onUnclaimed?: 'claim' | 'reject'
@@ -175,7 +180,17 @@ export const syncNow = (opts?: {
     () => syncNowInner(opts),
     () => syncNowInner(opts) // 前一次失敗不該卡住後面的同步
   )
-  syncChain = run.catch(() => {})
+  // 佔用 queue 的時間要有上限。只等 run 的話，一個永遠 pending 的請求
+  // （網路吊死、fetch 不 reject）會讓 syncChain 永不 settle，之後所有自動推送
+  // 與 visibility 同步都排在它後面，這個頁面生命週期內再也不會同步
+  //（Codex 互審第 3 輪 P1）。
+  // 逾時只釋放「排隊位置」，不假裝那次同步失敗——呼叫端拿到的仍是真實的 run。
+  // 舊的同步即使後來才回來也不會造成超車：它推的是自己送出當下的版號，
+  // markSynced 比對版號不符就不會清掉後來的編輯。
+  syncChain = Promise.race([
+    run.catch(() => {}),
+    new Promise((res) => setTimeout(res, syncSlotTimeoutMs)),
+  ])
   return run
 }
 
@@ -262,10 +277,18 @@ export const startAutoSync = async (onChange?: (msg: string) => void): Promise<v
   if (!email) {
     // 這台有雲端登入殘留（標記或 Supabase token），但目前沒有有效 session
     // （登出 / 過期 / 舊版殘留）→ 清掉本機資料＋token、回到全空白。
-    // 資料都在雲端，重新登入即還原。從沒碰過雲端的純本機訪客不受影響。
+    //
+    // 但「曾綁定雲端」不等於「所有本機內容都已上雲」。離線編輯後 token 剛好
+    // 過期時，那些內容還是 dirty；舊版在這裡無條件清除，連 pp:bk:* 七天備份
+    // 都一起刪掉，使用者永遠救不回來（Codex 互審第 3 輪 P0）。
+    // 現在：有未同步內容就不清，請使用者重新登入把它帶上去。
     if (hasCloudArtifact()) {
       clearSupabaseTokens() // 先清 token，避免重整後又判定為殘留→無限重整
-      clearAllLocalData()
+      if (!clearCloudDataOnSessionLoss()) {
+        openSyncGate() // 資料留著，也要讓使用者能繼續寫
+        onChange?.('登入已過期，這台還有未同步的記錄——請重新登入把它們同步上去')
+        return
+      }
       location.reload()
       return
     }

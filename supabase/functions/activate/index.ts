@@ -42,6 +42,19 @@ Deno.serve(async (req) => {
     req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
     req.headers.get('cf-connecting-ip') ||
     'unknown'
+  const redeem = async (lic: string, mail: string, cap: number, seed: number) => {
+    const r = await fetch(`${url}/rest/v1/rpc/license_redeem`, {
+      method: 'POST',
+      headers: { apikey: srk, Authorization: `Bearer ${srk}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ k: lic, mail, cap, seed }),
+    })
+    if (!r.ok) {
+      console.error('license_redeem 失敗', r.status, await r.text().catch(() => ''))
+      return false // fail-closed
+    }
+    return (await r.json()) === true
+  }
+
   const bump = async (key: string, cap: number, windowSeconds = 3600) => {
     const r = await fetch(`${url}/rest/v1/rpc/rate_limit_bump`, {
       method: 'POST',
@@ -125,13 +138,17 @@ Deno.serve(async (req) => {
   // 2) 建立帳號（service role）
   const created = await createUser(url, srk, email, password)
 
+  let overQuotaButKept = false
   // 額度只在「真的建成帳號」時扣。不能在建立前先扣——開通失敗（例如 email 已註冊、
   // 密碼太短、使用者打錯重試）也會燒掉序號額度，那正是幾小時前才修過的
   // 「把重試當成攻擊」同一個錯誤。
   // 原子計數器擋的是並行：同一組序號用不同 email 同時送進來，Gumroad 的 uses
   // 來不及反映，資料庫這邊的 insert…on conflict…returning 會擋下超額的那些。
   if (created.ok && created.userId) {
-    const within = await bump(`lic:${licenseKey.toUpperCase()}`, 3, 31536000)
+    // 用永久兌換表，不用節流器。節流器的視窗會到期重置——一年後同一組序號
+    // 又多 3 次，而且上線前已在 Gumroad 用過的次數完全沒被算進去
+    //（Codex 互審第 3 輪 P1）。seed 帶入 Gumroad 既有用量，取兩者較大者。
+    const within = await redeem(licenseKey, email, 3, Number(gum.uses ?? 0))
     if (!within) {
       // 並行競爭輸了：把剛建的帳號收回去。要檢查刪除結果——原本只 catch fetch
       // 的 rejection、不看 HTTP status，DELETE 回 401/500 時帳號其實還在，
@@ -149,15 +166,17 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.error('超額帳號回收例外', created.userId, String(e))
       }
-      if (!rolledBack) {
-        // 帳號還在。與其謊稱失敗讓使用者以為沒開通，不如放行並留下告警——
-        // 站方看 log 就知道要人工處理，使用者也不會付了錢卻進不去。
-        console.error('序號超額但帳號無法回收，已放行：', email, licenseKey.slice(0, 8))
-        return created.response
+      if (rolledBack) {
+        return json(403, {
+          error: '此序號的啟用次數已用完。如果你是本人要重新開通，直接回覆購買信給我。',
+        })
       }
-      return json(403, {
-        error: '此序號的啟用次數已用完。如果你是本人要重新開通，直接回覆購買信給我。',
-      })
+      // 回收失敗，帳號還在。與其謊稱失敗讓使用者以為沒開通，不如放行並留告警——
+      // 站方看 log 就知道要人工處理，使用者也不會付了錢卻進不去。
+      // 不在這裡 return，才會繼續走下面的 Gumroad 計次與 entitlement 寫入；
+      // 提前 return 會變成「帳號能用、但對帳表查無此人」（Codex 互審第 3 輪 P1）。
+      console.error('序號超額但帳號無法回收，已放行：', email, licenseKey.slice(0, 8))
+      overQuotaButKept = true
     }
   }
   // 只有真的建成帳號才計次
@@ -184,7 +203,11 @@ Deno.serve(async (req) => {
         email,
         source: 'gumroad-license',
         redeemed_at: new Date().toISOString(),
-        raw: { purchase_email: purchase.email ?? null, license_uses: gum.uses ?? 0 },
+        raw: {
+        purchase_email: purchase.email ?? null,
+        license_uses: gum.uses ?? 0,
+        ...(overQuotaButKept ? { over_quota_kept: true } : {}),
+      },
       }),
     }).catch(() => {})
   }

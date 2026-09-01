@@ -7,10 +7,13 @@ type Row = { key: string; value: unknown; updated_at: string }
 let server: Record<string, Row> = {}
 let delayMs = 0
 let trackUpsert: ((delta: number) => void) | null = null
+let stuckUpsert = false
+
 const from = vi.fn(() => ({
   select: async () => ({ data: Object.values(server), error: null }),
   upsert: (rows: { key: string; value: unknown }[]) => ({
     select: async () => {
+      if (stuckUpsert) return new Promise(() => {}) as never // 永遠不回應
       trackUpsert?.(1)
       try {
       if (delayMs) await new Promise((r) => setTimeout(r, delayMs))
@@ -30,7 +33,7 @@ const from = vi.fn(() => ({
 }))
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ auth, from }) }))
 
-import { syncNow } from '../cloud'
+import { __setSyncSlotTimeout, syncNow } from '../cloud'
 import { loadDirty, loadDay, saveDay, setDataOwner } from '../storage'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 
@@ -39,7 +42,7 @@ const day = (t: string): DayEntry => ({ ...emptyDay(), tasks: [{ ...emptyTask(),
 
 beforeEach(() => {
   localStorage.clear()
-  server = {}; delayMs = 0
+  server = {}; delayMs = 0; stuckUpsert = false
   auth.getSession.mockResolvedValue({ data: { session: { user: { id: ME } } } })
   setDataOwner(ME)
 })
@@ -139,5 +142,29 @@ describe('syncNow 必須序列化（兩個同步不得互相超車）', () => {
     trackUpsert = null
     expect(maxInFlight).toBe(1) // 沒序列化的話會是 2
     expect((server['pp:day:2026-09-02'].value as DayEntry).tasks[0].text).toBe('第二次')
+  })
+})
+
+describe('一個卡住的同步不得堵死之後所有同步', () => {
+  it('前一次永遠 pending 時，後續同步仍然跑得起來', async () => {
+    // stuckUpsert 讓 upsert 永遠不回應。不能用 mockReturnValueOnce：
+    // 每次同步會呼叫 from() 兩次（select 一次、upsert 一次），Once 只吃掉第一次，
+    // 根本卡不住——第一版證偽沒反轉就是因為這個。
+    const SLOT_MS = 200
+    __setSyncSlotTimeout(SLOT_MS)
+    stuckUpsert = true
+    saveDay('2026-09-01', day('卡住的那次'))
+    const stuck = syncNow()
+    void stuck.catch(() => {})
+    await new Promise((r) => setTimeout(r, 10))
+
+    // 讓出 queue 佔用的時間過去
+    stuckUpsert = false
+    await new Promise((r) => setTimeout(r, SLOT_MS + 100))
+
+    saveDay('2026-09-02', day('後來的'))
+    await syncNow()
+    expect(server['pp:day:2026-09-02']).toBeDefined()
+    __setSyncSlotTimeout(30_000)
   })
 })
