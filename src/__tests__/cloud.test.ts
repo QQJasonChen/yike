@@ -111,10 +111,13 @@ describe('activateWithCode 空序號（買家用購買 Email 開通）', () => {
     )
   })
 
-  it('有填序號時照舊走 Gumroad 驗證', async () => {
+  it('有填序號時照舊原樣送去後端驗證', async () => {
+    // 這裡刻意用假字串。真正的邀請碼只存在 Supabase secret，
+    // 絕不寫進測試——這是公開 repo，寫進來等於公告全世界。
+    const FAKE = 'SOME-CODE'
     fetchMock.mockResolvedValueOnce(okJson({ ok: true }))
     auth.signInWithPassword.mockResolvedValueOnce({ error: null })
-    await expect(activateWithCode('QQVIP', 'friend@b.com', 'password123')).resolves.toBe('up')
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).licenseKey).toBe('QQVIP')
+    await expect(activateWithCode(FAKE, 'friend@b.com', 'password123')).resolves.toBe('up')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).licenseKey).toBe(FAKE)
   })
 })
