@@ -528,6 +528,27 @@ export const listBackups = (): BackupMeta[] => {
   return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 }
 
+const OWNER_KEY = 'pp:owner' // 這台裝置的本機資料屬於哪個雲端帳號（uid）
+
+/** 這台裝置的資料目前歸屬於誰。null = 還沒跟任何帳號綁定（純本機使用者）。
+ *  存在的理由：共用裝置上，A 先在本機寫了日記、B 接著登入自己的帳號，
+ *  同步會把 A 的日記當成「本機比較新」整包上傳進 B 的帳號——
+ *  A 的私密內容跑進 B 的雲端，還可能覆蓋掉 B 原本的記錄。
+ *  RLS 擋不到這種事：寫入的確實是 B 的 session、B 的 user_id，只是內容是 A 的。 */
+export const getDataOwner = (): string | null => localStorage.getItem(OWNER_KEY)
+export const setDataOwner = (uid: string) => localStorage.setItem(OWNER_KEY, uid)
+
+/** 這台裝置上有幾個資料 key（用來判斷「登入前就有東西」）。 */
+export const localDataCount = (): number => allDataKeys().length
+
+/** 放棄這台裝置的本機資料改用雲端那份。先存一份快照再清，才有得後悔。 */
+export const discardLocalForNewOwner = (uid: string): void => {
+  autoBackup(toDateKey(new Date()))
+  for (const k of allDataKeys()) localStorage.removeItem(k)
+  localStorage.removeItem(META_KEY)
+  setDataOwner(uid)
+}
+
 /** 把某份每日快照打包成可下載的 JSON 文字（跟 exportAll 同格式，importAll 吃得下）。
  *  存在的理由：pp:bk:* 只活在 localStorage，跟本體同一個籃子——清瀏覽器資料、
  *  換手機、或 Safari 的儲存清理一來，備份會跟資料一起消失。備份要離開這台裝置才算數。 */

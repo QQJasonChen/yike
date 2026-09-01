@@ -10,6 +10,7 @@ import {
   startAutoSync,
   stopAutoSync,
   syncNow,
+  currentUserId,
 } from './cloud'
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
@@ -21,7 +22,10 @@ import {
   clearAllLocalData,
   clearSupabaseTokens,
   daysSinceExport,
+  discardLocalForNewOwner,
   exportBackupAsFile,
+  localDataCount,
+  setDataOwner,
   importAll,
   listBackups,
   markExported,
@@ -151,7 +155,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                                 const mode = await activateWithCode(license, cloudEmail, cloudPw)
                                 setCloudUser(cloudEmail)
                                 setCloudStage('in')
-                                const r = await syncNow()
+                                const r = await syncAfterLogin(cloudEmail)
                                 await startAutoSync()
                                 setCloudMsg(
                                   `✓ ${mode === 'up' ? '開通成功' : '登入成功'}，已同步（↓${r.pulled} ↑${r.pushed}）`
@@ -205,7 +209,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                                 const mode = await signInOrUp(cloudEmail, cloudPw)
                                 setCloudUser(cloudEmail)
                                 setCloudStage('in')
-                                const r = await syncNow()
+                                const r = await syncAfterLogin(cloudEmail)
                                 await startAutoSync()
                                 setCloudMsg(
                                   `✓ ${mode === 'up' ? '開通成功' : '登入成功'}，已同步（↓${r.pulled} ↑${r.pushed}）`
@@ -447,6 +451,35 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
       </div>
     </div>
   )
+}
+
+// 登入後的第一次同步。這裡是共用裝置外洩的風險點：
+// 這台裝置上可能有「上一個人」留下的本機日記，直接同步會把它整包推進現在登入者的帳號。
+// 所以第一次同步先拒絕認領，改成問人；背景自動同步不受影響（那是既有 session）。
+async function syncAfterLogin(email: string): Promise<{ pulled: number; pushed: number }> {
+  try {
+    return await syncNow({ onUnclaimed: 'reject' })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : ''
+    if (msg !== 'device-unclaimed-data' && msg !== 'device-owner-mismatch') throw e
+
+    const uid = await currentUserId()
+    if (!uid) throw e
+    const n = localDataCount()
+    const mine =
+      msg === 'device-owner-mismatch'
+        ? `這台裝置上的 ${n} 筆記錄屬於「另一個帳號」。`
+        : `這台裝置上有 ${n} 筆還沒同步過的本機記錄。`
+    const merge = confirm(
+      `${mine}\n\n要把它們合併進 ${email} 這個帳號嗎？\n\n` +
+        `「確定」＝合併並上傳到這個帳號。\n` +
+        `「取消」＝不上傳，改用這個帳號雲端上的資料（本機這份會先自動備份，可在下方「資料備份」還原）。\n\n` +
+        `如果這台裝置是跟別人共用的，請選「取消」——否則對方的記錄會進到你的帳號。`
+    )
+    if (merge) setDataOwner(uid)
+    else discardLocalForNewOwner(uid)
+    return await syncNow()
+  }
 }
 
 // 資料備份/還原：列出本機每日快照，可一鍵還原、可存成檔案帶離這台裝置（安全網）

@@ -9,10 +9,13 @@ import {
   allDataKeys,
   clearAllLocalData,
   clearSupabaseTokens,
+  getDataOwner,
   hasCloudArtifact,
   loadMeta,
+  localDataCount,
   markCloudBound,
   openSyncGate,
+  setDataOwner,
   setOnDataWrite,
   writeFromCloud,
 } from './storage'
@@ -117,6 +120,11 @@ export const activateWithCode = async (
   return 'up'
 }
 
+export const currentUserId = async (): Promise<string | null> => {
+  const { data } = await (await supa()).auth.getSession()
+  return data.session?.user.id ?? null
+}
+
 export const currentEmail = async (): Promise<string | null> => {
   const { data } = await (await supa()).auth.getSession()
   return data.session?.user.email ?? null
@@ -150,11 +158,28 @@ interface Row {
 }
 
 /** 雙向同步：回傳 { pulled, pushed } */
-export const syncNow = async (): Promise<{ pulled: number; pushed: number }> => {
+export const syncNow = async (opts?: {
+  onUnclaimed?: 'claim' | 'reject'
+}): Promise<{ pulled: number; pushed: number }> => {
+  const onUnclaimed = opts?.onUnclaimed ?? 'claim'
   const db = await supa()
   const { data: sess } = await db.auth.getSession()
   const user = sess.session?.user
   if (!user) throw new Error('請先登入')
+
+  // 資料歸屬把關：這台裝置的本機資料如果不屬於目前登入者，絕不能推上他的帳號。
+  // （共用裝置：A 在本機寫日記 → B 登入 → A 的內容整包進 B 的雲端，還可能覆蓋 B 的記錄。
+  //   RLS 擋不到，因為寫入的確實是 B 的 session、B 的 user_id，只是內容不是 B 的。）
+  //
+  // onUnclaimed 的預設是 'claim'：既有 session 的背景同步照舊，不打擾現有使用者。
+  // 「登入」這個動作才是風險點，UI 在那裡改傳 'reject'，由使用者親自決定要不要合併。
+  const owner = getDataOwner()
+  if (owner && owner !== user.id) throw new Error('device-owner-mismatch')
+  if (!owner) {
+    if (onUnclaimed === 'reject' && localDataCount() > 0)
+      throw new Error('device-unclaimed-data')
+    setDataOwner(user.id)
+  }
 
   const meta = loadMeta()
 
