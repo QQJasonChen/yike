@@ -212,13 +212,13 @@ export const syncNow = async (opts?: {
   //    這樣客戶端時鐘設錯也污染不了排序基準。
   const dirty = loadDirty()
   const existing = new Set(allDataKeys())
-  const toPush = Object.keys(dirty)
-    .filter((k) => existing.has(k))
-    .map((k) => ({
-      user_id: user.id,
-      key: k,
-      value: JSON.parse(localStorage.getItem(k)!),
-    }))
+  const pushKeys = Object.keys(dirty).filter((k) => existing.has(k))
+  const pushedRevs = Object.fromEntries(pushKeys.map((k) => [k, dirty[k]]))
+  const toPush = pushKeys.map((k) => ({
+    user_id: user.id,
+    key: k,
+    value: JSON.parse(localStorage.getItem(k)!),
+  }))
   if (toPush.length) {
     const { data: saved, error: upErr } = await db
       .from('journal')
@@ -227,10 +227,9 @@ export const syncNow = async (opts?: {
     if (upErr) throw new Error(`上傳失敗：${upErr.message}`)
     // 用伺服器回傳的時間戳對齊本機 meta，並清掉髒標記。
     // 沒有這一步，本機 meta 會停在客戶端時鐘，下次 pull 又會誤判。
-    markSynced(
-      (saved ?? []) as { key: string; updated_at: string }[],
-      toPush.map((r) => r.key)
-    )
+    // 帶上「送出當下的版號」：markSynced 只清版號沒變的 key，
+    // 推送期間又被編輯過的會保留標記，下次同步帶走。
+    markSynced((saved ?? []) as { key: string; updated_at: string }[], pushedRevs)
   }
 
   return { pulled, pushed: toPush.length }

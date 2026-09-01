@@ -259,7 +259,7 @@ describe('sync gate (pull-before-write)', () => {
     expect(pushed).toEqual([])
     openSyncGate()
     // 打開後：補標 dirty + 觸發推送
-    expect(loadDirty()['pp:day:2026-06-13']).toBe(true)
+    expect(loadDirty()['pp:day:2026-06-13']).toBeGreaterThan(0)
     expect(pushed).toContain('pp:day:2026-06-13')
     setOnDataWrite(null)
   })
@@ -268,7 +268,7 @@ describe('sync gate (pull-before-write)', () => {
     closeSyncGate()
     openSyncGate()
     saveDay('2026-06-14', { ...emptyDay(), score: 2 })
-    expect(loadDirty()['pp:day:2026-06-14']).toBe(true)
+    expect(loadDirty()['pp:day:2026-06-14']).toBeGreaterThan(0)
   })
 
   it('本機寫入絕不碰 meta（meta 只能由伺服器時間戳填）', () => {

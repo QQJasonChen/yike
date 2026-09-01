@@ -40,7 +40,7 @@ describe('同步不再信任裝置時鐘', () => {
 
   it('推成功後清掉髒標記，並把 meta 對齊伺服器時間戳', async () => {
     saveDay('2026-09-01', day('今天'))
-    expect(loadDirty()['pp:day:2026-09-01']).toBe(true)
+    expect(loadDirty()['pp:day:2026-09-01']).toBeGreaterThan(0)
     savedRows = [{ key: 'pp:day:2026-09-01', updated_at: '2026-09-01T10:00:00Z' }]
     await syncNow()
     expect(loadDirty()['pp:day:2026-09-01']).toBeUndefined()
@@ -79,7 +79,7 @@ describe('push 的失敗與邊界', () => {
     })
     saveDay('2026-09-02', day('上傳會失敗'))
     await expect(syncNow()).rejects.toThrow('上傳失敗')
-    expect(loadDirty()['pp:day:2026-09-02']).toBe(true)
+    expect(loadDirty()['pp:day:2026-09-02']).toBeGreaterThan(0)
   })
 
   it('upsert 成功但伺服器沒回內容時，髒標記仍要清掉（否則每次同步都重推）', async () => {

@@ -107,7 +107,8 @@ const read = <T>(key: string): T | null => {
 const LOCAL_ONLY_PREFIX = 'ppl:'
 
 const META_KEY = 'pp:meta' // 每個 key 的最後修改時間（雲端同步用）
-const DIRTY_KEY = 'ppl:dirty' // 有本機改動、還沒推上雲端的 key
+const DIRTY_KEY = 'ppl:dirty' // 有本機改動、還沒推上雲端的 key → 版號
+const DIRTY_MIGRATED_KEY = 'ppl:dirtyMigrated' // 舊制搬遷是否跑過（獨立旗標）
 
 /** 寫入後通知（雲端同步 debounce push 用） */
 export let onDataWrite: ((key: string) => void) | null = null
@@ -121,11 +122,22 @@ export const loadMeta = (): Record<string, number> => read<Record<string, number
  *  既有裝置沒有 pp:dirty，若直接改用髒標記，還沒推上去的本機改動會永遠不再上傳。
  *  所以第一次跑到這裡時，用舊規則（本機 meta 比伺服器新）補標一次。 */
 export const migrateDirtyOnce = (serverTs: Record<string, number>): void => {
-  if (localStorage.getItem(DIRTY_KEY) !== null) return
+  // 用獨立旗標，不是「ppl:dirty 存不存在」。後者的問題（Codex 互審 #3）：
+  // 使用者升級後先編輯一筆就建立了 ppl:dirty，之後首次登入時搬遷直接跳過，
+  // 升級前就存在、從沒上傳過的歷史日記從此永遠不會上雲。
+  if (localStorage.getItem(DIRTY_MIGRATED_KEY) === '1') return
   const meta = loadMeta()
-  const d: Record<string, true> = {}
-  for (const k of allDataKeys()) if ((meta[k] ?? 0) > (serverTs[k] ?? 0)) d[k] = true
+  const d = loadDirty()
+  for (const k of allDataKeys()) {
+    if (d[k] !== undefined) continue // 升級後已編輯過的，標記已經在了
+    // 伺服器根本沒有這個 key = 純本機資料，一定要上傳（純本機使用者首次登入的情況）
+    if (serverTs[k] === undefined) d[k] = 1
+    // 伺服器有但本機看起來較新：沿用舊演算法的判斷。這是舊規則能提供的最好訊號，
+    // 全部標記反而危險——pull 會跳過髒的 key，落後的裝置會用舊內容蓋掉雲端新版。
+    else if ((meta[k] ?? 0) > serverTs[k]) d[k] = 1
+  }
   localStorage.setItem(DIRTY_KEY, JSON.stringify(d))
+  localStorage.setItem(DIRTY_MIGRATED_KEY, '1')
 }
 
 // 為什麼要有髒標記，而不是比時間戳決定要不要 push：
@@ -135,12 +147,22 @@ export const migrateDirtyOnce = (serverTs: Record<string, number>): void => {
 // 自己寫的東西一直消失，而且沒有任何錯誤訊息。時鐘慢了則是反過來一直重複推。
 // 改成髒標記後，push 只問「這個 key 改過了嗎」，跟任何時鐘都無關。
 // 時間戳只留給 pull 用，而且兩邊都是伺服器時鐘（見 writeFromCloud / markSynced）。
-export const loadDirty = (): Record<string, true> =>
-  read<Record<string, true>>(DIRTY_KEY) ?? {}
+// 值是「版號」不是 boolean。理由（Codex 互審 #1 抓到）：
+// syncNow 讀值 → 送出 → 等回應，這中間使用者可能又改了同一個 key。
+// 用 boolean 的話第二次修改只是把 true 設成 true，舊的 upsert 回來就把它清掉，
+// 那筆較新的內容從此沒有標記、永遠不會上傳。改成每次修改就 +1，
+// 清除時比對版號：版號變了代表推送期間又被改過，髒標記要留著。
+export const loadDirty = (): Record<string, number> => {
+  const raw = read<Record<string, unknown>>(DIRTY_KEY) ?? {}
+  const out: Record<string, number> = {}
+  // 舊格式是 boolean（2026-09-01 當天的中間版本），一併正規化
+  for (const [k, v] of Object.entries(raw)) out[k] = typeof v === 'number' ? v : 1
+  return out
+}
 
 const markDirty = (key: string) => {
   const d = loadDirty()
-  d[key] = true
+  d[key] = (d[key] ?? 0) + 1
   localStorage.setItem(DIRTY_KEY, JSON.stringify(d))
 }
 
@@ -151,14 +173,20 @@ const markDirty = (key: string) => {
  *  這時仍要清髒標記（東西確實上去了），但不動 meta——留給下次 pull 從伺服器補正。 */
 export const markSynced = (
   rows: { key: string; updated_at: string }[],
-  pushedKeys: string[] = []
+  pushedRevs: Record<string, number> = {}
 ): void => {
   const d = loadDirty()
   const m = loadMeta()
-  for (const k of pushedKeys) delete d[k]
+  // 只清「推送期間沒再被改過」的 key。版號對不上代表使用者在等回應時又編輯了，
+  // 那筆更新的內容還沒上去，標記必須留著讓下次同步帶走。
+  const clear = (k: string) => {
+    if (pushedRevs[k] !== undefined && d[k] !== pushedRevs[k]) return
+    delete d[k]
+  }
+  for (const k of Object.keys(pushedRevs)) clear(k)
   for (const r of rows) {
-    delete d[r.key]
-    m[r.key] = new Date(r.updated_at).getTime()
+    clear(r.key)
+    if (d[r.key] === undefined) m[r.key] = new Date(r.updated_at).getTime()
   }
   localStorage.setItem(DIRTY_KEY, JSON.stringify(d))
   localStorage.setItem(META_KEY, JSON.stringify(m))
@@ -477,7 +505,9 @@ export const clearAllLocalData = () => {
   const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)
-    if (k?.startsWith('pp:')) keys.push(k)
+    // ppl: 也要清。使用者按「清空這台裝置」時，最不該留下的就是他的 OpenAI
+    // 金鑰（綁著信用卡）——留著等於下一個用這台裝置的人可以直接刷他的帳單。
+    if (k?.startsWith('pp:') || k?.startsWith(LOCAL_ONLY_PREFIX)) keys.push(k)
   }
   for (const k of keys) localStorage.removeItem(k)
 }
@@ -549,9 +579,11 @@ const pruneBackups = () => {
 
 /** 每天自動快照一次本機所有資料到 pp:bk:<today>，保留最近 7 份。純本機、不同步、不匯出。
  *  寫入型操作、不碰既有資料；空資料不備份。配額/序列化失敗一律靜默。 */
-export const autoBackup = (todayKey: string): void => {
+export const autoBackup = (todayKey: string, force = false): void => {
   try {
-    if (localStorage.getItem(LAST_BACKUP_KEY) === todayKey) return // 今天已備份
+    // force：要清資料之前必須無條件重照一張。原本「今天備過就 return」會讓
+    // 早上那張快照之後寫的東西完全沒進備份，而呼叫端以為有得後悔。
+    if (!force && localStorage.getItem(LAST_BACKUP_KEY) === todayKey) return
     const data: Record<string, string> = {}
     let has = false
     for (const k of allDataKeys()) {
@@ -603,9 +635,13 @@ export const localDataCount = (): number => allDataKeys().length
 
 /** 放棄這台裝置的本機資料改用雲端那份。先存一份快照再清，才有得後悔。 */
 export const discardLocalForNewOwner = (uid: string): void => {
-  autoBackup(toDateKey(new Date()))
+  autoBackup(toDateKey(new Date()), true) // 無條件重照，早上那張不算數
   for (const k of allDataKeys()) localStorage.removeItem(k)
   localStorage.removeItem(META_KEY)
+  // dirty 也要清。沒清的話：pull 會因為「這個 key 是髒的」而跳過新帳號的雲端版本，
+  // push 又因為本機檔案已刪而排除它——那些 key 從此兩邊都拉不到也推不上。
+  localStorage.removeItem(DIRTY_KEY)
+  localStorage.removeItem(DIRTY_MIGRATED_KEY)
   setDataOwner(uid)
 }
 
