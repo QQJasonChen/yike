@@ -13,6 +13,7 @@ import {
   listBackups,
   loadDay,
   loadLife,
+  loadDirty,
   loadMeta,
   loadSettings,
   mondayOf,
@@ -244,27 +245,35 @@ describe('habit auto-recovery', () => {
 })
 
 describe('sync gate (pull-before-write)', () => {
-  it('defers meta bump + push while gate closed, flushes on open', () => {
+  // 契約變更（2026-09-01）：本機寫入改成只標記 dirty，不再寫 meta。
+  // meta 現在的語意是「上次看到的伺服器版本時間」，只能由伺服器的值填——
+  // 兩個時鐘寫同一個欄位正是資料消失的根因。閘門的行為本身沒變。
+  it('defers dirty mark + push while gate closed, flushes on open', () => {
     const pushed: string[] = []
     setOnDataWrite((k) => pushed.push(k))
     closeSyncGate()
     saveDay('2026-06-13', { ...emptyDay(), score: 4 })
-    // 閘門關閉：localStorage 有寫入，但 meta 不動、push 不觸發
+    // 閘門關閉：localStorage 有寫入，但不標 dirty、不觸發 push
     expect(loadDay('2026-06-13').score).toBe(4)
-    expect(loadMeta()['pp:day:2026-06-13']).toBeUndefined()
+    expect(loadDirty()['pp:day:2026-06-13']).toBeUndefined()
     expect(pushed).toEqual([])
     openSyncGate()
-    // 打開後：補 bump meta + 觸發推送
-    expect(loadMeta()['pp:day:2026-06-13']).toBeGreaterThan(0)
+    // 打開後：補標 dirty + 觸發推送
+    expect(loadDirty()['pp:day:2026-06-13']).toBe(true)
     expect(pushed).toContain('pp:day:2026-06-13')
     setOnDataWrite(null)
   })
 
-  it('writes after gate opens bump meta normally', () => {
+  it('writes after gate opens mark dirty normally', () => {
     closeSyncGate()
     openSyncGate()
     saveDay('2026-06-14', { ...emptyDay(), score: 2 })
-    expect(loadMeta()['pp:day:2026-06-14']).toBeGreaterThan(0)
+    expect(loadDirty()['pp:day:2026-06-14']).toBe(true)
+  })
+
+  it('本機寫入絕不碰 meta（meta 只能由伺服器時間戳填）', () => {
+    saveDay('2026-06-15', { ...emptyDay(), score: 3 })
+    expect(loadMeta()['pp:day:2026-06-15']).toBeUndefined()
   })
 })
 

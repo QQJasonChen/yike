@@ -16,7 +16,8 @@ const sessionAs = (uid: string) =>
 const emptyServer = () =>
   from.mockReturnValue({
     select: async () => ({ data: [], error: null }),
-    upsert: async () => ({ error: null }),
+    // upsert 現在會接 .select() 拿回伺服器指派的 updated_at
+    upsert: () => ({ select: async () => ({ data: [], error: null }) }),
   })
 
 const seedLocal = () =>

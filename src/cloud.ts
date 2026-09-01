@@ -11,8 +11,11 @@ import {
   clearSupabaseTokens,
   getDataOwner,
   hasCloudArtifact,
+  loadDirty,
   loadMeta,
   localDataCount,
+  markSynced,
+  migrateDirtyOnce,
   markCloudBound,
   openSyncGate,
   setDataOwner,
@@ -188,30 +191,43 @@ export const syncNow = async (opts?: {
   if (error) throw new Error(`下載失敗：${error.message}`)
   const serverTs: Record<string, number> = {}
   let pulled = 0
+  migrateDirtyOnce(
+    Object.fromEntries(((rows ?? []) as Row[]).map((r) => [r.key, new Date(r.updated_at).getTime()]))
+  )
+  const dirtyBefore = loadDirty()
   for (const r of (rows ?? []) as Row[]) {
     const ts = new Date(r.updated_at).getTime()
     serverTs[r.key] = ts
+    // 有本機未上傳的改動就不要蓋掉它——使用者剛寫的東西不能無聲消失。
+    // 這個 key 會在下面的 push 階段上傳，以本機版本為準。
+    if (dirtyBefore[r.key]) continue
     if (ts > (meta[r.key] ?? 0)) {
       writeFromCloud(r.key, r.value, ts)
       pulled++
     }
   }
 
-  // 2) Push：本機比伺服器新的 key 上傳
-  const freshMeta = loadMeta()
-  const toPush = allDataKeys()
-    .filter((k) => (freshMeta[k] ?? 0) > (serverTs[k] ?? 0))
+  // 2) Push：只推「本機改過還沒上傳」的 key（髒標記），不比任何時鐘。
+  //    updated_at 一律不送——由資料庫 trigger 寫成伺服器的 now()，
+  //    這樣客戶端時鐘設錯也污染不了排序基準。
+  const dirty = loadDirty()
+  const existing = new Set(allDataKeys())
+  const toPush = Object.keys(dirty)
+    .filter((k) => existing.has(k))
     .map((k) => ({
       user_id: user.id,
       key: k,
       value: JSON.parse(localStorage.getItem(k)!),
-      updated_at: new Date(freshMeta[k] ?? Date.now()).toISOString(),
     }))
   if (toPush.length) {
-    const { error: upErr } = await db
+    const { data: saved, error: upErr } = await db
       .from('journal')
       .upsert(toPush, { onConflict: 'user_id,key' })
+      .select('key,updated_at')
     if (upErr) throw new Error(`上傳失敗：${upErr.message}`)
+    // 用伺服器回傳的時間戳對齊本機 meta，並清掉髒標記。
+    // 沒有這一步，本機 meta 會停在客戶端時鐘，下次 pull 又會誤判。
+    markSynced((saved ?? []) as { key: string; updated_at: string }[])
   }
 
   return { pulled, pushed: toPush.length }

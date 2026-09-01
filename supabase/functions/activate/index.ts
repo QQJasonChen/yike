@@ -96,25 +96,56 @@ Deno.serve(async (req) => {
 
   // 路徑 B：帶序號 → 向 Gumroad 驗證（會累計啟用次數）
   const permalink = Deno.env.get('GUMROAD_PERMALINK') ?? 'yike'
-  const gumRes = await fetch('https://api.gumroad.com/v2/licenses/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      product_permalink: permalink,
-      license_key: licenseKey,
-      increment_uses_count: 'true',
-    }),
-  })
+  // 先「不計次」驗證。原本每次呼叫都 increment_uses_count=true，代表使用者
+  // 每打錯一次就燒掉一次額度——實測有真人試了 13 次才成功。計次要留給
+  // 「真的開通成功」那一刻，不是留給每一次嘗試。
+  const verify = (increment: boolean) =>
+    fetch('https://api.gumroad.com/v2/licenses/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        product_permalink: permalink,
+        license_key: licenseKey,
+        increment_uses_count: increment ? 'true' : 'false',
+      }),
+    })
+
+  const gumRes = await verify(false)
   const gum = await gumRes.json().catch(() => ({}))
   if (!gum.success) return json(403, { error: '序號無效——請確認購買信裡的 License Key' })
   const purchase = gum.purchase ?? {}
   if (purchase.refunded || purchase.chargebacked)
     return json(403, { error: '此序號的訂單已退款，無法啟用' })
-  if ((gum.uses ?? 0) > 10)
-    return json(403, { error: '此序號啟用次數已達上限，請聯繫站方' })
+  // 一筆購買開一個帳號；留 3 次是給換裝置、打錯、重設密碼的空間。
+  // 原本是 10，等於一組序號可以分給 9 個朋友共用。
+  if ((gum.uses ?? 0) >= 3)
+    return json(403, {
+      error: '此序號的啟用次數已用完。如果你是本人要重新開通，直接回覆購買信給我。',
+    })
 
   // 2) 建立帳號（service role）
-  return (await createUser(url, srk, email, password)).response
+  const created = await createUser(url, srk, email, password)
+  // 只有真的建成帳號才計次
+  if (created.ok) {
+    await verify(true).catch(() => {})
+    // 記下是哪筆購買、用什麼 email 開的，之後對帳與客服查得到
+    await fetch(`${url}/rest/v1/entitlements`, {
+      method: 'POST',
+      headers: {
+        apikey: srk,
+        Authorization: `Bearer ${srk}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({
+        email,
+        source: 'gumroad-license',
+        redeemed_at: new Date().toISOString(),
+        raw: { purchase_email: purchase.email ?? null, license_uses: gum.uses ?? 0 },
+      }),
+    }).catch(() => {})
+  }
+  return created.response
 })
 
 async function createUser(

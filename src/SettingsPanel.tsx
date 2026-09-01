@@ -12,6 +12,7 @@ import {
   syncNow,
   currentUserId,
 } from './cloud'
+import { OPENAI_KEY_HELP_URL, verifyKeyAndPickModel } from './ai'
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
 import IapPanel from './IapPanel'
@@ -24,12 +25,14 @@ import {
   daysSinceExport,
   discardLocalForNewOwner,
   exportBackupAsFile,
+  getOpenAIKey,
   localDataCount,
   setDataOwner,
   importAll,
   listBackups,
   markExported,
   restoreBackup,
+  setOpenAIKey,
 } from './storage'
 import {
   DEFAULT_EVENING_QS,
@@ -437,6 +440,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
           )}
 
           <BackupSettings />
+          <OpenAIKeySettings />
 
           {!isNative && (
             <p className="sync-help" style={{ marginTop: 20, textAlign: 'center' }}>
@@ -449,6 +453,100 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// AI 金鑰設定：使用者填自己的 OpenAI 金鑰，站方完全不碰。
+function OpenAIKeySettings() {
+  const [key, setKey] = useState('')
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const saved = getOpenAIKey()
+  const masked = saved ? `${saved.slice(0, 7)}…${saved.slice(-4)}` : ''
+  return (
+    <div className="data-actions backup-box" style={{ marginTop: 18, display: 'block' }}>
+      <div className="label">AI 教練（選用，需要你自己的 OpenAI 金鑰）</div>
+      <p className="sync-help">
+        填入金鑰後，「回顧」頁會多一個 AI 分析按鈕，幫你從記錄裡看出模式。
+        <b>金鑰只存在這台裝置</b>——不會同步上雲、不進備份、不經過我的伺服器；
+        你的日記是從你的瀏覽器直接送到 OpenAI 的。費用走你自己的 OpenAI 帳戶，用多少付多少。
+      </p>
+      <ol className="sync-help" style={{ paddingLeft: 20, marginTop: 8 }}>
+        <li>
+          到{' '}
+          <a href={OPENAI_KEY_HELP_URL} target="_blank" rel="noopener noreferrer">
+            platform.openai.com/api-keys
+          </a>{' '}
+          登入（沒帳號就先註冊）
+        </li>
+        <li>按 <b>Create new secret key</b>，取個名字如「一刻手帳」，建立</li>
+        <li>複製那串 <code>sk-</code> 開頭的字（<b>只會顯示這一次</b>），貼到下面</li>
+        <li>
+          OpenAI 需要先儲值才能用（最低 US$5）。建議到{' '}
+          <a
+            href="https://platform.openai.com/settings/organization/limits"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Limits
+          </a>{' '}
+          設一個每月上限，以防萬一
+        </li>
+      </ol>
+      <p className="hint" style={{ marginTop: 6 }}>
+        一次分析大約 US$0.001（約新台幣三分錢）。儲值 US$5 大概夠用好幾年。
+      </p>
+      <div className="line-input sync-token" style={{ marginTop: 8 }}>
+        <input
+          type="password"
+          placeholder={masked || 'sk-...'}
+          value={key}
+          onChange={(e) => setKey(e.target.value.trim())}
+        />
+      </div>
+      <div className="data-actions" style={{ marginTop: 8 }}>
+        <button
+          disabled={busy}
+          onClick={() => {
+            const v = key.trim()
+            if (!v) {
+              setOpenAIKey('')
+              setMsg('✓ 已清除金鑰，AI 功能關閉')
+              return
+            }
+            if (!v.startsWith('sk-')) {
+              setMsg('✗ OpenAI 金鑰應該是 sk- 開頭，再確認一次有沒有複製完整')
+              return
+            }
+            setBusy(true)
+            setMsg('驗證中…')
+            void verifyKeyAndPickModel(v).then((r) => {
+              setBusy(false)
+              if (!r.ok) {
+                setMsg(`✗ ${r.error}`)
+                return
+              }
+              // 存之前就驗過，不會出現「顯示已儲存、實際上根本不能用」
+              setOpenAIKey(v, r.model)
+              setKey('')
+              setMsg(`✓ 金鑰有效，已儲存（將使用 ${r.model}）。回顧頁的 AI 分析可以用了`)
+            })
+          }}
+        >
+          {busy ? '驗證中…' : key.trim() ? '驗證並儲存' : saved ? '清除金鑰' : '儲存金鑰'}
+        </button>
+      </div>
+      {saved && !msg && (
+        <p className="hint" style={{ marginTop: 6 }}>
+          目前已設定：{masked}
+        </p>
+      )}
+      {msg && (
+        <p className="hint" style={{ marginTop: 6 }}>
+          {msg}
+        </p>
+      )}
     </div>
   )
 }

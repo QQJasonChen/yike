@@ -33,6 +33,17 @@ Deno.serve(async (req) => {
     return json(400, { error: 'invalid json' })
   }
 
+  // 退款／爭議／測試／未完成付款一律不開通。
+  // gumroad-ping 本來就有這層檢查，這支漏了——任何通過 secret 的 JSON，
+  // 只要有個看起來像 email 的欄位就直接發權益，退款事件也照發。
+  const p = payload as Record<string, unknown>
+  const flag = (k: string) => p[k] === true || p[k] === 'true'
+  if (flag('refunded') || flag('disputed') || flag('test') || flag('is_test'))
+    return json(200, { ok: true, skipped: 'refunded/disputed/test' })
+  const status = String(p.status ?? p.payment_status ?? p.event ?? '').toLowerCase()
+  if (status && !/paid|success|succeeded|completed|complete/.test(status))
+    return json(200, { ok: true, skipped: `status=${status}` })
+
   const email = findEmail(payload)
   if (!email) return json(422, { error: 'no email in payload' })
 

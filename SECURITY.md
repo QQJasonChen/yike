@@ -16,7 +16,7 @@ Supabase Edge Functions 裡；因此「前端」＝完全不可控。
 |---|---|---|
 | 使用者的每日日記與反思 | `public.journal` | 最私密的內容。外洩＝產品信譽歸零，且無法挽回 |
 | `SUPABASE_SERVICE_ROLE_KEY` | Edge Function secrets、`~/.yike-supabase-service-key` | 繞過所有 RLS，等於整個資料庫 |
-| `OPENAI_KEY` | Edge Function secrets | 綁著信用卡，外洩＝帳單失控 |
+| ~~`OPENAI_KEY`~~ | — | **已移除**：改成使用者自帶金鑰（BYOK），站方不再持有任何 OpenAI 金鑰 |
 | `BACKUP_PASSPHRASE` | GitHub secret、`~/.yike-backup-passphrase` | 掉了不會外洩資料，但備份會變成解不開的亂碼 |
 | 付費白名單 | `public.entitlements` | 被寫入＝任何人自助開通付費功能 |
 | Supabase Management token (`sbp_`) | 本機 keychain | **整個帳號六個專案**，比 service role key 更嚴重。永遠不要放進任何 CI |
@@ -58,6 +58,11 @@ Supabase Edge Functions 裡；因此「前端」＝完全不可控。
 5. **同一筆付款只能開通一次。** webhook 以 email 為主鍵 upsert，重複送達不得重複給權益。
 6. **節流故障時要擋，不是要放行。** 計數器查不到或出錯 → 拒絕，不能 fail-open。
 7. **備份不得以明文離開 Supabase。** 落地前先 AES-256 加密。
+8. **`updated_at` 只能由資料庫寫。** 客戶端送來的時間戳一律被 trigger 覆蓋成 `now()`——
+   裝置時鐘設錯會污染排序基準，讓正常裝置的編輯永遠推不上去。
+9. **本機資料只能推進它所屬的帳號。** `ppl:owner` 記錄歸屬；共用裝置上不得把
+   前一個人的日記同步進後一個人的帳號（RLS 擋不到這件事）。
+10. **`ppl:` 前綴的 key 絕不離開裝置。** 金鑰、歸屬、髒標記都在這個前綴下。
 
 > 條 3 和條 6 都是踩過才寫進來的：`ai_usage` 的 migration 一度沒跑到 production，
 > 而判斷寫成 `if (bump.ok && ...)`，RPC 不存在時短路放行 → 上限完全沒生效。
@@ -68,7 +73,7 @@ Supabase Edge Functions 裡；因此「前端」＝完全不可控。
 | 入口 | 風險 | 防禦 |
 |---|---|---|
 | `POST /functions/v1/activate` | 無限開帳號、暴力猜序號、email 列舉 | 節流 IP 20/時、email 5/時（`rate_limit_bump`，fail-closed） |
-| `POST /functions/v1/ai-insight` | 燒 OpenAI 帳單 | 需 JWT ＋ 每日 15 次（原子遞增）＋ 輸入截斷 6000 字 ＋ `max_tokens: 700` |
+| ~~`ai-insight`~~ | — | 已停用：AI 改走使用者自己的金鑰，站方沒有帳單可以被燒 |
 | `POST /functions/v1/gumroad-ping`、`portaly-webhook` | 偽造付款通知自助開通 | query 的 `?secret=`；退款/爭議不開通 |
 | `POST /functions/v1/delete-account` | 刪別人的帳號 | 驗 JWT 取 uid，只刪自己的 |
 | `/rest/v1/journal` | 讀別人的日記 | RLS `auth.uid() = user_id`（四種操作都有 policy） |
@@ -80,10 +85,14 @@ Supabase Edge Functions 裡；因此「前端」＝完全不可控。
   端對端加密尚未完成（`src/e2ee.ts` 有核心但未接上主流程）。
   隱私政策必須誠實反映這一點，不能寫成「只有你看得到」。
 - **共用邀請碼是永久有效的單一字串**，已寄給過買家。屬於「已知會慢慢外流」的資產。
+  2026-09-01 已輪替一次（前一組被寫進公開 repo 的測試檔）。**測試絕不可使用真實憑證。**
 - **webhook 的 secret 放在 query string**，會進各種存取紀錄。改 header 較好。
 - **Supabase 免費方案**：無自動備份、無 PITR、閒置會暫停。備份靠 `yike-backups` private repo
   每日快照（AES-256，附還原演練 `restore.sh --verify`）。
 - **未設 CSP**。
+- **純本機使用者（沒註冊帳號的人）的資料，站方備份不到**——資料從未離開他們的裝置。
+  他們能靠的是本機每日快照、「存成檔案」匯出、以及設定頁的未匯出提醒。這是
+  「資料只在你的裝置」這個承諾的另一面，不是疏漏，但要誠實告知。
 
 ## 掃描前要告訴 AI 的話
 

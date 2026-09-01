@@ -101,7 +101,13 @@ const read = <T>(key: string): T | null => {
   }
 }
 
+// ppl: 前綴 = 只屬於這台裝置，絕不同步上雲、絕不進匯出檔。
+// 用前綴而不是逐一加白名單：allDataKeys() 預設收錄所有 pp: 開頭的 key，
+// 忘記把新 key 加進排除清單就會被同步出去——把它做成結構保證，不靠人記得。
+const LOCAL_ONLY_PREFIX = 'ppl:'
+
 const META_KEY = 'pp:meta' // 每個 key 的最後修改時間（雲端同步用）
+const DIRTY_KEY = 'ppl:dirty' // 有本機改動、還沒推上雲端的 key
 
 /** 寫入後通知（雲端同步 debounce push 用） */
 export let onDataWrite: ((key: string) => void) | null = null
@@ -111,11 +117,50 @@ export const setOnDataWrite = (fn: ((key: string) => void) | null) => {
 
 export const loadMeta = (): Record<string, number> => read<Record<string, number>>(META_KEY) ?? {}
 
-const touchMeta = (key: string) => {
+/** 從「比時間戳」升級到「髒標記」的一次性搬遷：
+ *  既有裝置沒有 pp:dirty，若直接改用髒標記，還沒推上去的本機改動會永遠不再上傳。
+ *  所以第一次跑到這裡時，用舊規則（本機 meta 比伺服器新）補標一次。 */
+export const migrateDirtyOnce = (serverTs: Record<string, number>): void => {
+  if (localStorage.getItem(DIRTY_KEY) !== null) return
+  const meta = loadMeta()
+  const d: Record<string, true> = {}
+  for (const k of allDataKeys()) if ((meta[k] ?? 0) > (serverTs[k] ?? 0)) d[k] = true
+  localStorage.setItem(DIRTY_KEY, JSON.stringify(d))
+}
+
+// 為什麼要有髒標記，而不是比時間戳決定要不要 push：
+// 舊做法是「本機時間戳 > 伺服器時間戳就上傳」，等於信任裝置的時鐘。
+// 裝置時鐘快了（手動設錯、時區、電池沒電重置）→ 它寫的資料拿到未來時間戳 →
+// 之後正常裝置的編輯永遠推不上去（本機時間 > 未來時間恆為假），使用者會看到
+// 自己寫的東西一直消失，而且沒有任何錯誤訊息。時鐘慢了則是反過來一直重複推。
+// 改成髒標記後，push 只問「這個 key 改過了嗎」，跟任何時鐘都無關。
+// 時間戳只留給 pull 用，而且兩邊都是伺服器時鐘（見 writeFromCloud / markSynced）。
+export const loadDirty = (): Record<string, true> =>
+  read<Record<string, true>>(DIRTY_KEY) ?? {}
+
+const markDirty = (key: string) => {
+  const d = loadDirty()
+  d[key] = true
+  localStorage.setItem(DIRTY_KEY, JSON.stringify(d))
+}
+
+/** push 成功後：清掉髒標記，並把 meta 對齊伺服器回傳的時間戳（讓兩邊用同一個時鐘）。 */
+export const markSynced = (rows: { key: string; updated_at: string }[]): void => {
+  const d = loadDirty()
   const m = loadMeta()
-  m[key] = Date.now()
+  for (const r of rows) {
+    delete d[r.key]
+    m[r.key] = new Date(r.updated_at).getTime()
+  }
+  localStorage.setItem(DIRTY_KEY, JSON.stringify(d))
   localStorage.setItem(META_KEY, JSON.stringify(m))
 }
+
+// 本機編輯只做一件事：標記「這個 key 改過了」。
+// 絕不寫 meta——meta 的語意是「我上次看到的伺服器版本時間」，只能由伺服器的值填。
+// 兩個時鐘寫同一個欄位正是資料消失的根因：本機編輯把 meta 蓋成裝置時間後，
+// pull 就會拿「伺服器時間 vs 裝置時間」比大小，時鐘一偏就判錯。
+const touchMeta = (key: string) => markDirty(key)
 
 // 同步閘門（拉取優先）：雲端裝置開站時「先把雲端 pull 下來、再讓本機寫入影響同步」。
 // 閘門關閉期間，write() 照常落地 localStorage（畫面不受影響），但**不 bump meta、不觸發 push**——
@@ -155,6 +200,12 @@ export const writeFromCloud = (key: string, value: unknown, serverTs: number) =>
   const m = loadMeta()
   m[key] = serverTs
   localStorage.setItem(META_KEY, JSON.stringify(m))
+  // 剛用雲端版本覆蓋本機，這個 key 就不再是「本機有未上傳的改動」
+  const d = loadDirty()
+  if (d[key]) {
+    delete d[key]
+    localStorage.setItem(DIRTY_KEY, JSON.stringify(d))
+  }
 }
 
 export const loadDay = (dateKey: string): DayEntry => {
@@ -436,7 +487,8 @@ export const allDataKeys = (): string[] => {
       k !== CLOUD_BOUND_KEY &&
       k !== HABITS_RESTORED_KEY &&
       k !== LAST_BACKUP_KEY &&
-      !k.startsWith(BACKUP_PREFIX)
+      !k.startsWith(BACKUP_PREFIX) &&
+      !k.startsWith(LOCAL_ONLY_PREFIX)
     )
       keys.push(k)
   }
@@ -528,7 +580,7 @@ export const listBackups = (): BackupMeta[] => {
   return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 }
 
-const OWNER_KEY = 'pp:owner' // 這台裝置的本機資料屬於哪個雲端帳號（uid）
+const OWNER_KEY = 'ppl:owner' // 這台裝置的本機資料屬於哪個雲端帳號（uid）
 
 /** 這台裝置的資料目前歸屬於誰。null = 還沒跟任何帳號綁定（純本機使用者）。
  *  存在的理由：共用裝置上，A 先在本機寫了日記、B 接著登入自己的帳號，
@@ -548,6 +600,28 @@ export const discardLocalForNewOwner = (uid: string): void => {
   localStorage.removeItem(META_KEY)
   setDataOwner(uid)
 }
+
+const OPENAI_KEY_KEY = LOCAL_ONLY_PREFIX + 'openaiKey'
+
+/** 使用者自己的 OpenAI 金鑰。只存在這台裝置：
+ *  不同步上雲、不進匯出檔、不經過站方任何伺服器——瀏覽器直接打 OpenAI。
+ *  站方因此完全碰不到你的金鑰，也不會替你付任何費用。 */
+const OPENAI_MODEL_KEY = LOCAL_ONLY_PREFIX + 'openaiModel'
+
+export const getOpenAIKey = (): string => localStorage.getItem(OPENAI_KEY_KEY) ?? ''
+/** 存金鑰時一併記下當時查到的可用型號（型號會汰換，不寫死在程式裡）。 */
+export const setOpenAIKey = (k: string, model?: string) => {
+  const v = k.trim()
+  if (v) {
+    localStorage.setItem(OPENAI_KEY_KEY, v)
+    if (model) localStorage.setItem(OPENAI_MODEL_KEY, model)
+  } else {
+    localStorage.removeItem(OPENAI_KEY_KEY)
+    localStorage.removeItem(OPENAI_MODEL_KEY)
+  }
+}
+export const getOpenAIModel = (): string =>
+  localStorage.getItem(OPENAI_MODEL_KEY) ?? 'gpt-4o-mini'
 
 /** 把某份每日快照打包成可下載的 JSON 文字（跟 exportAll 同格式，importAll 吃得下）。
  *  存在的理由：pp:bk:* 只活在 localStorage，跟本體同一個籃子——清瀏覽器資料、
@@ -571,7 +645,7 @@ export const exportBackupAsFile = (date: string): string => {
   )
 }
 
-const LAST_EXPORT_KEY = 'pp:lastExport' // 最後一次把資料帶離這台裝置的日期
+const LAST_EXPORT_KEY = 'ppl:lastExport' // 最後一次把資料帶離這台裝置的日期
 
 export const markExported = () => localStorage.setItem(LAST_EXPORT_KEY, toDateKey(new Date()))
 export const lastExportDate = (): string | null => localStorage.getItem(LAST_EXPORT_KEY)
