@@ -18,6 +18,7 @@ const from = vi.fn(() => ({
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ auth, from }) }))
 
 import { syncNow } from '../cloud'
+import { DayEntry, emptyDay, emptyTask } from '../types'
 import {
   autoBackup, clearAllLocalData, discardLocalForNewOwner, getOpenAIKey,
   listBackups, loadDirty, loadDay, saveDay, setDataOwner, setOpenAIKey,
@@ -25,8 +26,8 @@ import {
 
 const ME = 'me-uid'
 const OTHER = 'other-uid'
-const day = (mit: string) =>
-  ({ mit, answers: {}, habitsDone: {}, tasks: [], focusSessions: [], score: null, mood: null }) as never
+// MIT 是 tasks[0]，不是憑空的 mit 欄位（tsc 抓到我原本捏了一個不存在的屬性）
+const day = (mit: string): DayEntry => ({ ...emptyDay(), tasks: [{ ...emptyTask(), text: mit }] })
 
 beforeEach(() => {
   localStorage.clear()
@@ -43,7 +44,7 @@ describe('Codex #1：同步途中再編輯，不能被當成已同步', () => {
     onUpsert = () => saveDay('2026-09-01', day('等回應時寫的第二版'))
     await syncNow()
     expect(loadDirty()['pp:day:2026-09-01']).toBeGreaterThan(0)
-    expect(loadDay('2026-09-01').mit).toBe('等回應時寫的第二版')
+    expect(loadDay('2026-09-01').tasks[0].text).toBe('等回應時寫的第二版')
   })
 
   it('推送期間沒被改過的，正常清掉標記', async () => {
@@ -93,10 +94,10 @@ describe('Codex #4：放棄舊 owner 後要能拉得到新帳號的雲端資料'
     discardLocalForNewOwner(ME)
     expect(loadDirty()['pp:day:2026-09-01']).toBeUndefined()
     // 新帳號雲端有同一天的資料，必須拉得下來
-    serverRows = [{ key: 'pp:day:2026-09-01', value: { mit: '我自己的雲端版' }, updated_at: '2026-09-01T12:00:00Z' }]
+    serverRows = [{ key: 'pp:day:2026-09-01', value: { ...emptyDay(), tasks: [{ ...emptyTask(), text: '我自己的雲端版' }] }, updated_at: '2026-09-01T12:00:00Z' }]
     const r = await syncNow()
     expect(r.pulled).toBe(1)
-    expect(loadDay('2026-09-01').mit).toBe('我自己的雲端版')
+    expect(loadDay('2026-09-01').tasks[0].text).toBe('我自己的雲端版')
   })
 })
 
