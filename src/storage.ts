@@ -17,6 +17,7 @@ import {
   emptyWeek,
   emptyYear,
 } from './types'
+import { HealthDay, HealthRecord, HealthSource, mergeHealthDay } from './health'
 
 const DAY_PREFIX = 'pp:day:'
 const WEEK_PREFIX = 'pp:week:'
@@ -341,6 +342,28 @@ export const loadBizModel = (): BizModel => {
 }
 
 export const saveBizModel = (model: BizModel) => write(BIZ_KEY, model)
+
+// ---- 身體狀況（Garmin／Apple 健康，見 health.ts）----
+// pp: 前綴＝跟日記一樣同步上雲（E2EE）、進備份與匯出檔
+const HEALTH_PREFIX = 'pp:health:'
+
+export const loadHealth = (dateKey: string): HealthDay | null => read<HealthDay>(HEALTH_PREFIX + dateKey)
+
+/** 把一批日紀錄疊進本機（只寫有變化的日子，避免每次同步都把幾百天標成髒的）。回傳實際更新的天數。 */
+export const saveHealthRecords = (records: HealthRecord[], src: HealthSource): number => {
+  let n = 0
+  for (const r of records) {
+    const next = mergeHealthDay(loadHealth(r.date), r.m, src)
+    if (next) {
+      write(HEALTH_PREFIX + r.date, next)
+      n++
+    }
+  }
+  return n
+}
+
+/** 所有有健康資料的日期，新到舊 */
+export const allHealthKeys = (): string[] => keysWithPrefix(HEALTH_PREFIX).sort().reverse()
 
 const HABITS_RESTORED_KEY = 'pp:habitsAutoRestored'
 

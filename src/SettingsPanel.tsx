@@ -16,6 +16,7 @@ import { OPENAI_KEY_HELP_URL, verifyKeyAndPickModel } from './ai'
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
 import IapPanel from './IapPanel'
+import HealthSettings from './HealthSettings'
 import { notify } from './notify'
 import { PlantLegend } from './plantGlyphs'
 import {
@@ -325,6 +326,8 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
               <IapPanel signedIn={cloudStage === 'in'} />
             </>
           )}
+
+          <HealthSettings />
 
           <div className="settings-row">
             <span>Focus Time 長度</span>

@@ -5145,3 +5145,170 @@ button.mc-month:disabled { cursor: default; }
     grid-area: auto;
   }
 }
+
+/* ---------- 身體狀況（Garmin／Apple 健康，HealthCard.tsx）---------- */
+
+.health-card {
+  margin: 14px 0 6px;
+  padding: 12px 14px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper-card);
+}
+
+.health-card.hc-empty {
+  padding: 8px 14px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  font-family: var(--hand);
+}
+
+.hc-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hc-title {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+
+.hc-src {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.hc-ready {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border-left: 3px solid var(--gold);
+  background: rgba(184, 146, 62, 0.08);
+}
+
+.hc-ready.high {
+  border-left-color: #6f8f6a;
+  background: rgba(111, 143, 106, 0.1);
+}
+
+.hc-ready.low {
+  border-left-color: #c1632f;
+  background: rgba(193, 99, 47, 0.08);
+}
+
+.hc-ready-badge {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.hc-ready-badge b {
+  font-family: var(--eng);
+  margin-left: 2px;
+}
+
+.hc-advice {
+  font-size: 13px;
+  color: var(--ink-soft);
+  font-family: var(--hand);
+}
+
+.hc-reasons {
+  flex-basis: 100%;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.hc-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.hc-tile {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(237, 230, 214, 0.55);
+  min-width: 0;
+}
+
+.hc-label {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hc-value {
+  font-family: var(--eng);
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.hc-sub {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  line-height: 1.35;
+}
+
+.hc-trends {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 10px;
+}
+
+.hc-trend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hc-trend-label {
+  font-size: 11px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.hc-spark {
+  width: 84px;
+  height: 26px;
+  display: block;
+}
+
+.hc-spark .hc-base {
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+
+.hc-spark .hc-bar {
+  fill: var(--gold-soft);
+}
+
+.hc-spark .hc-bar.today {
+  fill: var(--gold-deep);
+}
+
+.hc-spark g:hover .hc-bar {
+  fill: var(--gold);
+}
+
+.hc-more {
+  margin-top: 6px;
+  border: none;
+  background: none;
+  padding: 2px 0;
+  font-size: 12px;
+  color: var(--gold-deep);
+  cursor: pointer;
+}

@@ -45,6 +45,10 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>讀取 Garmin 等裝置同步到「健康」的睡眠、步數、心率與 HRV，在手帳每天顯示你的身體狀況，幫你安排今天的專注量。</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>一刻手帳不會寫入任何健康資料。</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

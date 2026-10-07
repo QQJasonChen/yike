@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import MiniCal from './MiniCal'
+import HealthCard from './HealthCard'
 import TaskRow from './TaskRow'
 import Timeline from './Timeline'
 import { TimerState } from './FocusTimer'
@@ -411,6 +412,8 @@ export default function DayView({
             ))}
           </div>
         )}
+
+        <HealthCard dateKey={dateKey} />
 
         <div className="day-grid">
           <div>

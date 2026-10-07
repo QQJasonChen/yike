@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1590BE9688761FFF89BBF2D9 /* InkPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C403FCC357D48345F624ED1 /* InkPlugin.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* HealthKitPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6C /* HealthKitPlugin.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -20,6 +21,7 @@
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		B1C2D3E4F5061728394A5B6C /* HealthKitPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthKitPlugin.swift; sourceTree = "<group>"; };
 		4C403FCC357D48345F624ED1 /* InkPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InkPlugin.swift; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -88,6 +90,7 @@
 				D96397923EAA1F144EF4779C /* FocusLockPlugin.swift */,
 				DBCDEBD77632D7B87532271D /* App.entitlements */,
 				4C403FCC357D48345F624ED1 /* InkPlugin.swift */,
+				B1C2D3E4F5061728394A5B6C /* HealthKitPlugin.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -216,6 +219,7 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				1590BE9688761FFF89BBF2D9 /* InkPlugin.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* HealthKitPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

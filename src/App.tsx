@@ -13,6 +13,7 @@ import SettingsPanel from './SettingsPanel'
 import FocusTimer, { TimerState } from './FocusTimer'
 import Onboarding from './Onboarding'
 import { notify } from './notify'
+import { startHealthAutoSync } from './healthSync'
 import { searchAll, SearchTarget } from './search'
 import { focusLock } from './focusLock'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
@@ -83,7 +84,8 @@ export default function App() {
   const [yearNum, setYearNum] = useState(() => Number(todayKey.slice(0, 4)))
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [timer, setTimer] = useState<TimerState | null>(null)
-  const [showSettings, setShowSettings] = useState(false)
+  // Garmin OAuth 導回（?garmin=linked）→ 直接打開設定，讓使用者看到連結結果
+  const [showSettings, setShowSettings] = useState(() => new URLSearchParams(location.search).has('garmin'))
   const [moreOpen, setMoreOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -246,6 +248,9 @@ export default function App() {
   useEffect(() => {
     startAutoSync()
   }, [])
+
+  // 身體狀況（Garmin／Apple 健康）：開站與回到前景時自動拉最新資料
+  useEffect(() => startHealthAutoSync(), [])
 
   // 每日提醒：開 app 時重新排程一次，確保通知與目前設定一致
   useEffect(() => {
