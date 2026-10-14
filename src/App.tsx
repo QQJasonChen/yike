@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { cloudEnabled, currentEmail, startAutoSync } from './cloud'
+import { cloudEnabled, startAutoSync } from './cloud'
+import { useCloudAuthStatus } from './useCloudAuthStatus'
 import DayView from './DayView'
 import WeekView from './WeekView'
 import MonthView from './MonthView'
@@ -236,11 +237,7 @@ export default function App() {
   }, [])
 
   // 雲端登入狀態（頂欄 badge 用）
-  const [cloudIn, setCloudIn] = useState<boolean | null>(null)
-  useEffect(() => {
-    if (!cloudEnabled()) return
-    currentEmail().then((e) => setCloudIn(Boolean(e)))
-  }, [tab])
+  const cloudIn = useCloudAuthStatus()
 
   // 已登入雲端帳號時：開站自動同步＋寫入自動推送
   useEffect(() => {
@@ -295,9 +292,9 @@ export default function App() {
                 setSearchOpen(false)
                 setShowSettings(true)
               }}
-              title={cloudIn ? '雲端同步中，點擊管理' : '登入帳號，啟用全裝置自動同步'}
+              title={cloudIn ? '已登入雲端帳號，點擊管理' : '登入帳號，啟用全裝置自動同步'}
             >
-              {cloudIn ? '☁ 同步中' : '☁ 登入'}
+              {cloudIn ? '☁ 已登入' : '☁ 登入'}
             </button>
           )}
           <button
