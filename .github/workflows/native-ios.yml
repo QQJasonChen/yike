@@ -99,3 +99,58 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             build | tee "$RUNNER_TEMP/yike-native-build.log"
+      - name: Diagnose public podspec metadata after failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby <<'RUBY'
+          gem 'cocoapods', '=1.16.2'
+          require 'cocoapods'
+          require 'json'
+          require 'digest'
+          canonical = lambda do |value|
+            case value
+            when Hash then value.keys.sort.to_h { |key| [key, canonical.call(value[key])] }
+            when Array then value.map { |item| canonical.call(item) }
+            else value
+            end
+          end
+          puts JSON.pretty_generate({
+            ruby: RUBY_DESCRIPTION,
+            loaded_gems: %w[cocoapods cocoapods-core json activesupport xcodeproj].to_h { |name| [name, Gem.loaded_specs[name]&.version&.to_s] }
+          })
+          packages = {
+            'Capacitor' => ['@capacitor/ios', 'Capacitor.podspec'],
+            'CapacitorLocalNotifications' => ['@capacitor/local-notifications', 'CapacitorLocalNotifications.podspec'],
+            'RevenuecatPurchasesCapacitor' => ['@revenuecat/purchases-capacitor', 'RevenuecatPurchasesCapacitor.podspec']
+          }
+          lock = File.read('ios/App/Podfile.lock')
+          packages.each do |name, (package, podspec)|
+            package_path = File.join('node_modules', package)
+            package_version = JSON.parse(File.read(File.join(package_path, 'package.json'))).fetch('version')
+            source_path = File.join(package_path, podspec)
+            source_spec = Pod::Specification.from_file(source_path)
+            source_json = source_spec.to_pretty_json
+            target_path = File.join('ios/App/Pods/Local Podspecs', "#{name}.podspec.json")
+            record = {
+              pod: name, package_version: package_version,
+              source_podspec_sha256: Digest::SHA256.file(source_path).hexdigest,
+              source_generated_json_sha1: Digest::SHA1.hexdigest(source_json),
+              source_parsed_spec: JSON.parse(source_json),
+              lock_checksum: lock.match(/^  #{Regexp.escape(name)}: ([0-9a-f]{40})$/)&.captures&.first
+            }
+            if File.file?(target_path)
+              bytes = File.binread(target_path)
+              parsed = JSON.parse(bytes)
+              record[:generated_target] = {
+                sha1: Digest::SHA1.hexdigest(bytes), sha256: Digest::SHA256.hexdigest(bytes),
+                canonical_semantic_sha256: Digest::SHA256.hexdigest(JSON.generate(canonical.call(parsed))),
+                parsed_spec: parsed
+              }
+            else
+              record[:generated_target] = { status: 'not-generated' }
+            end
+            puts JSON.pretty_generate(record)
+          end
+          RUBY
