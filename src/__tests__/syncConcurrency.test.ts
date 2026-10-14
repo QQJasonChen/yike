@@ -34,7 +34,7 @@ const from = vi.fn(() => ({
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ auth, from }) }))
 
 import { __setSyncSlotTimeout, syncNow } from '../cloud'
-import { loadDirty, loadDay, saveDay, setDataOwner } from '../storage'
+import { loadDirty, loadDay, saveDay, setDataOwner, writeFromCloud } from '../storage'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 
 const ME = 'me-uid'
@@ -73,6 +73,82 @@ describe('同一台裝置上重疊的同步', () => {
 })
 
 describe('兩台裝置輪流同步', () => {
+  it('同一毫秒的雲端新內容也會更新沒有未上傳編輯的 A 裝置', async () => {
+    const fixedNow = Date.now()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(fixedNow)
+    try {
+      saveDay('2026-09-01', day('A 原本的'))
+      await syncNow()
+      const snapshot = JSON.stringify(localStorage)
+      const firstStamp = server['pp:day:2026-09-01'].updated_at
+
+      localStorage.clear()
+      setDataOwner(ME)
+      await syncNow()
+      saveDay('2026-09-01', day('B 同一毫秒改的'))
+      await syncNow()
+      expect(server['pp:day:2026-09-01'].updated_at).toBe(firstStamp)
+
+      localStorage.clear()
+      for (const [k, v] of Object.entries(JSON.parse(snapshot) as Record<string, string>))
+        localStorage.setItem(k, v)
+      expect(loadDirty()['pp:day:2026-09-01']).toBeUndefined()
+      await syncNow()
+      expect(loadDay('2026-09-01').tasks[0].text).toBe('B 同一毫秒改的')
+      expect((server['pp:day:2026-09-01'].value as DayEntry).tasks[0].text).toBe('B 同一毫秒改的')
+      expect((await syncNow()).pulled).toBe(0)
+    } finally { clock.mockRestore() }
+  })
+
+  it('同毫秒的舊下載晚到，不覆蓋等待期間已讀回的新內容', async () => {
+    const key = 'pp:day:2026-09-01'
+    saveDay('2026-09-01', day('原本的'))
+    await syncNow()
+    const oldRows = [{ ...server[key] }]
+    let started!: () => void
+    let release!: (result: { data: Row[]; error: null }) => void
+    const began = new Promise<void>((resolve) => { started = resolve })
+    const pending = new Promise<{ data: Row[]; error: null }>((resolve) => { release = resolve })
+    const originalFrom = from.getMockImplementation()!
+    from.mockImplementationOnce(() => ({
+      ...originalFrom(),
+      select: async () => { started(); return pending },
+    }))
+    const sync = syncNow()
+    await began
+    const newer = day('等待期間已同步的新內容')
+    writeFromCloud(key, newer, new Date(oldRows[0].updated_at).getTime())
+    server[key] = { ...oldRows[0], value: newer }
+    release({ data: oldRows, error: null })
+    expect((await sync).pulled).toBe(0)
+    expect(loadDay('2026-09-01').tasks[0].text).toBe('等待期間已同步的新內容')
+    expect((server[key].value as DayEntry).tasks[0].text).toBe('等待期間已同步的新內容')
+  })
+
+  it('同毫秒的雲端內容不會吃掉仍未上傳的本機編輯', async () => {
+    const key = 'pp:day:2026-09-01'
+    saveDay('2026-09-01', day('起始版'))
+    await syncNow()
+    server[key] = { ...server[key], value: day('其他裝置版本') }
+    saveDay('2026-09-01', day('本機未上傳版本'))
+    await syncNow()
+    expect(loadDay('2026-09-01').tasks[0].text).toBe('本機未上傳版本')
+    expect((server[key].value as DayEntry).tasks[0].text).toBe('本機未上傳版本')
+  })
+
+  it.each(['older', 'invalid'])('雲端時間戳 %s 不覆蓋已同步的本機內容', async (mode) => {
+    const key = 'pp:day:2026-09-01'
+    saveDay('2026-09-01', day('保留這版'))
+    await syncNow()
+    const oldStamp = new Date(server[key].updated_at).getTime()
+    server[key] = {
+      ...server[key], value: day('不可覆蓋這版'),
+      updated_at: mode === 'older' ? new Date(oldStamp - 1000).toISOString() : 'invalid-timestamp',
+    }
+    expect((await syncNow()).pulled).toBe(0)
+    expect(loadDay('2026-09-01').tasks[0].text).toBe('保留這版')
+  })
+
   it('B 的新內容不會被 A 的舊內容蓋掉', async () => {
     // A 裝置寫了並同步
     saveDay('2026-09-01', day('A 寫的'))

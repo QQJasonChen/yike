@@ -177,7 +177,7 @@ const syncNowInner = async (opts?: {
     setDataOwner(user.id)
   }
 
-  const meta = loadMeta()
+  const beforePull = new Map(allDataKeys().map((key) => [key, localStorage.getItem(key)]))
 
   // 1) Pull：伺服器比本機新的 key 落地
   const { data: rows, error } = await db.from('journal').select('key,value,updated_at')
@@ -188,13 +188,20 @@ const syncNowInner = async (opts?: {
     Object.fromEntries(((rows ?? []) as Row[]).map((r) => [r.key, new Date(r.updated_at).getTime()]))
   )
   const dirtyBefore = loadDirty()
+  const meta = loadMeta()
   for (const r of (rows ?? []) as Row[]) {
     const ts = new Date(r.updated_at).getTime()
     serverTs[r.key] = ts
     // 有本機未上傳的改動就不要蓋掉它——使用者剛寫的東西不能無聲消失。
     // 這個 key 會在下面的 push 階段上傳，以本機版本為準。
     if (dirtyBefore[r.key]) continue
-    if (ts > (meta[r.key] ?? 0)) {
+    const localTs = meta[r.key] ?? 0
+    // PostgreSQL preserves microseconds; Date.getTime() keeps only milliseconds.
+    // A clean local copy must also refresh when the current server value changed
+    // within that same millisecond. Unsynced edits are still protected above.
+    const localRaw = localStorage.getItem(r.key)
+    const unchangedWhileWaiting = localRaw === (beforePull.get(r.key) ?? null)
+    if (ts > localTs || (ts === localTs && unchangedWhileWaiting && JSON.stringify(r.value) !== localRaw)) {
       writeFromCloud(r.key, r.value, ts)
       pulled++
     }
