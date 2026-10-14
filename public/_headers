@@ -1,0 +1,13 @@
+/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=86400
+
+/recover.html
+  Cache-Control: no-store
+
+/recover
+  Cache-Control: no-store

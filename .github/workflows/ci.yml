@@ -43,6 +43,8 @@ jobs:
         run: npm run test:notion
       - name: Static page CSP checks
         run: node scripts/static-csp.mjs --check
+      - name: Anonymous journal isolation probe regression
+        run: node --test scripts/anonymous-journal-check.test.mjs
       - name: Deployed activation handler regression (no network or secrets)
         run: deno test supabase/functions/tests/activation.test.ts supabase/functions/tests/activation-edgecases.test.ts supabase/functions/tests/activation-retry.test.ts
       - name: TypeScript and production build
