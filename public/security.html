@@ -2,9 +2,10 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" data-static-csp content="default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://yike.goatcounter.com; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>安全與隱私 — 一刻手帳 Yike</title>
-<meta name="description" content="一刻手帳 Yike 怎麼保護你的私密日記：預設完全離線、資料不離開你的裝置；開啟同步後全程加密、逐使用者隔離。" />
+<meta name="description" content="一刻手帳 Yike 的資料保護與備份說明：預設在裝置保存、選用雲端同步、帳號資料隔離，以及匯出、刪帳與歷史備份的範圍。" />
 <link rel="icon" type="image/svg+xml" href="icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -50,78 +51,78 @@ footer a{color:var(--ink-faint);text-decoration:underline}
 <body>
 <div class="wrap">
   <span class="brand">一刻手帳 Yike</span>
-  <h1>你的日記，只屬於你</h1>
-  <p class="lede">你會在這裡寫最真實、最私密的東西。所以「你的資料只屬於你」不是一句口號，是我們的設計底線。</p>
-  <p class="updated">最後更新：2026 年 7 月 17 日</p>
+  <h1>你的資料，如何被保護</h1>
+  <p class="lede">手帳可能記錄你的計畫、反思與心情。這裡說明資料放在哪裡、目前的保護方式，以及備份與刪除的範圍。</p>
+  <p class="updated">最後更新：2026 年 10 月 14 日</p>
 
   <div class="hero-card">
-    <p>一句話總結：<b>預設情況下，你寫的每個字都只存在你自己的裝置上，從來不會經過我們的伺服器——因為我們根本沒有你的資料。</b></p>
+    <p><b>預設手帳內容保存在你正在使用的裝置。啟用同步、AI 分析或傳送至 Notion 等服務時，對應內容會依你的操作送往所選服務。</b></p>
   </div>
 
-  <h2><span class="n">01</span>預設就是最私密的：完全離線</h2>
-  <p>一刻手帳打開就能用，<b>不用註冊、不用帳號、不用連網路</b>。</p>
+  <h2><span class="n">01</span>預設以裝置儲存</h2>
+  <p>使用本機手帳功能<b>不用註冊帳號</b>。網頁完成載入、離線快取可用後，可以離線編輯。</p>
   <ul>
-    <li>你的任務、時間軸、反思、心情，全部存在<b>你自己裝置的本機儲存空間</b>（瀏覽器 localStorage／App 沙盒）。</li>
-    <li>這些內容<b>不會離開你的裝置</b>，不上傳、不同步、不經過任何伺服器。我們看不到，也無從看到。</li>
-    <li>這一點，比多數雲端筆記（預設就把你的東西存在它們的雲端）更私密——因為最安全的資料，就是根本沒交出去的資料。</li>
+    <li>任務、時間軸、反思與心情先存於<b>此裝置的瀏覽器儲存空間或 App 沙盒</b>，本機內容不會自動送進手帳的雲端資料庫。</li>
+    <li>本機資料與快照依賴裝置、瀏覽器及系統的保護。共用裝置上的人若能操作同一個瀏覽器，也可能讀取其儲存內容；App 的帳號分隔不是本機加密。</li>
+    <li>清除瀏覽器資料、裝置損壞或換機，可能一併失去本機內容與快照。重要記錄請另外存成檔案，放到其他裝置或你自己的雲端硬碟。</li>
   </ul>
 
-  <h2><span class="n">02</span>開啟同步後（選用）：業界標準的雲端保護</h2>
-  <p>想在手機和電腦之間同步時，才需要建立帳號、開啟同步。這時你的資料受到多層保護：</p>
+  <h2><span class="n">02</span>選用同步時的雲端保護</h2>
+  <p>建立帳號並啟用同步後，手帳內容會保存到雲端資料庫，供同一帳號在其他裝置取得。</p>
   <ul>
-    <li><b>傳輸加密</b>：所有連線走 TLS/HTTPS，途中沒有人能偷看。</li>
-    <li><b>靜態加密</b>：資料在雲端資料庫以 AES-256 加密儲存（由 Supabase 提供的基礎設施）。</li>
-    <li><b>逐使用者隔離（RLS）</b>：資料庫層級強制「資料列安全政策」——只有<b>你的帳號</b>能讀寫<b>你自己的資料列</b>。就算另一個使用者拿到請求，資料庫也一列都不會給他。這是防護的核心。</li>
-    <li><b>密碼保護</b>：你的密碼經加鹽雜湊儲存，我們看不到你的明文密碼。</li>
+    <li><b>傳輸加密</b>：同步連線使用 HTTPS/TLS，保護資料在裝置與服務之間的傳輸。</li>
+    <li><b>帳號資料隔離（RLS）</b>：資料庫政策限制一般登入帳號讀寫自己的記錄。這項隔離需要與登入驗證、伺服器權限及正確設定一起維持。</li>
+    <li><b>密碼保護</b>：登入系統使用密碼雜湊保存帳號密碼；請妥善保管你的帳密。</li>
   </ul>
-  <p>這個層級，與主流雲端筆記服務（Notion、Evernote 等）相同。</p>
 
   <div class="honest">
-    <h3>我們選擇對你誠實的一段</h3>
-    <p>我們不做假承諾。<b>開啟同步後</b>，你的內容在我們的資料庫是「可被解密」的——也就是說，技術上服務商讀得到（這叫「非端對端加密」，Notion、Evernote 等主流服務也都是如此）。RLS 擋住的是「別人」，不是「服務商本身」。</p>
-    <p>所以如果你要的是<b>連我們都無法讀取</b>的最高等級隱私，最簡單也最徹底的方法就是：<b>只用離線模式</b>——不開同步，你的資料一個位元都不會離開你的裝置。這個選項一直都在，而且免費。</p>
+    <h3>同步目前未採用端對端加密</h3>
+    <p><b>擁有伺服器高權限的管理者，技術上仍可讀取雲端手帳內容。</b>RLS 限制一般帳號，無法阻止高權限管理者存取。雲端備份的加密也不等於端對端加密。</p>
+    <p>若不希望手帳內容進入雲端，可以使用免費的本機功能，不啟用同步。你主動使用 AI 或第三方匯出時，所選內容仍會離開裝置。</p>
   </div>
 
-  <h2><span class="n">03</span>我們不做的事</h2>
+  <h2><span class="n">03</span>第三方服務與金鑰</h2>
   <ul>
-    <li><b>不追蹤你</b>：不放廣告、不做行為分析、沒有廣告識別碼。網站僅用無 cookie、不記錄個人身分的匿名流量統計。</li>
-    <li><b>不賣、不分享你的資料</b>：永遠不會把你的內容提供給第三方做行銷或訓練。</li>
-    <li><b>不收多餘權限</b>：不要你的位置、聯絡人、相機、相簿。</li>
+    <li>網站使用無 cookie 的匿名流量統計，不以手帳內容作廣告行銷。</li>
+    <li>使用 AI 分析時，所選內容與你提供的 OpenAI 金鑰會由裝置送至 OpenAI。使用 Notion 匯出時，所選內容與 Notion 金鑰會經匯出服務轉送給 Notion，供其驗證與寫入。</li>
+    <li>第三方金鑰設定保存在此裝置，不加入日記的雲端同步或一般備份／匯出檔。金鑰在實際使用時仍需傳給對應服務，並依各服務的政策處理。</li>
   </ul>
 
-  <h2><span class="n">04</span>你完全掌控自己的資料</h2>
+  <h2><span class="n">04</span>備份、匯出與刪除</h2>
   <ul>
-    <li><b>隨時匯出</b>：一鍵把全部資料匯出成 Markdown／JSON，帶著走。</li>
-    <li><b>永久刪除</b>：設定裡可一鍵永久刪除帳號與所有雲端資料，無法復原、乾乾淨淨。</li>
-    <li><b>本機自動備份</b>：裝置上自動保留最近 7 份每日備份，只存本機、不上傳。</li>
+    <li><b>本機快照</b>：裝置上保留近期 7 份每日快照。快照與本機內容在同一個儲存空間，不能取代放在另一位置的備份；還原或匯入前也會嘗試保存安全快照。</li>
+    <li><b>自行匯出</b>：可以下載 JSON 備份，或匯出選定範圍的 Markdown。下載後請確認檔案已保存到你選定的位置；你保存或分享的匯出檔由你管理。</li>
+    <li><b>雲端備份</b>：雲端資料另有每日外部備份作業，備份檔以 AES-256 加密保存。備份作業成功不等於已驗證每次都能完整還原正式服務，也不保證沒有備份間隔內的資料損失。</li>
+    <li><b>刪除帳號</b>：設定中的刪帳功能會刪除登入帳號及其目前的雲端手帳資料；購買核對及防止重複兌換紀錄另行管理。本機、其他裝置或你匯出的檔案，也需要依各自的保存位置處理。</li>
+    <li><b>歷史備份的範圍</b>：刪除帳號不會立即抹除先前的加密備份。歷史備份的保存與刪除由站方另行處理；如需確認或處理刪帳後的備份資料，請來信聯繫。</li>
   </ul>
 
-  <h2><span class="n">05</span>三種模式，一眼看懂</h2>
+  <h2><span class="n">05</span>本機與同步模式，一眼看懂</h2>
   <div class="tblwrap">
   <table class="tbl">
-    <tr><th>　</th><th>一刻手帳<br>（離線・預設）</th><th>一刻手帳<br>（開啟同步）</th><th>一般雲端筆記</th></tr>
-    <tr><td class="row-h">資料預設在哪</td><td class="yes">只在你的裝置</td><td>你主動選擇才上雲</td><td>雲端</td></tr>
-    <tr><td class="row-h">需要帳號</td><td class="yes">不用</td><td>需要</td><td>需要</td></tr>
-    <tr><td class="row-h">傳輸加密</td><td class="yes">不需要（不外傳）</td><td class="yes">TLS/HTTPS</td><td>TLS/HTTPS</td></tr>
-    <tr><td class="row-h">靜態加密</td><td>裝置系統加密</td><td class="yes">AES-256</td><td>通常 AES-256</td></tr>
-    <tr><td class="row-h">別的使用者讀得到？</td><td class="yes">不可能</td><td class="yes">不可能（RLS）</td><td>不可能</td></tr>
-    <tr><td class="row-h">服務商技術上讀得到？</td><td class="yes">讀不到（沒有你的資料）</td><td>可（同業界標準）</td><td>可</td></tr>
-    <tr><td class="row-h">追蹤／廣告</td><td class="yes">無</td><td class="yes">無</td><td>常有</td></tr>
+    <tr><th>　</th><th>本機功能（預設）</th><th>啟用雲端同步</th></tr>
+    <tr><td class="row-h">手帳內容在哪</td><td>目前裝置</td><td>裝置與雲端帳號</td></tr>
+    <tr><td class="row-h">需要帳號</td><td class="yes">不用</td><td>需要</td></tr>
+    <tr><td class="row-h">一般帳號資料隔離</td><td>依裝置與瀏覽器設定</td><td>登入驗證與 RLS 政策</td></tr>
+    <tr><td class="row-h">站方能否讀手帳</td><td>未啟用上傳功能時，站方沒有雲端副本</td><td>高權限管理者技術上可讀</td></tr>
+    <tr><td class="row-h">端對端加密</td><td>本機儲存不等於加密</td><td>目前未提供</td></tr>
+    <tr><td class="row-h">備份方式</td><td>本機快照與自行匯出</td><td>本機快照、自行匯出與外部加密備份</td></tr>
   </table>
   </div>
 
   <h2><span class="n">06</span>給在意細節的你</h2>
   <div class="chips">
-    <span class="chip">傳輸 <b>TLS 1.2+</b></span>
-    <span class="chip">靜態 <b>AES-256</b></span>
+    <span class="chip">同步傳輸 <b>HTTPS/TLS</b></span>
+    <span class="chip">雲端備份 <b>AES-256</b></span>
     <span class="chip">資料列安全 <b>RLS</b>／逐使用者</span>
     <span class="chip">密碼 <b>加鹽雜湊</b></span>
-    <span class="chip">相依套件 <b>0 已知漏洞</b></span>
-    <span class="chip">伺服器金鑰 <b>絕不進前端</b></span>
-    <span class="chip">你自帶的第三方金鑰 <b>只留本機</b></span>
+    <span class="chip">網頁腳本 <b>CSP 限制</b></span>
+    <span class="chip">高權限金鑰 <b>由伺服器保管</b></span>
+    <span class="chip">金鑰設定 <b>不加入日記同步</b></span>
     <span class="chip">無 cookie <b>匿名統計</b></span>
   </div>
-  <p>你連結到自己的 Notion／行事曆時所用的第三方金鑰，只存在你的裝置，<b>不上雲、也不會寫進匯出檔</b>。伺服器端的高權限金鑰只存在後端，永遠不會被打包進你下載的前端程式。</p>
+  <p>安全需要持續維護。發布流程包含回歸測試、建置檢查、套件弱點檢查與網頁 CSP 檢查；這些檢查降低風險，不能保證軟體沒有任何漏洞。備份作業也需要持續檢查，並安排實際還原驗證。</p>
+  <p><b>本次查核範圍（2026/10/14）</b>：程式資料流、正式資料庫的隔離設定，以及網頁發布檢查。實際付款開通、跨裝置同步、各實體裝置測試與正式資料完整還原，需依各項驗收結果確認。</p>
 
   <h2><span class="n">07</span>有問題？想通報弱點？</h2>
   <p>安全是持續的工作。若你發現任何疑慮或安全問題，直接來信，我們會認真看待：<a href="mailto:qqleveragelearning@gmail.com">qqleveragelearning@gmail.com</a></p>

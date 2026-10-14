@@ -2,6 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" data-static-csp content="default-src 'self'; script-src 'sha256-LqqGhoojzqFNmqaHyL3ux5+7avcy6Vi/5pwPEDj2jGA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://yike.goatcounter.com; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>使用手冊 — 一刻手帳 Yike</title>
 <meta name="description" content="一刻手帳 Yike完整使用手冊：每日流程、Focus 計時、時間軸拖拉、週月檢視、跨裝置同步、匯出備份。" />
@@ -255,6 +256,17 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
 </div>
 
 <footer>一刻手帳 Yike ・ <a href="landing.html">產品介紹</a> ・ <a href="https://github.com/QQJasonChen/yike" target="_blank" rel="noreferrer">GitHub</a></footer>
-<script data-goatcounter="https://yike.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<script>
+// Page-view counting uses an image only, never a third-party executable script.
+// Do not send query strings or referrers that might contain private links.
+(function () {
+  if (location.protocol !== 'https:' || location.hostname === 'localhost') return
+  var px = new Image()
+  px.referrerPolicy = 'no-referrer'
+  px.src = 'https://yike.goatcounter.com/count?p=' +
+    encodeURIComponent(location.pathname) + '&t=' +
+    encodeURIComponent(document.title) + '&rnd=' + Math.random().toString(36).slice(2)
+})()
+</script>
 </body>
 </html>

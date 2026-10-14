@@ -24,3 +24,9 @@ The follow-up release uses the previously verified Capacitor 8.5.3, CLI 8.4.3, V
 The activate source and bounded-body helper in this branch are byte-identical to the source downloaded from production after the named activation deployment on 2026-10-14 (ACTIVE v19). Gumroad Ping and all database migrations remain outside this deployment. No secrets, buyer records, or QA credentials belong in the repository. This is a web release; it does not update installed native iOS apps or claim to finish backup recovery, SMTP, server quota or the separate comprehensive security candidate.
 
 The landing price is NT$490, read from the live Gumroad product on 2026-10-14; the checkout conversion depends on Gumroad. Each order receives its own License Key; shared fixed keys are not used. Positive checkout/activation/two-context sync acceptance remains pending until the approved dedicated zero-cost QA order is completed.
+
+## Accurate public data-handling statements
+
+The security/privacy pages now distinguish ordinary-account RLS from privileged operator access, disclose selected OpenAI/Notion data transmission, and distinguish deleting the current account/journal from historical encrypted backups and purchase-redemption records. No unverified fixed backup-retention period, full restore, native release or unpublished local ownership feature is promised.
+
+Static pages use computed CSP script hashes and reject external executable scripts. Landing/manual analytics keep only public-path page counting via an image, without URL query strings or referrers. The existing Substack iframe remains on its separate origin. CI checks all five static page policies before deployment.

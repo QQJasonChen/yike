@@ -2,6 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" data-static-csp content="default-src 'self'; script-src 'sha256-alSoze5yD/5e6EhxVcChJgHuA/UJVDRDK13lpMSbeCg=' 'sha256-LqqGhoojzqFNmqaHyL3ux5+7avcy6Vi/5pwPEDj2jGA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://yike.goatcounter.com; connect-src 'none'; frame-src https://qqleveragelife.substack.com; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>一刻手帳 Yike — 一天，刻下一件最重要的事</title>
 <meta name="description" content="紙本手帳質感的每日專注手帳：最重要任務 × 30 分鐘專注種樹 × 彩色時間軸 × 每日反思 × 日週月季年五種尺度 × 願景十年甘特與奧德賽人生設計 × 商模個人商業模式圖。資料預設只存在你的裝置，從今天到十年，完全屬於你。" />
@@ -425,6 +426,17 @@ const spy=new IntersectionObserver(es=>es.forEach(e=>{
 }),{rootMargin:'-45% 0px -45% 0px'});
 navLinks.forEach(a=>{const s=secFor(a.getAttribute('href').slice(1));if(s)spy.observe(s);});
 </script>
-<script data-goatcounter="https://yike.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<script>
+// Page-view counting uses an image only, never a third-party executable script.
+// Do not send query strings or referrers that might contain private links.
+(function () {
+  if (location.protocol !== 'https:' || location.hostname === 'localhost') return
+  var px = new Image()
+  px.referrerPolicy = 'no-referrer'
+  px.src = 'https://yike.goatcounter.com/count?p=' +
+    encodeURIComponent(location.pathname) + '&t=' +
+    encodeURIComponent(document.title) + '&rnd=' + Math.random().toString(36).slice(2)
+})()
+</script>
 </body>
 </html>
