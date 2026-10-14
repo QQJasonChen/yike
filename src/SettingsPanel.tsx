@@ -121,22 +121,27 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                     {!isNative && authMode === 'activate' ? (
                       <>
                         <p className="sync-help">
-                          想跨裝置用同一份資料？<b>買過的人</b>：序號欄留空，Email 直接填<b>購買時填的那個</b>，
-                          再設一組你自己的密碼就開通。<b>朋友</b>：填我給你的邀請碼。
-                          換裝置用這組 Email＋密碼登入即可。本機與全部功能<b>永久免費</b>。
+                          已購買雲端同步？從 Gumroad 購買完成頁或購買信的「檢視內容」複製<b>購買序號（License Key）</b>，
+                          貼在下方，再填<b>購買時使用的 Email</b>、自設<b>至少 8 碼密碼</b>，按「開通並登入」。
+                          換裝置時，用同一組 Email＋密碼登入。本機使用<b>永久免費</b>。
                         </p>
-                        <div className="label" style={{ marginTop: 6 }}>邀請碼或購買序號（買過的人免填）</div>
+                        <div className="label" style={{ marginTop: 6 }}>購買序號（License Key，必填）</div>
                         <div className="line-input sync-token">
                           <input
-                            placeholder="有邀請碼才填，買過的人留空"
+                            aria-label="購買序號（License Key，必填）"
+                            autoComplete="off"
+                            placeholder="貼上 Gumroad 購買內容裡的序號"
                             value={license}
                             onChange={(e) => setLicense(e.target.value.trim())}
                           />
                         </div>
+                        <div className="label" style={{ marginTop: 6 }}>購買時使用的 Email</div>
                         <div className="line-input sync-token">
                           <input
                             type="email"
-                            placeholder="你的 Email"
+                            autoComplete="email"
+                            aria-label="購買時使用的 Email"
+                            placeholder="需與 Gumroad 購買確認信一致"
                             value={cloudEmail}
                             onChange={(e) => setCloudEmail(e.target.value.trim())}
                           />
@@ -144,6 +149,8 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         <div className="line-input sync-token">
                           <input
                             type="password"
+                            autoComplete="new-password"
+                            aria-label="自設密碼（至少 8 碼）"
                             placeholder="自設密碼（至少 8 碼，請記好）"
                             value={cloudPw}
                             onChange={(e) => setCloudPw(e.target.value)}
@@ -151,9 +158,11 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         </div>
                         <div className="data-actions" style={{ marginTop: 12 }}>
                           <button
+                            disabled={!license.trim() || !cloudEmail.includes('@') || cloudPw.length < 8}
                             onClick={() =>
                               cloudAct(async () => {
-                                if (!cloudEmail.includes('@')) throw new Error('請填你的 Email')
+                                if (!license.trim()) throw new Error('請填入購買序號（License Key）')
+                                if (!cloudEmail.includes('@')) throw new Error('請填購買時使用的 Email')
                                 if (cloudPw.length < 8) throw new Error('密碼至少 8 碼')
                                 const mode = await activateWithCode(license, cloudEmail, cloudPw)
                                 setCloudUser(cloudEmail)
@@ -173,6 +182,15 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                             已經有帳號？直接登入
                           </button>
                         </div>
+                        <details style={{ marginTop: 12 }}>
+                          <summary style={{ cursor: 'pointer' }}>找不到購買序號？</summary>
+                          <p className="sync-help">
+                            請來信 qqleveragelearning@gmail.com，附購買確認信，請客服協助取得序號；不必重新付款，也不用提供密碼。
+                          </p>
+                        </details>
+                        <p className="sync-help" style={{ marginTop: 12 }}>
+                          <a href="/activate.html" target="_blank" rel="noopener noreferrer">查看雲端同步開通圖解</a>
+                        </p>
                         <a
                           className="buy-cta"
                           style={{ marginTop: 14 }}
@@ -225,7 +243,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                           </button>
                           {!isNative && (
                             <button className="link-btn" onClick={() => setAuthMode('activate')}>
-                              ← 還沒帳號？用序號開通
+                              ← 還沒帳號？啟用雲端同步
                             </button>
                           )}
                         </div>

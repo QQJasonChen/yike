@@ -2,6 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" data-static-csp content="default-src 'self'; script-src 'sha256-LqqGhoojzqFNmqaHyL3ux5+7avcy6Vi/5pwPEDj2jGA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://yike.goatcounter.com; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>使用手冊 — 一刻手帳 Yike</title>
 <meta name="description" content="一刻手帳 Yike完整使用手冊：每日流程、Focus 計時、時間軸拖拉、週月檢視、跨裝置同步、匯出備份。" />
@@ -217,13 +218,17 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
     <p>資料不會自動傳給任何人——複製到剪貼簿後，貼去哪、給誰看，完全由你決定。</p>
 
     <h2 id="cloud"><span class="no">11</span>雲端同步（帳號制・自動）</h2>
-    <p>登入後<b>全自動</b>：寫完幾秒內上雲，換裝置打開自動拉取，手機電腦 iOS 永遠一致。</p>
+    <p>已在 Gumroad 購買雲端同步版？先取得<b>購買序號（License Key）</b>，再用序號、Email 和自設密碼開通。登入後會自動同步，其他裝置使用同一組 Email 和密碼。</p>
     <ol>
-      <li>到「回顧」頁「雲端同步（帳號制）」輸入<b>購買時的 Email ＋ 自設密碼</b> → 登入（首次即開通）；有購買序號就點「🛒 我有購買序號」啟用。其他裝置用<b>同一組帳密</b>登入即自動同步</li>
-      <li>之後不用再做任何事；想手動觸發按 <kbd>⟳ 立即同步</kbd></li>
-      <li>衝突處理：逐筆比較修改時間，<b>新的贏</b></li>
+      <li>從 Gumroad <b>購買完成頁</b>或<b>收據</b>點「檢視內容」，找到並複製 <b>License Key</b>。</li>
+      <li>開啟 <a href="https://yikeday.com/">一刻手帳</a>。第一次開啟若看到歡迎畫面，先按 <kbd>開始寫今天 →</kbd>，再點右上角 <kbd>☁ 登入</kbd>，進入「設定」裡的「雲端同步（帳號制）」。</li>
+      <li>貼上<b>購買序號</b>，填入<b>購買時使用的 Email（需與 Gumroad 購買確認信一致）</b>，並<b>自設至少 8 碼的密碼</b>。請保存這組 Email 和密碼，之後在其他裝置登入會用到。</li>
+      <li>按 <kbd>開通並登入</kbd>，等候結果。看到「開通成功」並顯示「已同步」，才確認開通完成。</li>
     </ol>
-    <p>入口：任何頁面右上角的「☁ 登入」。</p>
+    <div class="tip"><b>已經有帳號或換裝置：</b>點 <kbd>已經有帳號？直接登入</kbd>，使用開通時的同一組 Email 和密碼，再按 <kbd>登入</kbd>。不要重新開通。</div>
+    <p><b>第一次開通需要購買序號：</b>只有購買 Email 不能設定新帳號密碼。若先前收到免填序號的教學，請改從 Gumroad 購買內容取得 License Key。雲端同步不需要 OpenAI API key。</p>
+    <div class="warn"><b>找不到序號或無法開通：</b>請<a href="mailto:qqleveragelearning@gmail.com">聯絡客服</a>，提供購買確認信與錯誤畫面，請客服核對。若先前收到的教學不同，也請先交由客服核對；不要重複付款，也不用提供密碼。</div>
+    <p><a href="activate.html">看雲端同步開通圖解 →</a></p>
 
     <h2 id="export"><span class="no">12</span>匯出與備份</h2>
     <table>
@@ -240,7 +245,7 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
     <h3>加入主畫面後畫面沒更新？</h3>
     <p>PWA 會快取舊版。完全關閉 App 再重開，或下拉重新整理兩次即可拿到新版。</p>
     <h3>換裝置看不到資料？</h3>
-    <p>確認兩台裝置右上角都是綠色「☁ 同步中」且登入同一個 Email。手動按「⟳ 立即同步」可立刻強制雙向同步。</p>
+    <p>確認兩台都登入開通時的同一個 Email，並顯示「已同步」。仍有問題，先保留原本的手帳資料，並提供錯誤畫面給客服核對。操作方式見<a href="activate.html#login">其他裝置登入圖解</a>。</p>
     <h3>手機上拖拉時間塊會捲動頁面？</h3>
     <p>直接按住時間塊拖即可（塊本身不會觸發捲動）；新增請用「點空格」，比拖拉更快。</p>
     <h3>想從某一天開始補寫過去的記錄？</h3>
@@ -251,6 +256,17 @@ footer{text-align:center;color:var(--ink-faint);font-size:12.5px;padding-bottom:
 </div>
 
 <footer>一刻手帳 Yike ・ <a href="landing.html">產品介紹</a> ・ <a href="https://github.com/QQJasonChen/yike" target="_blank" rel="noreferrer">GitHub</a></footer>
-<script data-goatcounter="https://yike.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<script>
+// Page-view counting uses an image only, never a third-party executable script.
+// Do not send query strings or referrers that might contain private links.
+(function () {
+  if (location.protocol !== 'https:' || location.hostname === 'localhost') return
+  var px = new Image()
+  px.referrerPolicy = 'no-referrer'
+  px.src = 'https://yike.goatcounter.com/count?p=' +
+    encodeURIComponent(location.pathname) + '&t=' +
+    encodeURIComponent(document.title) + '&rnd=' + Math.random().toString(36).slice(2)
+})()
+</script>
 </body>
 </html>
