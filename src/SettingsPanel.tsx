@@ -121,7 +121,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                     {!isNative && authMode === 'activate' ? (
                       <>
                         <p className="sync-help">
-                          已購買雲端同步？從 Gumroad 購買完成頁或購買信的「檢視內容」複製<b>購買序號（License Key）</b>，
+                          已購買雲端同步？從 Gumroad 購買完成頁或購買信的「開通教學與購買序號」（或「檢視內容」）複製<b>購買序號（License Key）</b>，
                           貼在下方，再填<b>購買時使用的 Email</b>、自設<b>至少 8 碼密碼</b>，按「開通並登入」。
                           換裝置時，用同一組 Email＋密碼登入。本機使用<b>永久免費</b>。
                         </p>
