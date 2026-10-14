@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useStoredEntry } from './useStoredEntry'
 import { NameField, TextArea } from './fields'
 import HabitHeatmap from './HabitHeatmap'
 import PeriodSummary from './PeriodSummary'
@@ -16,19 +16,11 @@ interface Props {
 const pad = (n: number) => String(n).padStart(2, '0')
 
 export default function QuarterView({ quarterKey, onQuarterChange, settings }: Props) {
-  const [entry, setEntry] = useState<QuarterEntry>(() => loadQuarter(quarterKey))
+  const { entry: entry, edit } = useStoredEntry<QuarterEntry>(`pp:quarter:${quarterKey}`, () => loadQuarter(quarterKey), (value) => saveQuarter(quarterKey, value))
 
-  useEffect(() => {
-    setEntry(loadQuarter(quarterKey))
-  }, [quarterKey])
 
-  const update = (patch: Partial<QuarterEntry>) => {
-    setEntry((prev) => {
-      const next = { ...prev, ...patch }
-      saveQuarter(quarterKey, next)
-      return next
-    })
-  }
+  const update = (patch: Partial<QuarterEntry> | ((base: QuarterEntry) => Partial<QuarterEntry>)) =>
+    edit((base) => ({ ...base, ...(typeof patch === 'function' ? patch(base) : patch) }))
 
   const [y, q] = quarterKey.split('-Q').map(Number)
   const startMonth = (q - 1) * 3 + 1
@@ -69,17 +61,21 @@ export default function QuarterView({ quarterKey, onQuarterChange, settings }: P
               value={p.text}
               placeholder={i === 0 ? '這一季最想推進的一件事' : ''}
               onValue={(v) => {
-                const priorities = entry.priorities.slice()
-                priorities[i] = { ...p, text: v }
-                update({ priorities })
+                update((base) => {
+                  const priorities = base.priorities.slice()
+                  priorities[i] = { ...priorities[i], text: v }
+                  return { priorities }
+                })
               }}
             />
             <button
               className={`week-check ${p.done ? 'on' : ''}`}
               onClick={() => {
-                const priorities = entry.priorities.slice()
-                priorities[i] = { ...p, done: !p.done }
-                update({ priorities })
+                update((base) => {
+                  const priorities = base.priorities.slice()
+                  priorities[i] = { ...priorities[i], done: !priorities[i].done }
+                  return { priorities }
+                })
               }}
             >
               ✓

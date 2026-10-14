@@ -7,9 +7,10 @@
 # 買家付了錢開不通，而我們完全不知道。
 #
 # 這個 workflow 每天跑一次：
-#   1. 保活——對 Postgres 送一個極輕的讀取，讓專案永遠不進入閒置
+#   1. 保活——對 Postgres 送一個極輕的讀取，增加存取活動，但不能保證供應商永不暫停
 #   2. 健康檢查——驗證「收錢/開通」這條金流路徑上的每個端點都活著
-# 任何一項掛掉 → workflow 紅燈 → GitHub 寄信通知（從靜默壞掉變成你會知道）。
+# 任一探測失敗會使 workflow 失敗；管理者仍須確認自己的 GitHub Actions 通知設定。
+# 探測只證明端點當時可達，不代表付款／序號／同步的完整交易已通過。
 #
 # 設定來源：網址與 anon key 直接從 src/cloudConfig.ts 讀，單一來源，
 # 換專案或輪替金鑰時自動跟上。anon key 本來就是公開的（安全靠 RLS）。
@@ -21,14 +22,18 @@ name: Supabase 保活與健康檢查
 
 on:
   schedule:
-    - cron: '0 6 * * *' # 每天 06:00 UTC
+    - cron: '17 * * * *' # 每小時；GitHub 排程可能延遲
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   health:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: 從 src/cloudConfig.ts 讀出 Supabase 設定
         id: cfg
@@ -63,7 +68,7 @@ jobs:
               [ $i -lt 3 ] && sleep 20
             done
             echo "  ❌ $label  (HTTP $code，期望 $want)"
-            echo "     回應：$(head -c 200 /tmp/out.txt)"
+            # 不把原始上游回應寫入公開 workflow log。
             FAILED="$FAILED\n  - $label (HTTP $code)"
             return 1
           }
@@ -96,4 +101,4 @@ jobs:
             exit 1
           fi
           echo ""
-          echo "🎉 全部正常——專案活著，開通與同步路徑暢通。"
+          echo "端點探測通過；完整購買、開通與同步仍以專用 QA 驗收為準。"

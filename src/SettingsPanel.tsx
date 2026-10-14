@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { clearUnsavedDrafts, hasUnsavedDrafts } from './useStoredEntry'
 import { Capacitor } from '@capacitor/core'
 import {
   activateWithCode,
@@ -10,6 +11,8 @@ import {
   startAutoSync,
   stopAutoSync,
   syncNow,
+  syncStatusMessage,
+  type SyncResult,
   currentUserId,
 } from './cloud'
 import { OPENAI_KEY_HELP_URL, verifyKeyAndPickModel } from './ai'
@@ -20,6 +23,7 @@ import { notify } from './notify'
 import { PlantLegend } from './plantGlyphs'
 import {
   BackupMeta,
+  allDataKeys,
   clearAllLocalData,
   clearSupabaseTokens,
   daysSinceExport,
@@ -27,7 +31,15 @@ import {
   exportBackupAsFile,
   getOpenAIKey,
   localDataCount,
-  setDataOwner,
+  claimDeviceFor,
+  clearForLogout,
+  getDataOwner,
+  inspectImport,
+  loadDirty,
+  pendingGatedKeys,
+  listConflicts,
+  exportConflictAsFile,
+  dismissConflict,
   importAll,
   listBackups,
   markExported,
@@ -164,15 +176,17 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                                 if (!license.trim()) throw new Error('請填入購買序號（License Key）')
                                 if (!cloudEmail.includes('@')) throw new Error('請填購買時使用的 Email')
                                 if (cloudPw.length < 8) throw new Error('密碼至少 8 碼')
+                                if (hasUnsavedDrafts()) throw new Error('請先複製並保存畫面上尚未儲存的草稿，再開通帳號')
                                 const mode = await activateWithCode(license, cloudEmail, cloudPw)
                                 setCloudUser(cloudEmail)
                                 setCloudStage('in')
                                 const r = await syncAfterLogin(cloudEmail)
-                                await startAutoSync()
+                                window.dispatchEvent(new CustomEvent('yike:local-owner-ready', { detail: { owner: getDataOwner() } }))
+                                window.dispatchEvent(new Event('yike:backup-change'))
+                                await startSyncReporting()
                                 setCloudMsg(
-                                  `✓ ${mode === 'up' ? '開通成功' : '登入成功'}，已同步（↓${r.pulled} ↑${r.pushed}）`
+                                  `✓ ${mode === 'up' ? '開通成功' : '登入成功'}，${syncStatusMessage(r)}`
                                 )
-                                if (r.pulled > 0) setTimeout(() => location.reload(), 1000)
                               })
                             }
                           >
@@ -227,20 +241,30 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                             disabled={!cloudEmail.includes('@') || cloudPw.length < 8}
                             onClick={() =>
                               cloudAct(async () => {
+                                if (hasUnsavedDrafts()) throw new Error('請先複製並保存畫面上尚未儲存的草稿，再登入')
                                 const mode = await signInOrUp(cloudEmail, cloudPw)
                                 setCloudUser(cloudEmail)
                                 setCloudStage('in')
                                 const r = await syncAfterLogin(cloudEmail)
-                                await startAutoSync()
+                                window.dispatchEvent(new CustomEvent('yike:local-owner-ready', { detail: { owner: getDataOwner() } }))
+                                window.dispatchEvent(new Event('yike:backup-change'))
+                                await startSyncReporting()
                                 setCloudMsg(
-                                  `✓ ${mode === 'up' ? '開通成功' : '登入成功'}，已同步（↓${r.pulled} ↑${r.pushed}）`
+                                  `✓ ${mode === 'up' ? '開通成功' : '登入成功'}，${syncStatusMessage(r)}`
                                 )
-                                if (r.pulled > 0) setTimeout(() => location.reload(), 1000)
                               })
                             }
                           >
                             登入
                           </button>
+                          <a
+                            className="link-btn"
+                            href={isNative ? 'https://yikeday.com/recover.html' : '/recover.html'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            忘記密碼？
+                          </a>
                           {!isNative && (
                             <button className="link-btn" onClick={() => setAuthMode('activate')}>
                               ← 還沒帳號？啟用雲端同步
@@ -260,7 +284,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                           )
                             return
                           clearSupabaseTokens()
-                          clearAllLocalData()
+                          clearUnsavedDrafts(); clearAllLocalData()
                           location.reload()
                         }}
                       >
@@ -272,15 +296,15 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                 {cloudStage === 'in' && (
                   <>
                     <p className="sync-help">
-                      ✓ 已登入 <b>{cloudUser}</b>——寫入後幾秒內自動上雲；其他裝置打開時自動拉取。
+                      ✓ 已登入 <b>{cloudUser}</b>——寫入後會自動嘗試同步；請以狀態訊息確認是否已上傳。其他裝置打開時會嘗試拉取。
                     </p>
                     <div className="data-actions" style={{ marginTop: 12 }}>
                       <button
                         onClick={() =>
                           cloudAct(async () => {
                             const r = await syncNow()
-                            setCloudMsg(`✓ 已同步（↓${r.pulled} ↑${r.pushed}）`)
-                            if (r.pulled > 0) setTimeout(() => location.reload(), 1000)
+                            setCloudMsg(syncStatusMessage(r))
+                            window.dispatchEvent(new Event('yike:backup-change'))
                           })
                         }
                       >
@@ -290,20 +314,23 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         onClick={() => {
                           if (
                             !confirm(
-                              '登出會清除這台裝置上的本機資料，回到空白頁面。\n\n你的資料都在雲端帳號裡，重新登入（這台或任何裝置）就會完整還原。確定登出？'
+                              '登出前會確認待推記錄已上傳；尚未儲存或未被雲端接受時會中止。\n\n登出會清除現用資料與憑證，保留此帳號的本機備份與衝突副本；備份仍可能隨瀏覽器資料清除而消失。確定登出？'
                             )
                           )
                             return
                           cloudAct(async () => {
                             // 先把未同步的推上雲，連不上就中止以免遺失
                             try {
-                              await syncNow()
+                              if (hasUnsavedDrafts()) throw new Error('unsaved-draft')
+                              const result = await syncNow()
+                              if (result.held || result.rejected || Object.keys(loadDirty()).length || pendingGatedKeys().length)
+                                throw new Error('pending-local-data')
                             } catch {
-                              throw new Error('目前連不上雲端，為避免資料遺失，請連網後再登出')
+                              throw new Error('仍有未儲存或未上傳的記錄，已取消登出；請先保存草稿、匯出備份或稍後重試同步')
                             }
                             await signOut()
                             stopAutoSync()
-                            clearAllLocalData()
+                            clearForLogout()
                             location.reload() // 回到全空白狀態
                           })
                         }}
@@ -317,7 +344,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                         style={{ color: 'var(--terra)' }}
                         onClick={() => {
                           const typed = prompt(
-                            '永久刪除帳號會刪掉雲端與這台裝置上的所有資料，無法復原。\n\n若確定，請輸入你的 Email 以確認刪除：'
+                            '永久刪除會移除帳號、目前雲端記錄與這台裝置資料，無法用原帳號登入。歷史加密備份、其他裝置與你另存的檔案不會因此立刻消失。\n\n若確定，請輸入你的 Email 以確認刪除：'
                           )
                           if (typed == null) return
                           if (typed.trim().toLowerCase() !== (cloudUser ?? '').toLowerCase()) {
@@ -327,7 +354,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                           cloudAct(async () => {
                             await deleteAccount()
                             stopAutoSync()
-                            clearAllLocalData()
+                            clearUnsavedDrafts(); clearAllLocalData()
                             location.reload()
                           })
                         }}
@@ -569,10 +596,23 @@ function OpenAIKeySettings() {
   )
 }
 
+const startSyncReporting = () => startAutoSync((message) => {
+  window.dispatchEvent(new CustomEvent('yike:sync-status', { detail: { message } }))
+  window.dispatchEvent(new Event('yike:backup-change'))
+})
+
+// Restore/import are synchronous merges. Refresh mounted views directly, without a
+// delayed page reload which could discard a draft created during the delay.
+const refreshRestoredViews = () => {
+  for (const key of allDataKeys())
+    window.dispatchEvent(new CustomEvent('yike:external-key-change', { detail: { key } }))
+  window.dispatchEvent(new Event('yike:backup-change'))
+}
+
 // 登入後的第一次同步。這裡是共用裝置外洩的風險點：
 // 這台裝置上可能有「上一個人」留下的本機日記，直接同步會把它整包推進現在登入者的帳號。
 // 所以第一次同步先拒絕認領，改成問人；背景自動同步不受影響（那是既有 session）。
-async function syncAfterLogin(email: string): Promise<{ pulled: number; pushed: number }> {
+async function syncAfterLogin(email: string): Promise<SyncResult> {
   try {
     return await syncNow({ onUnclaimed: 'reject' })
   } catch (e) {
@@ -581,6 +621,7 @@ async function syncAfterLogin(email: string): Promise<{ pulled: number; pushed: 
 
     const uid = await currentUserId()
     if (!uid) throw e
+    const beforeOwner = getDataOwner()
     const n = localDataCount()
     const mine =
       msg === 'device-owner-mismatch'
@@ -592,7 +633,8 @@ async function syncAfterLogin(email: string): Promise<{ pulled: number; pushed: 
         `「取消」＝不上傳，改用這個帳號雲端上的資料（本機這份會先自動備份，可在下方「資料備份」還原）。\n\n` +
         `如果這台裝置是跟別人共用的，請選「取消」——否則對方的記錄會進到你的帳號。`
     )
-    if (merge) setDataOwner(uid)
+    if (await currentUserId() !== uid || getDataOwner() !== beforeOwner) throw new Error('帳號已變更，請重新登入確認')
+    if (merge) claimDeviceFor(uid)
     else discardLocalForNewOwner(uid)
     return await syncNow()
   }
@@ -601,6 +643,23 @@ async function syncAfterLogin(email: string): Promise<{ pulled: number; pushed: 
 // 資料備份/還原：列出本機每日快照，可一鍵還原、可存成檔案帶離這台裝置（安全網）
 function BackupSettings() {
   const [items, setItems] = useState<BackupMeta[]>(() => listBackups())
+  const [conflicts, setConflicts] = useState(() => listConflicts())
+  const owner = useRef(getDataOwner())
+  useEffect(() => {
+    const refresh = () => { setItems(listBackups()); setConflicts(listConflicts()) }
+    const ready = (event: Event) => {
+      const next = (event as CustomEvent<{ owner: string | null }>).detail?.owner
+      if (next === undefined || next !== getDataOwner()) return
+      owner.current = next
+      refresh()
+    }
+    window.addEventListener('yike:backup-change', refresh)
+    window.addEventListener('yike:local-owner-ready', ready)
+    return () => {
+      window.removeEventListener('yike:backup-change', refresh)
+      window.removeEventListener('yike:local-owner-ready', ready)
+    }
+  }, [])
   const [msg, setMsg] = useState('')
   const [stale, setStale] = useState<number | null>(() => daysSinceExport())
   const fileRef = useRef<HTMLInputElement>(null)
@@ -608,10 +667,11 @@ function BackupSettings() {
   // 把備份帶離這台裝置。網頁用下載；iOS 原生 WKWebView 的 <a download> 常常
   // 靜默失敗，那種「按了說成功、其實什麼都沒存」比不給按更糟——
   // 所以原生一律走剪貼簿，並如實告訴使用者東西在哪。
-  const takeOffDevice = async (date: string) => {
+  const takeOffDevice = async (id: string) => {
+    const date = items.find((b) => b.id === id)?.date ?? id.split('#')[0]
     let text: string
     try {
-      text = exportBackupAsFile(date)
+      text = exportBackupAsFile(id)
     } catch (e) {
       setMsg(`✗ ${e instanceof Error ? e.message : '匯出失敗'}`)
       return
@@ -635,7 +695,7 @@ function BackupSettings() {
       URL.revokeObjectURL(a.href)
       markExported()
       setStale(daysSinceExport())
-      setMsg(`✓ 已下載 yike-backup-${date}.json——存到雲端硬碟或寄給自己，別只放在這台`)
+      setMsg(`✓ 已開始下載 yike-backup-${date}.json——請確認已保存，並另存到自己的雲端硬碟`)
     } catch {
       setMsg('✗ 下載失敗，請換個瀏覽器再試')
     }
@@ -666,28 +726,34 @@ function BackupSettings() {
       ) : (
         <ul className="backup-list">
           {items.map((b) => (
-            <li key={b.date}>
+            <li key={b.id}>
               <span>
-                {b.date} · {b.keys} 筆 · {Math.max(1, Math.round(b.bytes / 1024))}KB
+                {b.date}{b.pre ? '（還原前安全快照）' : ''} · {b.keys} 筆 · {Math.max(1, Math.round(b.bytes / 1024))}KB
               </span>
               <button
                 className="link-btn"
                 onClick={() => {
                   if (
                     !confirm(
-                      `用 ${b.date} 的備份覆蓋目前這台的資料？\n\n目前資料會被該備份取代（若有雲端帳號，還原後會自動上傳同步）。`
+                      `更新 ${b.date} 備份內的記錄？其他記錄保留，同名記錄會更新，之後會等待雲端同步。\n\n操作前會保存目前資料的安全快照；存不下就取消。`
                     )
                   )
                     return
-                  const n = restoreBackup(b.date)
-                  setItems(listBackups())
-                  setMsg(`✓ 已還原 ${n} 筆（${b.date}），即將重新整理…`)
-                  setTimeout(() => location.reload(), 900)
+                  try {
+                    if (getDataOwner() !== owner.current) throw new Error('帳號已變更，請重新載入')
+                    if (hasUnsavedDrafts()) throw new Error('請先複製並保存尚未儲存的草稿')
+                    const n = restoreBackup(b.id)
+                    setItems(listBackups()); setConflicts(listConflicts())
+                    refreshRestoredViews()
+                    setMsg(`✓ 已還原 ${n} 筆（${b.date}），畫面已更新；其他記錄保留`)
+                  } catch (error) {
+                    setMsg(`✗ 還原失敗：${error instanceof Error ? error.message : '請重試'}`)
+                  }
                 }}
               >
                 還原
               </button>
-              <button className="link-btn" onClick={() => void takeOffDevice(b.date)}>
+              <button className="link-btn" onClick={() => void takeOffDevice(b.id)}>
                 存成檔案
               </button>
             </li>
@@ -712,16 +778,49 @@ function BackupSettings() {
             if (!f) return
             void f.text().then((txt) => {
               try {
-                const n = importAll(txt)
-                setMsg(`✓ 已從檔案還原 ${n} 筆，即將重新整理…`)
-                setTimeout(() => location.reload(), 900)
+                if (getDataOwner() !== owner.current) throw new Error('帳號已變更，請重新載入')
+                if (hasUnsavedDrafts()) throw new Error('請先複製並保存尚未儲存的草稿')
+                const preview = inspectImport(txt)
+                const confirmed = !preview.requiresOwnerConfirmation || confirm(
+                  `此檔來自另一帳號或未記錄帳號，含 ${preview.count} 筆。確認轉入目前登入帳號？同名記錄會更新，其他記錄保留，之後會同步到目前帳號。`
+                )
+                if (!confirmed) return
+                if (inspectImport(txt).currentOwner !== preview.currentOwner) throw new Error('帳號已變更，請重新選擇備份檔')
+                const n = importAll(txt, { confirmOwnerChange: preview.requiresOwnerConfirmation })
+                refreshRestoredViews()
+                setMsg(`✓ 已從檔案還原 ${n} 筆，畫面已更新；其他記錄保留`)
               } catch (err) {
-                setMsg(`✗ 這個檔看起來不是一刻的備份：${err instanceof Error ? err.message : ''}`)
+                setMsg(`✗ 還原失敗：${err instanceof Error ? err.message : ''}`)
               }
             })
           }}
         />
       </div>
+      {conflicts.length > 0 && <div>
+        <div className="label">雲端衝突副本（{conflicts.length} 份）</div>
+        <p className="sync-help">保留另一裝置的版本，尚未套回記錄。先存成檔案檢查，再決定是否匯入；匯入會更新同名記錄。</p>
+        <ul className="backup-list">{conflicts.map((copy) => <li key={copy.id}>
+          <span>{copy.key.replace(/^pp:/, '')} · {new Date(copy.at).toLocaleString()}</span>
+          <button className="link-btn" onClick={() => void (async () => {
+            try {
+              const text = exportConflictAsFile(copy.id)
+              if (Capacitor.isNativePlatform()) {
+                await navigator.clipboard.writeText(text)
+                setMsg('✓ 衝突副本已複製到剪貼簿，請貼到自己的備忘錄另存')
+              } else {
+                const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+                const a = document.createElement('a'); a.href = url; a.download = 'yike-conflict.json'; a.click(); URL.revokeObjectURL(url)
+                setMsg('✓ 已開始下載衝突副本，請確認檔案已保存；尚未套回記錄')
+              }
+            } catch (error) { setMsg(`✗ ${error instanceof Error ? error.message : '副本匯出失敗'}`) }
+          })()}>存成檔案</button>
+          <button className="link-btn" onClick={() => {
+            if (getDataOwner() !== owner.current) { setMsg('帳號已變更，請重新載入'); return }
+            if (!confirm('刪除這份雲端副本？它可能是另一裝置版本的唯一一份。請先存成檔案。')) return
+            dismissConflict(copy.id); setConflicts(listConflicts())
+          }}>刪除副本</button>
+        </li>)}</ul>
+      </div>}
       {msg && (
         <p className="hint" style={{ marginTop: 6 }}>
           {msg}

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { query, withInsert } from './supabaseMock'
 
 const auth = { getSession: vi.fn(), signInWithPassword: vi.fn(), signUp: vi.fn() }
 const from = vi.fn()
@@ -14,11 +15,11 @@ const sessionAs = (uid: string) =>
   auth.getSession.mockResolvedValue({ data: { session: { user: { id: uid } } } })
 
 const emptyServer = () =>
-  from.mockReturnValue({
-    select: async () => ({ data: [], error: null }),
+  from.mockReturnValue(withInsert({
+    select: () => query(() => ({ data: [], error: null })),
     // upsert 現在會接 .select() 拿回伺服器指派的 updated_at
-    upsert: () => ({ select: async () => ({ data: [], error: null }) }),
-  })
+    upsert: () => ({ select: () => query(() => ({ data: [], error: null })) }),
+  }))
 
 const seedLocal = () =>
   saveDay('2026-09-01', {

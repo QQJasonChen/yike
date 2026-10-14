@@ -34,7 +34,7 @@ describe('備份匯出：帶離這台裝置', () => {
     const [b] = listBackups()
     expect(b).toBeDefined()
 
-    const file = exportBackupAsFile(b.date)
+    const file = exportBackupAsFile(b.id)
     const parsed = JSON.parse(file) as { app: string; backupOf: string; data: Record<string, unknown> }
     expect(parsed.app).toBe('inkday-planner')
     expect(parsed.backupOf).toBe(b.date)

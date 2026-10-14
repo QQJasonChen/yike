@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useExternalPrefix } from './useExternalKey'
+import { changedFields, rebaseItems, useStoredEntry } from './useStoredEntry'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MiniCal from './MiniCal'
 import TaskRow from './TaskRow'
 import Timeline from './Timeline'
@@ -61,7 +63,9 @@ export default function DayView({
   registerAbandonSink,
   focusMitSignal,
 }: Props) {
-  const [entry, setEntry] = useState<DayEntry>(() => loadDay(dateKey))
+  const externalDays = useExternalPrefix('pp:day:')
+  const externalWeeks = useExternalPrefix('pp:week:')
+  const { entry, edit: editEntry, reload, canWrite } = useStoredEntry<DayEntry>(`pp:day:${dateKey}`, () => loadDay(dateKey), (value) => saveDay(dateKey, value))
   const [copied, setCopied] = useState(false)
   const [inkNative, setInkNative] = useState(false) // iPad 原生 PencilKit
   const [inkTarget, setInkTarget] = useState<string | null>(null) // web 畫布正在編輯的 key（'note' 或 'q:m0'）
@@ -70,12 +74,13 @@ export default function DayView({
   }, [])
   // 今天的週計畫：本週甘特裡有排到「今天」的任務（每日提醒該推進什麼）
   const todayPlanTasks = useMemo(() => {
+    void externalWeeks // External writes invalidate this storage-derived cache.
     const we = loadWeek(mondayOf(dateKey))
     const wd = (fromDateKey(dateKey).getDay() + 6) % 7 // 一=0 … 日=6
     return we.tasks
       .filter((t) => t.text.trim() && (t.cells ?? spanToCells(t.span)).includes(wd))
       .map((t) => t.text.trim())
-  }, [dateKey])
+  }, [dateKey, externalWeeks])
   const [rolloverDone, setRolloverDone] = useState(false)
   // 今日時間軸：手機預設收起（桌機永遠展開、不顯示切換鈕）
   const [showTimeline, setShowTimeline] = useState(
@@ -112,10 +117,10 @@ export default function DayView({
     const todayTexts = new Set(entry.tasks.map((t) => t.text.trim()).filter(Boolean))
     return prev.tasks.filter((t) => t.text.trim() && !t.completed && !todayTexts.has(t.text.trim()))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateKey, todayKey, rolloverDone])
+  }, [dateKey, todayKey, rolloverDone, externalDays])
 
   const rollover = () => {
-    setEntry((prev) => {
+    editEntry((prev) => {
       const tasks = prev.tasks.slice()
       let qi = 0
       for (let i = 0; i < tasks.length && qi < yesterdayUnfinished.length; i++) {
@@ -125,7 +130,6 @@ export default function DayView({
         }
       }
       const next = { ...prev, tasks }
-      saveDay(dateKey, next)
       return next
     })
     setRolloverDone(true)
@@ -191,20 +195,15 @@ export default function DayView({
     inputs?.[currentIndex + 1]?.focus()
   }
 
-  // 換日期時重新載入
-  useEffect(() => {
-    setEntry(loadDay(dateKey))
-  }, [dateKey])
-
   // widget 在桌面改了今天的資料（打勾/塗格）→ 若正看該日就重載，避免畫面與 storage 脫節
   useEffect(() => {
     const onExternal = (e: Event) => {
       const date = (e as CustomEvent<{ date: string }>).detail?.date
-      if (date === dateKey) setEntry(loadDay(dateKey))
+      if (date === dateKey) reload()
     }
     window.addEventListener('yike:external-day-change', onExternal)
     return () => window.removeEventListener('yike:external-day-change', onExternal)
-  }, [dateKey])
+  }, [dateKey, reload])
 
   // widget「✏️ 寫下」進來：聚焦最重要任務輸入框（App 已切到今天）
   useEffect(() => {
@@ -218,13 +217,8 @@ export default function DayView({
   }, [focusMitSignal])
 
   // 任何修改即時存檔（零儲存按鈕）
-  const update = (patch: Partial<DayEntry>) => {
-    setEntry((prev) => {
-      const next = { ...prev, ...patch }
-      saveDay(dateKey, next)
-      return next
-    })
-  }
+  const update = (patch: Partial<DayEntry> | ((base: DayEntry) => Partial<DayEntry>)) =>
+    editEntry((base) => ({ ...base, ...(typeof patch === 'function' ? patch(base) : patch) }))
 
   type InkData = { png: string; drawing: string; fmt?: 'pk' | 'web' }
   const currentInk = (key: string): InkData | undefined =>
@@ -234,10 +228,12 @@ export default function DayView({
       update({ ink: data ?? undefined })
     } else {
       const qid = key.slice(2)
-      const m = { ...(entry.inkAnswers ?? {}) }
-      if (data) m[qid] = data
-      else delete m[qid]
-      update({ inkAnswers: m })
+      update((base) => {
+        const m = { ...(base.inkAnswers ?? {}) }
+        if (data) m[qid] = data
+        else delete m[qid]
+        return { inkAnswers: m }
+      })
     }
   }
   const openInkFor = async (key: string) => {
@@ -254,13 +250,16 @@ export default function DayView({
   }
 
   const updateTask = (i: number, t: Task) => {
-    const tasks = entry.tasks.slice()
-    tasks[i] = t
-    update({ tasks })
+    const patch = changedFields(entry.tasks[i], t)
+    update((base) => {
+      const tasks = base.tasks.slice()
+      tasks[i] = { ...tasks[i], ...patch }
+      return { tasks }
+    })
   }
 
   const setAnswer = (id: string, v: string) =>
-    update({ answers: { ...entry.answers, [id]: v } })
+    update((base) => ({ answers: { ...base.answers, [id]: v } }))
 
   const MORNING_PLACEHOLDERS: Record<number, string> = {
     0: '今天想感謝的人事物⋯',
@@ -268,10 +267,17 @@ export default function DayView({
     2: '一個小實驗：例「最難的事排第一段專注」「先錄影再回訊息」',
   }
 
+  const editToday = useCallback((change: (base: DayEntry) => DayEntry) => {
+    if (!canWrite()) return
+    if (dateKey === todayKey) { editEntry(change); return }
+    if (saveDay(todayKey, change(loadDay(todayKey))))
+      window.dispatchEvent(new CustomEvent('yike:external-key-change', { detail: { key: `pp:day:${todayKey}` } }))
+  }, [dateKey, todayKey, editEntry, canWrite])
+
   // Focus Timer 完成時段 → 塗圈 ＋ 把真實時段自動寫進右邊時間軸
   useEffect(() => {
     registerSessionSink((taskIndex, startMs, endMs) => {
-      setEntry((prev) => {
+      editToday((prev) => {
         const tasks = prev.tasks.slice()
         const t = tasks[taskIndex]
         if (t) {
@@ -303,25 +309,23 @@ export default function DayView({
           })
         }
         const next = { ...prev, tasks, blocks }
-        saveDay(todayKey, next)
         return next
       })
     })
-  }, [registerSessionSink, todayKey])
+  }, [registerSessionSink, editToday, settings.focusMinutes])
 
   // 計時中放棄（✕）→ 該任務記一棵枯樹（計時永遠記在今天，同 startFocus 慣例）
   useEffect(() => {
     registerAbandonSink((taskIndex) => {
-      setEntry((prev) => {
+      editToday((prev) => {
         const tasks = prev.tasks.slice()
         const t = tasks[taskIndex]
         if (t) tasks[taskIndex] = { ...t, withered: (t.withered ?? 0) + 1 }
         const next = { ...prev, tasks }
-        saveDay(todayKey, next)
         return next
       })
     })
-  }, [registerAbandonSink, todayKey])
+  }, [registerAbandonSink, editToday])
 
   const d = new Date(
     Number(dateKey.slice(0, 4)),
@@ -474,9 +478,9 @@ export default function DayView({
                         blocks.some((b) => s0 < b.end && e0 > b.start)
                       while (start + dur <= 23 * 60 && overlaps(start, start + dur)) start += 30
                       if (start + dur > 23 * 60) start = Math.max(6 * 60, 23 * 60 - dur)
-                      update({
+                      update((base) => ({
                         blocks: [
-                          ...blocks,
+                          ...base.blocks,
                           {
                             id: `a${Date.now().toString(36)}`,
                             start,
@@ -485,7 +489,7 @@ export default function DayView({
                             taskIndex: i,
                           },
                         ],
-                      })
+                      }))
                     }
                   }}
                 />
@@ -607,7 +611,7 @@ export default function DayView({
                     key={h}
                     className={`habit-chip ${entry.habitsDone[h] ? 'on' : ''}`}
                     onClick={() =>
-                      update({ habitsDone: { ...entry.habitsDone, [h]: !entry.habitsDone[h] } })
+                      update((base) => ({ habitsDone: { ...base.habitsDone, [h]: !base.habitsDone[h] } }))
                     }
                   >
                     {entry.habitsDone[h] ? '✓ ' : ''}
@@ -639,7 +643,7 @@ export default function DayView({
                     <button
                       key={i}
                       className={`mood-btn ${entry.mood === i + 1 ? 'on' : ''}`}
-                      onClick={() => update({ mood: entry.mood === i + 1 ? null : i + 1 })}
+                      onClick={() => update((base) => ({ mood: base.mood === i + 1 ? null : i + 1 }))}
                     >
                       {m}
                     </button>
@@ -651,7 +655,7 @@ export default function DayView({
                     <button
                       key={n}
                       className={`score-btn ${entry.score === n ? 'on celebrate' : ''}`}
-                      onClick={() => update({ score: entry.score === n ? null : n })}
+                      onClick={() => update((base) => ({ score: base.score === n ? null : n }))}
                     >
                       {n}
                     </button>
@@ -681,7 +685,7 @@ export default function DayView({
                 blocks={entry.blocks}
                 isToday={isToday}
                 routines={settings.routines}
-                onChange={(blocks) => update({ blocks })}
+                onChange={(blocks) => update((base) => ({ blocks: rebaseItems(base.blocks, entry.blocks, blocks) }))}
                 onRoutinesChange={(routines) => onSettingsChange({ ...settings, routines })}
                 dropRef={dropRef}
               />

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { rangeToIcs } from './icsExport'
 import { addDays, allDayKeys, loadDay, toDateKey } from './storage'
 import { dayToMarkdown } from './exportMd'
@@ -7,6 +7,8 @@ import {
   extractNotionPageId,
   downloadMarkdown,
   loadNotionConfig,
+  notionPageUrl,
+  NotionPushError,
   presetRange,
   pushToNotion,
   saveNotionConfig,
@@ -30,8 +32,12 @@ export default function ExportPanel({ settings }: Props) {
   const [from, setFrom] = useState(() => presetRange('last7', todayKey).from)
   const [to, setTo] = useState(todayKey)
   const [preset, setPreset] = useState<RangePreset | 'custom'>('last7')
-  const [msg, setMsg] = useState<{ text: string; url?: string; err?: boolean } | null>(null)
+  const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
+  const [notionResult, setNotionResult] = useState<{
+    text: string; url?: string; outcome: 'complete' | 'partial' | 'uncertain' | 'rejected'
+  } | null>(null)
   // Notion 設定
   const [cfg, setCfg] = useState(() => loadNotionConfig())
   const [showSetup, setShowSetup] = useState(false)
@@ -60,8 +66,8 @@ export default function ExportPanel({ settings }: Props) {
     return { title, md }
   }
 
-  const flash = (text: string, err = false, url?: string) => {
-    setMsg({ text, err, url })
+  const flash = (text: string, err = false) => {
+    setMsg({ text, err })
     if (!err) setTimeout(() => setMsg((m) => (m?.text === text ? null : m)), 6000)
   }
 
@@ -100,6 +106,7 @@ export default function ExportPanel({ settings }: Props) {
   }
 
   const doNotion = async () => {
+    if (busyRef.current) return
     if (!cfg) {
       setShowSetup(true)
       flash('先完成下方的 Notion 設定（一次就好，約 1 分鐘）', true)
@@ -107,33 +114,48 @@ export default function ExportPanel({ settings }: Props) {
     }
     const out = buildMarkdown()
     if (!out) return flash('這段日期內沒有任何記錄。', true)
+    if (notionResult && ['partial', 'uncertain'].includes(notionResult.outcome) && !window.confirm(
+      `${notionResult.outcome === 'partial' ? '上一筆已建立頁面，但內容可能不完整。' : '上一筆無法確認是否已寫入。'}\n\n請先到 Notion 檢查。再次匯出會建立另一個頁面，可能造成重複。確定仍要重送？`
+    )) return
+    busyRef.current = true
     setBusy(true)
     try {
       const r = await pushToNotion(cfg, out.title, out.md)
-      flash('✓ 已送到你的 Notion', false, r.url)
+      const url = r.url ? notionPageUrl(r.url) : null
+      setNotionResult(url ? { text: '✓ 已送到你的 Notion', outcome: 'complete', url }
+        : { text: '無法確認這次匯出的頁面。請先到 Notion 檢查，避免重複匯出。', outcome: 'uncertain' })
     } catch (e) {
-      flash(e instanceof Error ? e.message : '匯出失敗', true)
+      setNotionResult(e instanceof NotionPushError
+        ? { text: e.message, outcome: e.outcome, url: e.url ? notionPageUrl(e.url) ?? undefined : undefined }
+        : { text: '無法確認這次是否已寫入。請先到 Notion 檢查，避免重複匯出。', outcome: 'uncertain' })
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
 
   const doSaveSetup = async (test: boolean) => {
+    if (busyRef.current) return
     const pageId = extractNotionPageId(pageDraft)
     if (!tokenDraft.trim()) return flash('請先貼上 Integration Secret（步驟 1）', true)
     if (!pageId) return flash('看不懂這個頁面連結——請直接複製 Notion 頁面的分享連結', true)
-    const next = { token: tokenDraft.trim(), parentPageId: pageId, parentUrl: pageDraft.trim() }
+    const next = { token: tokenDraft.trim(), parentPageId: pageId, parentUrl: notionPageUrl(pageId)! }
     if (test) {
+      busyRef.current = true
       setBusy(true)
       try {
         await pushToNotion(next, '', '', true)
       } catch (e) {
+        busyRef.current = false
         setBusy(false)
         return flash(e instanceof Error ? e.message : '連線測試失敗', true)
       }
+      busyRef.current = false
       setBusy(false)
     }
-    saveNotionConfig(next)
+    try { saveNotionConfig(next) } catch {
+      return flash('設定未儲存，請確認頁面與 Secret，或裝置儲存空間後再試。', true)
+    }
     setCfg(next)
     setShowSetup(false)
     flash(test ? '✓ 連線成功，設定已儲存——以後一鍵直送' : '✓ 設定已儲存')
@@ -194,17 +216,17 @@ export default function ExportPanel({ settings }: Props) {
           {cfg ? '⚙ Notion 設定' : '⚙ 設定 Notion'}
         </button>
       </div>
+      {notionResult && (
+        <p className="sync-help" role="status" style={{ color: notionResult.outcome !== 'complete' ? 'var(--terra)' : undefined }}>
+          {notionResult.text}
+          {notionResult.url && (
+            <> <a href={notionResult.url} target="_blank" rel="noopener noreferrer">開啟頁面 →</a></>
+          )}
+        </p>
+      )}
       {msg && (
         <p className="sync-help" style={{ color: msg.err ? 'var(--terra)' : undefined }}>
           {msg.text}
-          {msg.url && (
-            <>
-              {' '}
-              <a href={msg.url} target="_blank" rel="noreferrer">
-                開啟頁面 →
-              </a>
-            </>
-          )}
         </p>
       )}
       {showSetup && (
@@ -212,7 +234,7 @@ export default function ExportPanel({ settings }: Props) {
           {cfg && (
             <p className="sync-help">
               ✓ 目前已連結頁面：
-              <a href={cfg.parentUrl} target="_blank" rel="noreferrer">
+              <a href={notionPageUrl(cfg.parentPageId)!} target="_blank" rel="noopener noreferrer">
                 {cfg.parentUrl.length > 52 ? `${cfg.parentUrl.slice(0, 52)}…` : cfg.parentUrl}
               </a>
             </p>
@@ -250,12 +272,13 @@ export default function ExportPanel({ settings }: Props) {
             <button disabled={busy} onClick={() => doSaveSetup(true)}>
               {busy ? '測試中…' : '測試連線並儲存'}
             </button>
-            <button className="link-btn" onClick={() => doSaveSetup(false)}>
+            <button className="link-btn" disabled={busy} onClick={() => doSaveSetup(false)}>
               直接儲存
             </button>
             {cfg && (
               <button
                 className="link-btn"
+                disabled={busy}
                 onClick={() => {
                   saveNotionConfig(null)
                   setCfg(null)

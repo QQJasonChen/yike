@@ -1,24 +1,29 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import App from './App'
 import './styles.css'
-import { cloudEnabled } from './cloudConfig'
-import { closeSyncGate, hasCloudArtifact } from './storage'
-import './widgetSync' // iOS widget 資料橋（web/桌機下 no-op）
+import { guardFraming, renderFrameWarning } from './frameGuard'
 
-// 拉取優先：若這台曾登入雲端，render 前先關上同步閘門，
-// 擋掉「首次 pull 完成前」的任何本機寫入污染雲端時間戳。cloud.ts 同步完成後打開。
-if (cloudEnabled() && hasCloudArtifact()) closeSyncGate()
+const root = document.getElementById('root')!
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-)
+const boot = async (): Promise<void> => {
+  // Defer application/storage/widget module execution until after the framing guard.
+  const [{ StrictMode }, { createRoot }, { default: App }, { cloudEnabled }, storage] = await Promise.all([
+    import('react'), import('react-dom/client'), import('./App'), import('./cloudConfig'), import('./storage'),
+  ])
+  // Keep the normal startup order: stamp known legacy owner, close sync gate, mount.
+  storage.stampLegacyBackupOwners()
+  if (cloudEnabled() && storage.hasCloudArtifact()) storage.closeSyncGate()
+  await import('./widgetSync') // native widget bridge (web no-op)
+  createRoot(root).render(<StrictMode><App /></StrictMode>)
 
-// 離線支援：註冊 service worker（僅在正式環境）
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {})
-  })
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    const register = () => { void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}) }
+    if (document.readyState === 'complete') register()
+    else window.addEventListener('load', register, { once: true })
+  }
+  await import('./analytics').then((module) => module.countPageview())
 }
+
+// Export the real startup promise so tests can await this entry module's actual effects.
+export const startup = guardFraming()
+  ? (renderFrameWarning(root), Promise.resolve())
+  : boot()
+void startup.catch(() => { root.textContent = '一刻手帳載入未完成，請重新整理後再試。' })

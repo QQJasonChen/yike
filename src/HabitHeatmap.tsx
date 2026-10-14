@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useExternalPrefix } from './useExternalKey'
 import { addDays, allDayKeys, loadDay, toDateKey } from './storage'
 
 // GitHub 式習慣熱力圖。範圍可調（weeks），給不同視圖用不同尺度。
@@ -9,9 +10,11 @@ interface Props {
 }
 
 export default function HabitHeatmap({ endMonday, weeks, habits }: Props) {
+  const externalDays = useExternalPrefix('pp:day:')
   const todayKey = toDateKey(new Date())
 
   const heat = useMemo(() => {
+    void externalDays // Invalidate this storage-derived cache after a day changes.
     if (habits.length === 0) return []
     const recorded = new Set(allDayKeys())
     const start = addDays(endMonday, -(weeks - 1) * 7)
@@ -31,8 +34,7 @@ export default function HabitHeatmap({ endMonday, weeks, habits }: Props) {
       cols.push(col)
     }
     return cols
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endMonday, weeks, habits])
+  }, [endMonday, weeks, habits, externalDays])
 
   if (habits.length === 0 || heat.length === 0) return null
 

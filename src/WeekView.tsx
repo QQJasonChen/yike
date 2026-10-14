@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useExternalPrefix } from './useExternalKey'
+import { useStoredEntry } from './useStoredEntry'
+import { useMemo, useState } from 'react'
 import { NameField, TextArea, TextField } from './fields'
 import Gantt, { spanToCells } from './Gantt'
 import { tierTone } from './ganttTone'
@@ -77,34 +79,29 @@ const weekNumber = (mondayKey: string): number => {
 }
 
 export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings, onSettingsChange }: Props) {
-  const [week, setWeek] = useState<WeekEntry>(() => loadWeek(mondayKey))
+  const externalDays = useExternalPrefix('pp:day:')
+  const { entry: week, edit } = useStoredEntry<WeekEntry>(`pp:week:${mondayKey}`, () => loadWeek(mondayKey), (value) => saveWeek(mondayKey, value))
   const [query, setQuery] = useState('')
-  const hits = useMemo(() => searchAll(query), [query])
+  const hits = useMemo(() => { void externalDays; return searchAll(query) }, [query, externalDays])
   // 本週時程表：手機預設收起（避免又長又難滑），桌機展開
   const [showGrid, setShowGrid] = useState(
     () => !(typeof window !== 'undefined' && window.matchMedia('(max-width: 560px)').matches)
   )
 
-  useEffect(() => {
-    setWeek(loadWeek(mondayKey))
-  }, [mondayKey])
 
-  const update = (patch: Partial<WeekEntry>) => {
-    setWeek((prev) => {
-      const next = { ...prev, ...patch }
-      saveWeek(mondayKey, next)
-      return next
+  const update = (patch: Partial<WeekEntry> | ((base: WeekEntry) => Partial<WeekEntry>)) =>
+    edit((base) => ({ ...base, ...(typeof patch === 'function' ? patch(base) : patch) }))
+
+  const updateTask = (i: number, patch: Partial<{ text: string; done: boolean }>) => {
+    update((base) => {
+      const tasks = base.tasks.slice()
+      tasks[i] = { ...tasks[i], ...patch }
+      return { tasks }
     })
   }
 
-  const updateTask = (i: number, patch: Partial<{ text: string; done: boolean }>) => {
-    const tasks = week.tasks.slice()
-    tasks[i] = { ...tasks[i], ...patch }
-    update({ tasks })
-  }
-
   const updateReview = (k: keyof WeekEntry['review'], v: string) =>
-    update({ review: { ...week.review, [k]: v } })
+    update((base) => ({ review: { ...base.review, [k]: v } }))
 
   const section = (title: string, hint: string, from: number, to: number) => (
     <>
@@ -237,9 +234,11 @@ export default function WeekView({ mondayKey, onWeekChange, onOpenDay, settings,
             .map((t, i) => ({ ...t, i, tone: tierTone(i), cells: t.cells ?? spanToCells(t.span) }))
             .filter((t) => t.text.trim())}
           onCells={(i, cells) => {
-            const tasks = week.tasks.slice()
-            tasks[i] = { ...tasks[i], cells, span: null }
-            update({ tasks })
+            update((base) => {
+              const tasks = base.tasks.slice()
+              tasks[i] = { ...tasks[i], cells, span: null }
+              return { tasks }
+            })
           }}
         />
 

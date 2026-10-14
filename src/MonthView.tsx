@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useExternalPrefix } from './useExternalKey'
+import { useStoredEntry } from './useStoredEntry'
+import { useMemo } from 'react'
 import { NameField, TextArea } from './fields'
 import MiniCal from './MiniCal'
 import HabitHeatmap from './HabitHeatmap'
@@ -21,20 +23,13 @@ interface Props {
 }
 
 export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay }: Props) {
-  const [entry, setEntry] = useState<MonthEntry>(() => loadMonth(monthKey))
+  const externalDays = useExternalPrefix('pp:day:')
+  const { entry: entry, edit } = useStoredEntry<MonthEntry>(`pp:month:${monthKey}`, () => loadMonth(monthKey), (value) => saveMonth(monthKey, value))
   const todayKey = toDateKey(new Date())
 
-  useEffect(() => {
-    setEntry(loadMonth(monthKey))
-  }, [monthKey])
 
-  const update = (patch: Partial<MonthEntry>) => {
-    setEntry((prev) => {
-      const next = { ...prev, ...patch }
-      saveMonth(monthKey, next)
-      return next
-    })
-  }
+  const update = (patch: Partial<MonthEntry> | ((base: MonthEntry) => Partial<MonthEntry>)) =>
+    edit((base) => ({ ...base, ...(typeof patch === 'function' ? patch(base) : patch) }))
 
   const [y, m] = monthKey.split('-').map(Number)
   const daysInMonth = new Date(y, m, 0).getDate()
@@ -42,13 +37,14 @@ export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay
 
   // 整月每日資料（亮點用：MIT、心情、評分）
   const days = useMemo(() => {
+    void externalDays // External writes invalidate this storage-derived cache.
     const map = new Map<number, DayEntry>()
     for (let d = 1; d <= daysInMonth; d++) {
       const k = `${monthKey}-${String(d).padStart(2, '0')}`
       if (localStorage.getItem(`pp:day:${k}`)) map.set(d, loadDay(k))
     }
     return map
-  }, [monthKey, daysInMonth])
+  }, [monthKey, daysInMonth, externalDays])
 
   const cells: (number | null)[] = [
     ...Array.from({ length: firstOffset }, () => null),
@@ -124,17 +120,21 @@ export default function MonthView({ monthKey, onMonthChange, settings, onOpenDay
             <NameField
               value={p.text}
               onValue={(v) => {
-                const priorities = entry.priorities.slice()
-                priorities[i] = { ...p, text: v }
-                update({ priorities })
+                update((base) => {
+                  const priorities = base.priorities.slice()
+                  priorities[i] = { ...priorities[i], text: v }
+                  return { priorities }
+                })
               }}
             />
             <button
               className={`week-check ${p.done ? 'on' : ''}`}
               onClick={() => {
-                const priorities = entry.priorities.slice()
-                priorities[i] = { ...p, done: !p.done }
-                update({ priorities })
+                update((base) => {
+                  const priorities = base.priorities.slice()
+                  priorities[i] = { ...priorities[i], done: !priorities[i].done }
+                  return { priorities }
+                })
               }}
             >
               ✓
