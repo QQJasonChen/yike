@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({
 }))
 vi.mock('../cloud', () => ({
   cloudEnabled: () => h.enabled, supa: h.supa, startAutoSync: h.startSync,
+  stopAutoSync: vi.fn(),
 }))
 vi.mock('../DayView', () => ({ default: () => null }))
 vi.mock('../WeekView', () => ({ default: () => null }))

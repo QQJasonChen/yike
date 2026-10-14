@@ -1,5 +1,6 @@
 // 期間總結（週/月共用）：自動統計 + 複製 MD + AI 總結 prompt
 import { useMemo, useState } from 'react'
+import { useExternalPrefix } from './useExternalKey'
 import { aiEnabled, generateInsight } from './ai'
 import { loadDay } from './storage'
 import { treeTier } from './plantCells'
@@ -129,7 +130,8 @@ const AI_PROMPT = `你是我的生產力教練。以下是我這個期間的手�
 `
 
 export default function PeriodSummary({ title, dayKeys, periodLabel, showGrove }: Props) {
-  const s = useMemo(() => build(dayKeys), [dayKeys])
+  const externalDays = useExternalPrefix('pp:day:')
+  const s = useMemo(() => { void externalDays; return build(dayKeys) }, [dayKeys, externalDays])
   const [copied, setCopied] = useState<'' | 'md' | 'ai'>('')
   const [aiText, setAiText] = useState('')
   const [aiBusy, setAiBusy] = useState(false)

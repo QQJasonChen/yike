@@ -1,20 +1,23 @@
 // Codex 上架前互審第 1 輪的 DO-NOT-SHIP 發現，逐條釘住。
 // 每一條都經過證偽：把原本的 bug 放回去，對應的斷言必須變紅。
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { query, withInsert } from './supabaseMock'
 
 const auth = { getSession: vi.fn() }
 let serverRows: { key: string; value: unknown; updated_at: string }[] = []
 let savedRows: { key: string; updated_at: string }[] = []
 let onUpsert: (() => void) | null = null
-const from = vi.fn(() => ({
-  select: async () => ({ data: serverRows, error: null }),
-  upsert: () => ({
-    select: async () => {
-      onUpsert?.() // 模擬「等回應期間使用者又編輯了」
-      return { data: savedRows, error: null }
-    },
+let upserted: unknown[] = []
+const from = vi.fn(() => (withInsert({
+  select: () => query(() => ({ data: serverRows, error: null })),
+  upsert: (rows: unknown[]) => ((upserted = rows), {
+    select: () =>
+      query(() => {
+        onUpsert?.() // 模擬「等回應期間使用者又編輯了」
+        return { data: savedRows, error: null }
+      }),
   }),
-}))
+})))
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ auth, from }) }))
 
 import { syncNow } from '../cloud'
@@ -105,9 +108,19 @@ describe('Codex #3：搬遷不能因為「已編輯過」而跳過歷史資料',
     expect(localStorage.getItem('ppl:dirty')).not.toBeNull()
     // 首次登入同步：伺服器全空
     setDataOwner(ME)
-    savedRows = []
+    // 伺服器確實回這兩列（pushed 現在是「伺服器確認接受的筆數」，
+    // 不再是「送出去的筆數」——被過期護欄擋下的不能算成功）
+    savedRows = [
+      { key: 'pp:day:2026-08-01', updated_at: '2026-09-01T00:00:00Z' },
+      { key: 'pp:day:2026-09-01', updated_at: '2026-09-01T00:00:00Z' },
+    ]
     const r = await syncNow()
     expect(r.pushed).toBe(2) // 舊日記也要一起上去，不能只推升級後那筆
+    expect(r.rejected).toBe(0)
+    expect((upserted as { key: string }[]).map((x) => x.key).sort()).toEqual([
+      'pp:day:2026-08-01',
+      'pp:day:2026-09-01',
+    ])
   })
 })
 
@@ -128,10 +141,10 @@ describe('Codex #4：放棄舊 owner 後要能拉得到新帳號的雲端資料'
 
 describe('Codex #5：清空裝置必須連 OpenAI 金鑰一起清', () => {
   it('金鑰不能留給下一個用這台裝置的人（它綁著信用卡）', () => {
-    setOpenAIKey('sk-proj-USERS-CREDIT-CARD', 'gpt-4o-mini')
+    setOpenAIKey('sk-fake-USERS-CREDIT-CARD', 'gpt-4o-mini')
     saveDay('2026-09-01', day('資料'))
     clearAllLocalData()
     expect(getOpenAIKey()).toBe('')
-    expect(JSON.stringify(localStorage)).not.toContain('sk-proj-USERS-CREDIT-CARD')
+    expect(JSON.stringify(localStorage)).not.toContain('sk-fake-USERS-CREDIT-CARD')
   })
 })

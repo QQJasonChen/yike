@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   allDataKeys, autoBackup, exportAll, exportBackupAsFile,
-  getOpenAIKey, saveDay, setDataOwner, setOpenAIKey,
+  getOpenAIKey, listBackups, saveDay, setDataOwner, setOpenAIKey,
 } from '../storage'
 
 const SECRET = 'sk-proj-THISMUSTNEVERLEAK1234567890'
@@ -29,7 +29,9 @@ describe('OpenAI 金鑰不得從任何出口離開這台裝置', () => {
 
   it('不在每日快照裡（快照會被「存成檔案」帶出裝置）', () => {
     autoBackup('2026-09-01')
-    expect(exportBackupAsFile('2026-09-01')).not.toContain(SECRET)
+    const backup = listBackups().find((b) => b.date === '2026-09-01')!
+    expect(backup).toBeDefined()
+    expect(exportBackupAsFile(backup.id)).not.toContain(SECRET)
   })
 
   it('裝置歸屬與髒標記也不會被同步出去', () => {

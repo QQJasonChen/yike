@@ -1,101 +1,65 @@
-# 一刻手帳 Yike — 安全基準
+# 一刻手帳 Yike — 安全基準與部署狀態
 
-給人與 AI 共用的資安依據。做 code review、安全掃描（Codex Security / Claude security-review）
-或新增功能前先讀這份：AI 看得懂程式怎麼寫，但不知道這個產品的規矩，
-沒有這份文件它只會檢查「有沒有登入」，抓不到真正會讓站方賠錢或洩漏使用者日記的漏洞。
+更新：2026-10-14。供開發、審查與維運使用；下列「正式已核實」來自本次管理者回讀與驗收。來源檔、測試通過或候選 build 不代表已部署；後續變更須重新核對並更新狀態。
 
-架構：Vite + React SPA（GitHub Pages，純靜態）＋ Capacitor iOS ＋ Supabase
-（Postgres / Auth / Edge Functions）。**沒有自有後端伺服器**，所有伺服器端邏輯都在
-Supabase Edge Functions 裡；因此「前端」＝完全不可控。
+正式 Web 是 GitHub Pages 的 Vite／React 靜態 SPA，伺服器端驗證、Auth、PostgreSQL 與 Edge Functions 由 Supabase 提供。瀏覽器與 Capacitor app 都是不可信的客戶端，不能自行授予付費權益或繞過資料庫限制。Web 部署不代表 iOS 原生版本已更新或完成真機驗收。
 
----
+## 目前狀態
 
-## 1. 資產（外洩或被偷會出大事的東西）
+| 項目 | 已核實範圍／尚待完成 |
+|---|---|
+| 正式開通 | `activate` v19 已部署並回讀。新帳號必須提供 Gumroad 每筆訂單的序號，伺服器核對商品、有效購買與購買 Email；沒有空序號或共用邀請碼 bypass。既有帳號使用原帳密登入。 |
+| Auth 與資料隔離 | 公開 signup 維持關閉。journal 的四種 row 操作依 `auth.uid() = user_id` 隔離；匿名查詢不回傳 journal。這不限制持有受控高權限伺服器憑證的營運者。 |
+| 正式 DB 保護 | CAS function 固定 `search_path`，已撤應用角色的 journal `TRUNCATE`／`REFERENCES`／`TRIGGER`。journal quota 已部署；166 筆資料的完整內容、RLS 與 CAS 在套用前後核對相等，計帳一致。 |
+| 備份格式 2 | 專用 TLS 唯讀 reader、`REPEATABLE READ` snapshot 與 AES-256-GCM 已驗收：19 個 Auth 身分 metadata、166 筆 journal、4 筆 entitlement、1 筆 license ledger；原生 PostgreSQL 17.6 隔離還原的內容 hash 相等，時間比較固定 UTC。**新版每日 GitHub workflow 尚待部署及首次排程回讀**；不能以這次演練代替後續每日成功證據。 |
+| 此輪 Web 候選 | 更嚴格的第一方 CSP／analytics、local backup／owner／同步與 Notion UI 修補尚待本輪部署及正式回讀。已存在 CSP 的頁面不等於所有候選 policy 都已上線。 |
+| 自助密碼重設 | recovery 程式預設 OFF。SMTP、正式郵件模板／callback、專用 QA 寄達與重設登入驗收完成前，不宣稱自助重設可用。 |
+| 其他營運條件 | 付費主機／方案、管理帳號 MFA 與完整 Auth 災難復原仍待核實或完成；此文件不保證 PITR、可用性 SLA 或立即撤銷既有 access JWT。 |
 
-| 資產 | 在哪 | 出事的後果 |
-|---|---|---|
-| 使用者的每日日記與反思 | `public.journal` | 最私密的內容。外洩＝產品信譽歸零，且無法挽回 |
-| `SUPABASE_SERVICE_ROLE_KEY` | Edge Function secrets、`~/.yike-supabase-service-key` | 繞過所有 RLS，等於整個資料庫 |
-| ~~`OPENAI_KEY`~~ | — | **已移除**：改成使用者自帶金鑰（BYOK），站方不再持有任何 OpenAI 金鑰 |
-| `BACKUP_PASSPHRASE` | GitHub secret、`~/.yike-backup-passphrase` | 掉了不會外洩資料，但備份會變成解不開的亂碼 |
-| 付費白名單 | `public.entitlements` | 被寫入＝任何人自助開通付費功能 |
-| Supabase Management token (`sbp_`) | 本機 keychain | **整個帳號六個專案**，比 service role key 更嚴重。永遠不要放進任何 CI |
+## 必須維持的不變條件
 
-## 2. 角色與權限
+1. **Journal row 權限在資料庫判斷。** 使用者只能讀寫自己 UID 的 journal；不能依賴前端隱藏按鈕、Email 或客戶端聲稱的 UID。service role 繞過 RLS，必須隔離保管與限制用途；刪帳必須由伺服器驗證 JWT 的 UID，只處理本人，不接受請求 body 自選帳號。
+2. **公開 signup 保持關閉。** 新帳號只由已核實的伺服器付款流程建立；不能恢復前端 signup、空序號 Email 白名單或共用邀請碼捷徑。只知道買家 Email 不是設定其密碼的授權。
+3. **付款 proof 在伺服器重新驗證。** Gumroad 序號須屬於指定商品且請求 Email 等於訂單購買 Email；無效、測試、停用、退款或爭議購買不能開通。不能用與購買 Email 不符的序號替另一個 Email 設定密碼；序號持有與訂單欄位一致，不等於已驗證信箱控制權。webhook 的 entitlement 記錄不是獨立身分證明。
+4. **永久授權紀錄不得因刪帳或重試消失。** `license_redemptions` 與原子 RPC 執行目前每序號 cap 3 的上限；這不是三台裝置限制。開通失敗不得假稱成功，帳號刪除不得重新釋放付款額度，備份合併不得降低歷史 seed。webhook 必須核對 secret／商品／退款爭議，重複送達不得重複增發權益。
+5. **節流／計帳失敗要拒絕。** 原子 RPC 缺失、錯誤或無法判定時 fail closed，不可「先查再扣」或 RPC 出錯就放行。activate 先限制來訪 IP，只有有效序號與購買 Email proof 通過後才消耗該 Email 額度，避免假碼鎖住買家。IP header 不是可信身分 proof。
+6. **同步時間與並發由伺服器守門。** `updated_at` 由資料庫產生；保留 CAS／device revision 與 dirty 編輯保護。失敗的 CAS 不得計入新增 quota，失敗寫入不得被前端標成已同步。
+7. **本機資料不得混進另一帳號。** `ppl:owner` 與同步閘門用來防止帳號切換／共享裝置的誤送；候選修補的 owner／legacy quarantine／匯入確認須保留。這是 app 邏輯保護，localStorage 沒有因此成為加密或 OS 帳號隔離。
+8. **本機憑證不進一般同步、匯出或備份。** 排除 Auth session、OpenAI key、Notion token、`pp:sync`／`pp:integrations` 與 `ppl:` 的內部敏感狀態。候選可明確匯出目前 owner 的結構化 `ppl:conflict:` 內容作復原，但不能因此開放任意 `ppl:` key 或他人的副本。使用者主動執行 Notion／AI 時，所需 token 與選取內容會透過 TLS 傳到對應服務流程。
+9. **備份落地與上傳前必須加密。** 未加密資料不能寫入暫存 dump、log、artifact 或上傳備份庫；TLS 傳輸及受控 process memory 中可以存在明文。明文 offline 檢視只能在明確授權、私有檔案權限與隔離環境中進行，不能成為每日備份捷徑。
+10. **功能啟用前須具備完整安全與復原條件。** 暫缺商戶 OpenAI／RevenueCat 憑證的入口不得僅因補 secret 就視為可商用。商戶 AI 要有 Auth、原子用量、請求大小／timeout／總成本限制；IAP 要有真實交易驗證與永久購買 owner 綁定。原型、舊端點或 HTTP 200／OPTIONS 不足以證明付款與同步可用。
 
-| 角色 | 可以 | 不可以 |
-|---|---|---|
-| 未登入訪客 | 用全部本機功能（資料只在瀏覽器） | 讀寫任何雲端資料 |
-| 已開通使用者 | 讀寫**自己的** journal、每天 15 次 AI | 讀寫他人 journal、繞過每日上限 |
-| Edge Function（service role） | 全庫存取 | — |
+## Journal 容量與失敗處理
 
-- **身分驗證**：Supabase Auth JWT。**公開註冊必須保持關閉**（已驗證 `signup_disabled`）——
-  這是最強的一道門，開了等於任何人自助拿到雲端同步＋AI 額度。
-- **授權**：靠 RLS，不是靠前端。見第 4 節。
+版本化設定目前為：key 最多 1,024 bytes、JSON value 最多 512 KiB、`client_id` 最多 256 bytes；每帳號最多 40,000 rows／100 MiB，全站 250 MiB 的**邏輯 key＋JSON 文字用量**。這不是 PostgreSQL 實體磁碟、索引／WAL、網路、Auth、Edge Functions 或供應商帳單的上限，亦不是每位買家的容量承諾。
 
-## 3. 信任邊界
+quota tables／functions 不允許一般使用者修改；journal accepted rows 與衍生 counters 在同一 transaction 更新。TRUNCATE 被拒絕，不能繞過 DELETE 計帳。擴容前應核對總量、provider 容量與預算，保留核對過的 rollback，不能只提高前端數字。
 
-```
-[瀏覽器 / iOS app]  ← 完全不可控，使用者能改任何數值、偽造任何請求
-        │
-    ════╪════  信任邊界
-        │
-[Edge Functions] → [Postgres + RLS]   ← 可控
-```
+真 PostgreSQL 17.6 多連線測試已覆蓋同帳號／跨帳號容量競爭、CAS 拒絕、Auth cascade 與 counter 一致性。管理者多 statement 的不同鎖順序仍可能發生 `40P01` 或 `40001`；必須整個 transaction 回滾，不把前批視為完成。還原工具先取得相關 table locks；失敗後重新只讀 preview。COMMIT 回應遺失屬於結果不明，須 readback 後才決定下一步，不能自動重送或保證「一定沒寫入」。
 
-**鐵律：任何跟權限、付費狀態、用量額度有關的判斷，一律在邊界內重算，
-絕不相信前端送來的任何數字。** 前端的隱藏/停用按鈕只是 UX，不是安全機制。
+## 憑證與備份權限
 
-## 4. 安全不變條件（最高憲法，任何情況都不能被打破）
+| 資產 | 保護要求 |
+|---|---|
+| Supabase service-role key | 只在受控伺服器／明確授權管理流程；不進 client bundle、公開 repo、測試或一般 CI log。 |
+| Supabase Management token | 可能管理多個專案；不得放進產品 CI，不能用它當每日 reader。 |
+| 專用 backup reader | LOGIN、BYPASSRLS，但無 superuser／create／write 或 authenticated membership。Auth metadata 由固定 `search_path`、postgres-owned SECURITY DEFINER 函數只回傳 UID／Email／created_at／last_sign_in_at；EXECUTE 僅授 reader，PUBLIC／anon／authenticated／service_role 無權。建立與收回預設權限須在同一 transaction。 |
+| Backup passphrase 與加密 archive | 密語與 archive 分開保管；密語遺失會妨礙復原，兩者同時外洩可解密內容。不得印在 argv、stdout、CI log 或公開 artifact。reader 與 passphrase 僅給專用私有備份 job，不授予網站 PR CI。 |
+| Gumroad／webhook／Notion／AI 憑證 | 不印原始上游 body、序號前綴或帳號個資；只記錄必要 status／aggregate。測試只能用合成憑證或明確授權的專用 QA 資料。 |
 
-1. **使用者只能讀寫自己的 journal。** 由 `public.journal` 的 RLS 保證，
-   不是由前端或 Edge Function 保證——假設外圍全被繞過，資料庫自己必須守住最後一道。
-2. **公開註冊永遠關閉。** 帳號只能經 `activate` / `iap-activate` 建立。
-3. **AI 每人每日不超過 `DAILY_CAP`。** 計數必須原子遞增後再判斷（先加再比），
-   不能「先查再扣」——中間的時間差會被同一毫秒的並行請求放大成免費算力。
-4. **付費驗證只在伺服器端做。** Gumroad 序號向 Gumroad 驗、IAP 向 RevenueCat 驗；
-   前端送來的「我已付費」一律不採信。
-5. **同一筆付款只能開通一次。** webhook 以 email 為主鍵 upsert，重複送達不得重複給權益。
-6. **節流故障時要擋，不是要放行。** 計數器查不到或出錯 → 拒絕，不能 fail-open。
-7. **備份不得以明文離開 Supabase。** 落地前先 AES-256 加密。
-8. **`updated_at` 只能由資料庫寫。** 客戶端送來的時間戳一律被 trigger 覆蓋成 `now()`——
-   裝置時鐘設錯會污染排序基準，讓正常裝置的編輯永遠推不上去。
-9. **本機資料只能推進它所屬的帳號。** `ppl:owner` 記錄歸屬；共用裝置上不得把
-   前一個人的日記同步進後一個人的帳號（RLS 擋不到這件事）。
-10. **`ppl:` 前綴的 key 絕不離開裝置。** 金鑰、歸屬、髒標記都在這個前綴下。
+新版加密檔是 AES-256-GCM authenticated envelope；tag 驗證後才解析內容。既有 AES-CBC 檔不能因 checksum 正確就當成已防篡改來源，只能走明確授權的 legacy 唯讀與演練流程。私有 GitHub 儲存加密 archive，不等於 GitHub 完全看不到備份檔名／大小等 metadata。
 
-> 條 3 和條 6 都是踩過才寫進來的：`ai_usage` 的 migration 一度沒跑到 production，
-> 而判斷寫成 `if (bump.ok && ...)`，RPC 不存在時短路放行 → 上限完全沒生效。
-> **「migration 檔案存在」不等於「production 跑過」，要實際查 `pg_tables`。**
+備份包含 journal、entitlements、license ledger 與指定 Auth 身分 metadata；**不含 Auth 密碼、OAuth／MFA 設定、登入 sessions 或整套 Supabase 系統資料**。現有帳號的 UID／Email 必須核對；跨專案還原需獨立身分證據，不可只憑相同 Email 猜歸屬。尚未同步的純本機資料，伺服器備份不到。
 
-## 5. 攻擊面與現有防禦
+## 已知限制與發版閘門
 
-| 入口 | 風險 | 防禦 |
-|---|---|---|
-| `POST /functions/v1/activate` | 無限開帳號、暴力猜序號、email 列舉 | 節流 IP 20/時、email 5/時（`rate_limit_bump`，fail-closed） |
-| ~~`ai-insight`~~ | — | 已停用：AI 改走使用者自己的金鑰，站方沒有帳單可以被燒 |
-| `POST /functions/v1/gumroad-ping`、`portaly-webhook` | 偽造付款通知自助開通 | query 的 `?secret=`；退款/爭議不開通 |
-| `POST /functions/v1/delete-account` | 刪別人的帳號 | 驗 JWT 取 uid，只刪自己的 |
-| `/rest/v1/journal` | 讀別人的日記 | RLS `auth.uid() = user_id`（四種操作都有 policy） |
-| 共用邀請碼 `INVITE_CODES` | **流出去就收不回來，永久有效** | 目前只有節流。應定期輪替，並在自動開通修好後移除 |
+- **不是 E2EE。** 雲端 journal 可由具有適當權限的營運者讀取；TLS 與備份加密不能改稱「只有本人能看」。本機匯出通常是明文，使用者須自行保管。
+- 刪帳處理目前 Auth／journal；合法購買與永久授權紀錄、歷史加密 archive 有不同保存範圍。不能宣稱所有歷史副本立即永久刪除；新增恢復流程也不得自動復活已刪帳號。
+- 既有 webhook query secret 有存取 log 外洩風險，需最小權限、遮罩及輪替規劃；不能把尚未部署的 header 改造寫成現況。
+- 目前使用者自帶 OpenAI key 的 AI 費用由其 provider 帳戶負擔。商戶 AI 的缺 secret 拒絕不是完整成本防護，沒有「付費使用者已含每日 15 次 AI」的產品承諾。
+- Web 候選發版須通過 locked dependency install／audit、lint、App／Auth／owner／DB／Notion regression、static CSP、Deno activation tests 與 build；部署後回讀實際 artifact、CSP 與必要 QA。iOS／真機另驗，不以 Web 通過替代。
+- 新版每日備份接線後，必須保留首個實際成功 run、完整分頁與 count／decrypt roundtrip 的無敏感 metadata；持續監看失敗、容量與 retention。演練不等於日後每次排程都成功。
+- Recovery 開旗標前需確認正式 SMTP／寄件網域、固定 callback 與 fragment token_hash 郵件模板，以及專用 QA 寄達、同 owner 重設、新密碼登入、舊密碼與已使用連結拒絕。頁面載入不自動 verify；舊 access JWT 可能到期前仍有效。
+- 付費方案／PITR／host 可用性與管理帳號 MFA 是待完成的營運 gate。不能宣稱「零漏洞」、「不可能被攻擊」或保證永不遺失資料。
 
-## 已知缺口（誠實記錄，不要假裝沒有）
-
-- **journal 在 Supabase 是明文。** 持有 service role key 的人（站方）能讀所有人的日記。
-  端對端加密尚未完成（`src/e2ee.ts` 有核心但未接上主流程）。
-  隱私政策必須誠實反映這一點，不能寫成「只有你看得到」。
-- **共用邀請碼是永久有效的單一字串**，已寄給過買家。屬於「已知會慢慢外流」的資產。
-  2026-09-01 已輪替一次（前一組被寫進公開 repo 的測試檔）。**測試絕不可使用真實憑證。**
-- **webhook 的 secret 放在 query string**，會進各種存取紀錄。改 header 較好。
-- **Supabase 免費方案**：無自動備份、無 PITR、閒置會暫停。備份靠 `yike-backups` private repo
-  每日快照（AES-256，附還原演練 `restore.sh --verify`）。
-- **未設 CSP**。
-- **純本機使用者（沒註冊帳號的人）的資料，站方備份不到**——資料從未離開他們的裝置。
-  他們能靠的是本機每日快照、「存成檔案」匯出、以及設定頁的未匯出提醒。這是
-  「資料只在你的裝置」這個承諾的另一面，不是疏漏，但要誠實告知。
-
-## 掃描前要告訴 AI 的話
-
-> 這是我的最高安全憲法（SECURITY.md 第 4 節），請據此審查所有程式碼，
-> 找出任何會打破這些規則的漏洞。特別檢查：權限判斷是否有落在信任邊界外的、
-> 額度計算是否存在先查再扣的時間差、以及 migration 是否真的跑到 production。
+審查時應同時看實際部署 metadata、source diff 與有意義的回歸證據；migration 存在、build 通過或端點 HTTP 200 都不是正式安全條件已生效的證明。發現疑似漏洞時先提供可重現的最小合成案例與影響範圍，避免讀取或附上使用者日記、序號、token 或密碼。

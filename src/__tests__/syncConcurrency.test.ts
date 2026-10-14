@@ -1,6 +1,7 @@
 // 並發與重入：兩台裝置、以及同一台上重疊的 syncNow。
 // Codex 兩輪都沒碰這塊，但它是「資料會不會不見」最常出事的地方。
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { lazyQuery, query, withInsert } from './supabaseMock'
 
 const auth = { getSession: vi.fn() }
 type Row = { key: string; value: unknown; updated_at: string }
@@ -9,28 +10,34 @@ let delayMs = 0
 let trackUpsert: ((delta: number) => void) | null = null
 let stuckUpsert = false
 
-const from = vi.fn(() => ({
-  select: async () => ({ data: Object.values(server), error: null }),
-  upsert: (rows: { key: string; value: unknown }[]) => ({
-    select: async () => {
-      if (stuckUpsert) return new Promise(() => {}) as never // 永遠不回應
+const from = vi.fn(() => (withInsert({
+  select: () => query(() => ({ data: Object.values(server), error: null })),
+  upsert: (rows: { key: string; value: unknown }[]) => {
+    // 真正的 supabase-js：abortSignal 會讓請求 reject，且伺服器端不會落地。
+    // mock 也要照做，否則測不出「逾時有沒有真的中止」。
+    const exec = async (signal?: AbortSignal) => {
       trackUpsert?.(1)
       try {
-      if (delayMs) await new Promise((r) => setTimeout(r, delayMs))
-      const out: { key: string; updated_at: string }[] = []
-      for (const r of rows) {
-        // 模擬 DB trigger：伺服器自己填時間戳
-        const ts = new Date(Date.now() + out.length).toISOString()
-        server[r.key] = { key: r.key, value: r.value, updated_at: ts }
-        out.push({ key: r.key, updated_at: ts })
-      }
-      return { data: out, error: null }
+        if (stuckUpsert)
+          return await new Promise<never>((_, rej) => {
+            signal?.addEventListener('abort', () => rej(new Error('AbortError')))
+          })
+        if (delayMs) await new Promise((r) => setTimeout(r, delayMs))
+        if (signal?.aborted) throw new Error('AbortError')
+        const out: { key: string; updated_at: string }[] = []
+        for (const r of rows) {
+          const ts = new Date(Date.now() + out.length).toISOString()
+          server[r.key] = { key: r.key, value: r.value, updated_at: ts }
+          out.push({ key: r.key, updated_at: ts })
+        }
+        return { data: out, error: null }
       } finally {
         trackUpsert?.(-1)
       }
-    },
-  }),
-}))
+    }
+    return { select: () => lazyQuery(exec) }
+  },
+})))
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ auth, from }) }))
 
 import { __setSyncSlotTimeout, syncNow } from '../cloud'
@@ -112,7 +119,7 @@ describe('兩台裝置輪流同步', () => {
     const originalFrom = from.getMockImplementation()!
     from.mockImplementationOnce(() => ({
       ...originalFrom(),
-      select: async () => { started(); return pending },
+      select: () => lazyQuery(async () => { started(); return pending }),
     }))
     const sync = syncNow()
     await began

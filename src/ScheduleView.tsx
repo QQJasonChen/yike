@@ -1,3 +1,4 @@
+import { useStoredEntry } from './useStoredEntry'
 // 時程 tab：把週/月/季/年的甘特集中在一處，用週期切換；每張甘特可收合。
 // 資料沿用各層的 localStorage entry，與對應分頁即時共用。
 import { useEffect, useState } from 'react'
@@ -57,40 +58,15 @@ export default function ScheduleView() {
   const [quarterKey, setQuarterKey] = useState(() => quarterOf(todayKey))
   const [yearNum, setYearNum] = useState(() => Number(todayKey.slice(0, 4)))
 
-  const [week, setWeek] = useState<WeekEntry>(() => loadWeek(weekKey))
-  const [month, setMonth] = useState<MonthEntry>(() => loadMonth(monthKey))
-  const [quarter, setQuarter] = useState<QuarterEntry>(() => loadQuarter(quarterKey))
-  const [year, setYear] = useState<YearEntry>(() => loadYear(String(yearNum)))
+  const { entry: week, edit: editWeek, reload: reloadWeek } = useStoredEntry<WeekEntry>(`pp:week:${weekKey}`, () => loadWeek(weekKey), (value) => saveWeek(weekKey, value))
+  const { entry: month, edit: editMonth, reload: reloadMonth } = useStoredEntry<MonthEntry>(`pp:month:${monthKey}`, () => loadMonth(monthKey), (value) => saveMonth(monthKey, value))
+  const { entry: quarter, edit: editQuarter, reload: reloadQuarter } = useStoredEntry<QuarterEntry>(`pp:quarter:${quarterKey}`, () => loadQuarter(quarterKey), (value) => saveQuarter(quarterKey, value))
+  const { entry: year, edit: editYear, reload: reloadYear } = useStoredEntry<YearEntry>(`pp:year:${yearNum}`, () => loadYear(String(yearNum)), (value) => saveYear(String(yearNum), value))
 
-  useEffect(() => setWeek(loadWeek(weekKey)), [weekKey])
-  useEffect(() => setMonth(loadMonth(monthKey)), [monthKey])
-  useEffect(() => setQuarter(loadQuarter(quarterKey)), [quarterKey])
-  useEffect(() => setYear(loadYear(String(yearNum))), [yearNum])
-  // 切到某週期時重載，吃到其他分頁的編輯
+  // 切換週期也重新讀取，已失敗的草稿仍留在畫面。
   useEffect(() => {
-    setWeek(loadWeek(weekKey))
-    setMonth(loadMonth(monthKey))
-    setQuarter(loadQuarter(quarterKey))
-    setYear(loadYear(String(yearNum)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period])
-
-  const saveW = (e: WeekEntry) => {
-    saveWeek(weekKey, e)
-    setWeek(e)
-  }
-  const saveM = (e: MonthEntry) => {
-    saveMonth(monthKey, e)
-    setMonth(e)
-  }
-  const saveQ = (e: QuarterEntry) => {
-    saveQuarter(quarterKey, e)
-    setQuarter(e)
-  }
-  const saveY = (e: YearEntry) => {
-    saveYear(String(yearNum), e)
-    setYear(e)
-  }
+    reloadWeek(); reloadMonth(); reloadQuarter(); reloadYear()
+  }, [period, reloadWeek, reloadMonth, reloadQuarter, reloadYear])
 
   // 各週期的導覽與標題
   const nav: Record<Period, { prev: () => void; next: () => void; title: string; sub: string }> = {
@@ -148,9 +124,11 @@ export default function ScheduleView() {
         .map((g, i) => ({ ...g, i, cells: g.cells ?? spanToCells(g.span) }))
         .filter((g) => g.text.trim())}
       onCells={(i, cells) => {
-        const goals = year.goals.slice()
-        goals[i] = { ...goals[i], cells, span: null }
-        saveY({ ...year, goals })
+        editYear((base) => {
+          const goals = base.goals.slice()
+          goals[i] = { ...goals[i], cells, span: null }
+          return { ...base, goals }
+        })
       }}
     />
   )
@@ -206,9 +184,11 @@ export default function ScheduleView() {
               .map((t, i) => ({ ...t, i, tone: tierTone(i), cells: t.cells ?? spanToCells(t.span) }))
               .filter((t) => t.text.trim())}
             onCells={(i, cells) => {
-              const tasks = week.tasks.slice()
-              tasks[i] = { ...tasks[i], cells, span: null }
-              saveW({ ...week, tasks })
+              editWeek((base) => {
+                const tasks = base.tasks.slice()
+                tasks[i] = { ...tasks[i], cells, span: null }
+                return { ...base, tasks }
+              })
             }}
           />
         )}
@@ -228,9 +208,11 @@ export default function ScheduleView() {
                 .map((p, i) => ({ ...p, i, cells: p.cells ?? spanToCells(p.span) }))
                 .filter((p) => p.text.trim())}
               onCells={(i, cells) => {
-                const priorities = month.priorities.slice()
-                priorities[i] = { ...priorities[i], cells, span: null }
-                saveM({ ...month, priorities })
+                editMonth((base) => {
+                  const priorities = base.priorities.slice()
+                  priorities[i] = { ...priorities[i], cells, span: null }
+                  return { ...base, priorities }
+                })
               }}
             />
             {yearGoalGantt([m], y)}
@@ -252,9 +234,11 @@ export default function ScheduleView() {
                 .map((p, i) => ({ ...p, i, cells: p.cells ?? spanToCells(p.span) }))
                 .filter((p) => p.text.trim())}
               onCells={(i, cells) => {
-                const priorities = quarter.priorities.slice()
-                priorities[i] = { ...priorities[i], cells, span: null }
-                saveQ({ ...quarter, priorities })
+                editQuarter((base) => {
+                  const priorities = base.priorities.slice()
+                  priorities[i] = { ...priorities[i], cells, span: null }
+                  return { ...base, priorities }
+                })
               }}
             />
             {yearGoalGantt(qMonths, qy)}
@@ -274,9 +258,11 @@ export default function ScheduleView() {
               .map((g, i) => ({ ...g, i, cells: g.cells ?? spanToCells(g.span) }))
               .filter((g) => g.text.trim())}
             onCells={(i, cells) => {
-              const goals = year.goals.slice()
-              goals[i] = { ...goals[i], cells, span: null }
-              saveY({ ...year, goals })
+              editYear((base) => {
+                const goals = base.goals.slice()
+                goals[i] = { ...goals[i], cells, span: null }
+                return { ...base, goals }
+              })
             }}
           />
         )}

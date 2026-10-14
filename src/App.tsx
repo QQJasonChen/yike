@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { cloudEnabled, startAutoSync } from './cloud'
+import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
+import { changedFields, useStoredEntry } from './useStoredEntry'
+import { watchOwnerChange } from './ownerWatch'
 import { useCloudAuthStatus } from './useCloudAuthStatus'
 import DayView from './DayView'
 import WeekView from './WeekView'
@@ -25,6 +27,7 @@ import {
   monthOf,
   quarterOf,
   saveSettings,
+  setOnWriteError,
   toDateKey,
 } from './storage'
 import { Settings } from './types'
@@ -82,13 +85,46 @@ export default function App() {
   const [monthKey, setMonthKey] = useState(() => monthOf(todayKey))
   const [quarterKey, setQuarterKey] = useState(() => quarterOf(todayKey))
   const [yearNum, setYearNum] = useState(() => Number(todayKey.slice(0, 4)))
-  const [settings, setSettings] = useState<Settings>(loadSettings)
+  const { entry: settings, edit: editSettings } = useStoredEntry<Settings>('pp:settings', loadSettings, saveSettings)
+  const [writeFailed, setWriteFailed] = useState(false)
+  const [ownerChanged, setOwnerChanged] = useState(false)
+  const [syncMessage, setSyncMessage] = useState('')
   const [timer, setTimer] = useState<TimerState | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [focusMitSignal, setFocusMitSignal] = useState(0)
+
+  useEffect(() => {
+    setOnWriteError(() => setWriteFailed(true))
+    return () => setOnWriteError(null)
+  }, [])
+  useEffect(() => {
+    const onStatus = (event: Event) => {
+      const message = (event as CustomEvent<{ message: string }>).detail?.message
+      if (typeof message === 'string') setSyncMessage(message)
+    }
+    window.addEventListener('yike:sync-status', onStatus)
+    return () => window.removeEventListener('yike:sync-status', onStatus)
+  }, [])
+  useEffect(() => {
+    const stop = () => {
+      stopAutoSync()
+      setTimer(null)
+      focusLock.stop()
+      setOwnerChanged(true)
+    }
+    const unwatch = watchOwnerChange(stop)
+    const ready = () => { setTimer(null); focusLock.stop() }
+    window.addEventListener('yike:owner-change-blocked', stop)
+    window.addEventListener('yike:local-owner-ready', ready)
+    return () => {
+      unwatch()
+      window.removeEventListener('yike:owner-change-blocked', stop)
+      window.removeEventListener('yike:local-owner-ready', ready)
+    }
+  }, [])
 
   // widget 桌面「✏️ 寫下」→ 開到今天並聚焦最重要任務輸入框
   useEffect(() => {
@@ -109,7 +145,7 @@ export default function App() {
 
   // 每日本機備份（安全網）：開站快照一次今天的資料，保留最近 7 份
   useEffect(() => {
-    autoBackup(toDateKey(new Date()))
+    if (!autoBackup(toDateKey(new Date()))) setWriteFailed(true)
   }, [])
 
   // ⌘K / Ctrl+K 開搜尋；Esc 關掉「最上層」的浮層（搜尋 → 設定 → 更多）
@@ -205,8 +241,8 @@ export default function App() {
   }, [])
 
   const updateSettings = (s: Settings) => {
-    setSettings(s)
-    saveSettings(s)
+    const patch = changedFields(settings, s)
+    editSettings((base) => ({ ...base, ...patch }))
   }
 
   const startFocus = (taskIndex: number, taskText: string) => {
@@ -241,7 +277,8 @@ export default function App() {
 
   // 已登入雲端帳號時：開站自動同步＋寫入自動推送
   useEffect(() => {
-    startAutoSync()
+    void startAutoSync((message) => { setSyncMessage(message); window.dispatchEvent(new Event('yike:backup-change')) })
+    return () => stopAutoSync()
   }, [])
 
   // 每日提醒：開 app 時重新排程一次，確保通知與目前設定一致
@@ -251,8 +288,19 @@ export default function App() {
   }, [])
 
   const streak = currentStreak(todayKey)
+  if (ownerChanged) return (
+    <div className="page"><div className="page-inner" role="alert">
+      <p>這台裝置的帳號已在另一個分頁變更。已停止此畫面的編輯與同步，請重新載入。</p>
+      <button onClick={() => location.reload()}>重新載入</button>
+    </div></div>
+  )
   return (
     <>
+      {writeFailed && <div className="hint" role="alert">
+        本次儲存沒有完成。請先複製畫面上的草稿，再檢查裝置儲存空間；此草稿可能尚未進入備份或雲端。
+        <button onClick={() => setWriteFailed(false)}>我知道了</button>
+      </div>}
+      {syncMessage && <p className="hint" role="status">{syncMessage}</p>}
       <div className="topbar">
         <span className="brand">一刻手帳 Yike</span>
         <nav className="tabs">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useStoredEntry } from './useStoredEntry'
 import { NameField, TextArea, TextField } from './fields'
 import Gantt, { spanToCells } from './Gantt'
 import { loadLife, saveLife } from './storage'
@@ -58,32 +58,28 @@ function Rate({
 }
 
 export default function LifeView() {
-  const [entry, setEntry] = useState<LifeEntry>(loadLife)
+  const { entry: entry, edit } = useStoredEntry<LifeEntry>('pp:life', () => loadLife(), (value) => saveLife(value))
   const thisYear = new Date().getFullYear()
 
   // 換頁回來時重新讀（雲端同步可能拉到新資料）
-  useEffect(() => {
-    setEntry(loadLife())
-  }, [])
 
-  const update = (patch: Partial<LifeEntry>) => {
-    setEntry((prev) => {
-      const next = { ...prev, ...patch }
-      saveLife(next)
-      return next
+  const update = (patch: Partial<LifeEntry> | ((base: LifeEntry) => Partial<LifeEntry>)) =>
+    edit((base) => ({ ...base, ...(typeof patch === 'function' ? patch(base) : patch) }))
+
+  const setGoal = (i: number, patch: Partial<LifeEntry['goals'][number]>) => {
+    update((base) => {
+      const goals = base.goals.slice()
+      goals[i] = { ...goals[i], ...patch }
+      return { goals }
     })
   }
 
-  const setGoal = (i: number, patch: Partial<LifeEntry['goals'][number]>) => {
-    const goals = entry.goals.slice()
-    goals[i] = { ...goals[i], ...patch }
-    update({ goals })
-  }
-
   const setPath = (i: number, patch: Partial<LifeEntry['odyssey'][number]>) => {
-    const odyssey = entry.odyssey.slice()
-    odyssey[i] = { ...odyssey[i], ...patch }
-    update({ odyssey })
+    update((base) => {
+      const odyssey = base.odyssey.slice()
+      odyssey[i] = { ...odyssey[i], ...patch }
+      return { odyssey }
+    })
   }
 
   const start = entry.startYear || thisYear
@@ -147,7 +143,7 @@ export default function LifeView() {
         {/* 奧德賽計畫：三個五年後的我 */}
         <div
           className="label odyssey-head"
-          onClick={() => update({ odysseyOpen: !entry.odysseyOpen })}
+          onClick={() => update((base) => ({ odysseyOpen: !base.odysseyOpen }))}
           title="展開／收合"
         >
           <span className={`odyssey-caret ${entry.odysseyOpen ? 'open' : ''}`}>▸</span>

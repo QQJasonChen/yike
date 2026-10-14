@@ -1,3 +1,5 @@
+import { useExternalPrefix } from './useExternalKey'
+import { useStoredEntry } from './useStoredEntry'
 import { useEffect, useMemo, useState } from 'react'
 import { NameField, TextField } from './fields'
 import HabitHeatmap from './HabitHeatmap'
@@ -16,12 +18,12 @@ interface Props {
 }
 
 export default function YearView({ year, onYearChange, settings, onOpenDay }: Props) {
-  const [entry, setEntry] = useState<YearEntry>(() => loadYear(String(year)))
+  const externalDays = useExternalPrefix('pp:day:')
+  const { entry: entry, edit } = useStoredEntry<YearEntry>(`pp:year:${year}`, () => loadYear(String(year)), (value) => saveYear(String(year), value))
   const [editing, setEditing] = useState<{ key: string; mi: number; top: number } | null>(null)
   const todayKey = toDateKey(new Date())
 
   useEffect(() => {
-    setEntry(loadYear(String(year)))
     setEditing(null)
   }, [year])
 
@@ -42,26 +44,21 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
   }, [editing])
 
   const setNote = (key: string, text: string) => {
-    setEntry((prev) => {
+    edit((prev) => {
       const notes = { ...prev.notes }
       if (text) notes[key] = text
       else delete notes[key]
       const next = { ...prev, notes }
-      saveYear(String(year), next)
       return next
     })
   }
 
-  const update = (patch: Partial<YearEntry>) => {
-    setEntry((prev) => {
-      const next = { ...prev, ...patch }
-      saveYear(String(year), next)
-      return next
-    })
-  }
+  const update = (patch: Partial<YearEntry> | ((base: YearEntry) => Partial<YearEntry>)) =>
+    edit((base) => ({ ...base, ...(typeof patch === 'function' ? patch(base) : patch) }))
 
   // 該年每一天的評分與 MIT（熱力格用）
   const dayMap = useMemo(() => {
+    void externalDays // External writes invalidate this storage-derived cache.
     const map = new Map<string, { score: number | null; mit: string }>()
     for (const k of allDayKeys()) {
       if (!k.startsWith(`${year}-`)) continue
@@ -69,7 +66,7 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
       map.set(k, { score: d.score, mit: d.tasks[0]?.text ?? '' })
     }
     return map
-  }, [year])
+  }, [year, externalDays])
 
   const recordedCount = dayMap.size
 
@@ -99,17 +96,21 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
               value={g.text}
               placeholder={i === 0 ? '今年就算只完成這一件，也值得了' : ''}
               onValue={(v) => {
-                const goals = entry.goals.slice()
-                goals[i] = { ...g, text: v }
-                update({ goals })
+                update((base) => {
+                  const goals = base.goals.slice()
+                  goals[i] = { ...goals[i], text: v }
+                  return { goals }
+                })
               }}
             />
             <button
               className={`week-check ${g.done ? 'on' : ''}`}
               onClick={() => {
-                const goals = entry.goals.slice()
-                goals[i] = { ...g, done: !g.done }
-                update({ goals })
+                update((base) => {
+                  const goals = base.goals.slice()
+                  goals[i] = { ...goals[i], done: !goals[i].done }
+                  return { goals }
+                })
               }}
             >
               ✓
@@ -120,7 +121,7 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
                 title="移除這個目標"
                 onClick={() => {
                   if (g.text.trim() && !confirm(`移除目標「${g.text.trim()}」？（甘特上的這條也會一起移除）`)) return
-                  update({ goals: entry.goals.filter((_, j) => j !== i) })
+                  update((base) => ({ goals: base.goals.filter((_, j) => j !== i) }))
                 }}
               >
                 ✕
@@ -131,7 +132,7 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
         <div className="data-actions" style={{ marginTop: 6 }}>
           <button
             className="rollover-btn"
-            onClick={() => update({ goals: [...entry.goals, { text: '', done: false }] })}
+            onClick={() => update((base) => ({ goals: [...base.goals, { text: '', done: false }] }))}
           >
             ＋ 新增目標
           </button>
@@ -209,9 +210,11 @@ export default function YearView({ year, onYearChange, settings, onOpenDay }: Pr
                     title={`${mName}主題`}
                     value={entry.monthFocus[mi]}
                     onValue={(v) => {
-                      const monthFocus = entry.monthFocus.slice()
-                      monthFocus[mi] = v
-                      update({ monthFocus })
+                      update((base) => {
+                        const monthFocus = base.monthFocus.slice()
+                        monthFocus[mi] = v
+                        return { monthFocus }
+                      })
                     }}
                   />
                 </div>

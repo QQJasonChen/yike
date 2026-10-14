@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useStoredEntry } from './useStoredEntry'
+import { useState } from 'react'
 import { TextField } from './fields'
 import { loadBizModel, saveBizModel } from './storage'
 import { BizBlockKey, BizItem, BizModel } from './types'
@@ -37,7 +38,7 @@ const ARROW_GLYPH: Record<Arrow, string> = { right: '→', down: '↓', up: '↑
 const newTagId = () => `t${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 
 export default function BizModelView() {
-  const [model, setModel] = useState<BizModel>(loadBizModel)
+  const { entry: model, edit } = useStoredEntry<BizModel>('pp:bizmodel', () => loadBizModel(), (value) => saveBizModel(value))
   const [filter, setFilter] = useState<Set<string>>(new Set()) // 只看哪些標籤層（空＝全部）
   const [editTags, setEditTags] = useState(false)
   const [picker, setPicker] = useState<{ block: BizBlockKey; i: number } | null>(null)
@@ -45,47 +46,35 @@ export default function BizModelView() {
   const [stack, setStack] = useState(false) // 手機：false＝完整九宮格(可左右滑)、true＝逐格直排編輯
 
   // 換頁回來時重新讀（雲端同步可能拉到新資料）
-  useEffect(() => {
-    setModel(loadBizModel())
-  }, [])
 
-  const update = (patch: Partial<BizModel>) => {
-    setModel((prev) => {
-      const next = { ...prev, ...patch }
-      saveBizModel(next)
-      return next
+  const update = (patch: Partial<BizModel> | ((base: BizModel) => Partial<BizModel>)) =>
+    edit((base) => ({ ...base, ...(typeof patch === 'function' ? patch(base) : patch) }))
+
+  const setItem = (block: BizBlockKey, i: number, patch: Partial<BizItem>) =>
+    update((base) => {
+      const items = base[block].slice()
+      items[i] = { ...items[i], ...patch }
+      return { [block]: items } as Partial<BizModel>
     })
-  }
-
-  const setItems = (block: BizBlockKey, items: BizItem[]) => update({ [block]: items } as Partial<BizModel>)
-
-  const setItem = (block: BizBlockKey, i: number, patch: Partial<BizItem>) => {
-    const items = model[block].slice()
-    items[i] = { ...items[i], ...patch }
-    setItems(block, items)
-  }
-  const addItem = (block: BizBlockKey) => setItems(block, [...model[block], { text: '' }])
+  const addItem = (block: BizBlockKey) => update((base) => ({ [block]: [...base[block], { text: '' }] }))
   const removeItem = (block: BizBlockKey, i: number) =>
-    setItems(block, model[block].filter((_, j) => j !== i))
-
+    update((base) => ({ [block]: base[block].filter((_, j) => j !== i) }))
   const setTag = (id: string, patch: Partial<BizModel['tags'][number]>) =>
-    update({ tags: model.tags.map((t) => (t.id === id ? { ...t, ...patch } : t)) })
+    update((base) => ({ tags: base.tags.map((t) => (t.id === id ? { ...t, ...patch } : t)) }))
   const addTag = () =>
-    update({ tags: [...model.tags, { id: newTagId(), label: '新標籤', color: '#9a8f7d' }] })
+    update((base) => ({ tags: [...base.tags, { id: newTagId(), label: '新標籤', color: '#9a8f7d' }] }))
   const removeTag = (id: string) => {
-    // 刪標籤時，把用到它的項目標籤一併清掉（不讓孤兒 tag id 殘留）
-    const tags = model.tags.filter((t) => t.id !== id)
-    const cleared: Partial<BizModel> = { tags }
-    for (const b of BLOCKS) {
-      const items = model[b.key]
-      if (items.some((it) => it.tag === id))
-        cleared[b.key] = items.map((it) => (it.tag === id ? { ...it, tag: undefined } : it))
-    }
-    update(cleared)
+    update((base) => {
+      const cleared: Partial<BizModel> = { tags: base.tags.filter((t) => t.id !== id) }
+      for (const b of BLOCKS) {
+        const items = base[b.key]
+        if (items.some((it) => it.tag === id))
+          cleared[b.key] = items.map((it) => (it.tag === id ? { ...it, tag: undefined } : it))
+      }
+      return cleared
+    })
     setFilter((prev) => {
-      const n = new Set(prev)
-      n.delete(id)
-      return n
+      const n = new Set(prev); n.delete(id); return n
     })
   }
 

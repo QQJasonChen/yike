@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useStoredEntry } from './useStoredEntry'
 import { TextField } from './fields'
 import HabitHeatmap from './HabitHeatmap'
 import { addDays, loadDay, saveDay, toDateKey } from './storage'
@@ -14,29 +15,9 @@ interface Props {
 }
 
 export default function HabitWeek({ mondayKey, settings, onSettingsChange }: Props) {
-  const [entries, setEntries] = useState<Record<string, DayEntry>>({})
   const [newHabit, setNewHabit] = useState('')
   const todayKey = toDateKey(new Date())
   const dayKeys = Array.from({ length: 7 }, (_, i) => addDays(mondayKey, i))
-
-  useEffect(() => {
-    const map: Record<string, DayEntry> = {}
-    for (const k of dayKeys) map[k] = loadDay(k)
-    setEntries(map)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mondayKey])
-
-  const toggle = (dayKey: string, habit: string) => {
-    setEntries((prev) => {
-      const entry = prev[dayKey] ?? loadDay(dayKey)
-      const next = {
-        ...entry,
-        habitsDone: { ...entry.habitsDone, [habit]: !entry.habitsDone[habit] },
-      }
-      saveDay(dayKey, next)
-      return { ...prev, [dayKey]: next }
-    })
-  }
 
   const addHabit = () => {
     const name = newHabit.trim()
@@ -82,12 +63,7 @@ export default function HabitWeek({ mondayKey, settings, onSettingsChange }: Pro
                   </td>
                   {dayKeys.map((k) => (
                     <td key={k} className={k === todayKey ? 'today' : ''}>
-                      <button
-                        className={`hw-check ${entries[k]?.habitsDone[h] ? 'on' : ''}`}
-                        onClick={() => toggle(k, h)}
-                      >
-                        ✓
-                      </button>
+                      <HabitCheck dayKey={k} habit={h} />
                     </td>
                   ))}
                 </tr>
@@ -121,4 +97,10 @@ export default function HabitWeek({ mondayKey, settings, onSettingsChange }: Pro
       )}
     </div>
   )
+}
+
+function HabitCheck({ dayKey, habit }: { dayKey: string; habit: string }) {
+  const { entry, edit } = useStoredEntry<DayEntry>(`pp:day:${dayKey}`, () => loadDay(dayKey), (value) => saveDay(dayKey, value))
+  return <button className={`hw-check ${entry.habitsDone[habit] ? 'on' : ''}`}
+    onClick={() => edit((base) => ({ ...base, habitsDone: { ...base.habitsDone, [habit]: !base.habitsDone[habit] } }))}>✓</button>
 }

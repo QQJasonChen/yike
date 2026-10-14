@@ -1,4 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
+import { hasUnsavedDrafts } from './useStoredEntry'
+import { useExternalPrefix } from './useExternalKey'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   addDays,
   allDayKeys,
@@ -6,6 +8,8 @@ import {
   currentStreak,
   exportAll,
   importAll,
+  inspectImport,
+  getDataOwner,
   loadDay,
   mondayOf,
   toDateKey,
@@ -44,7 +48,17 @@ interface Props {
 }
 
 export default function HistoryView({ onOpenDay, settings }: Props) {
+  const externalDays = useExternalPrefix('pp:day:')
   const fileRef = useRef<HTMLInputElement>(null)
+  const owner = useRef(getDataOwner())
+  useEffect(() => {
+    const ready = (event: Event) => {
+      const next = (event as CustomEvent<{ owner: string | null }>).detail?.owner
+      if (next !== undefined && next === getDataOwner()) owner.current = next
+    }
+    window.addEventListener('yike:local-owner-ready', ready)
+    return () => window.removeEventListener('yike:local-owner-ready', ready)
+  }, [])
   const todayKey = toDateKey(new Date())
   const [coachCopied, setCoachCopied] = useState(false)
   // 活動統計期間
@@ -84,6 +98,7 @@ export default function HistoryView({ onOpenDay, settings }: Props) {
   }
 
   const { keys, days, streak, avgScore, totalSessions, doneRate, moodCounts } = useMemo(() => {
+    void externalDays // External writes invalidate this storage-derived cache.
     const keys = allDayKeys()
     const days = new Map(keys.map((k) => [k, loadDay(k)]))
     const all = [...days.values()]
@@ -104,7 +119,7 @@ export default function HistoryView({ onOpenDay, settings }: Props) {
       doneRate,
       moodCounts,
     }
-  }, [todayKey])
+  }, [todayKey, externalDays])
 
   // 近 14 天評分長條圖
   const chartDays = Array.from({ length: 14 }, (_, i) => addDays(todayKey, i - 13))
@@ -121,11 +136,19 @@ export default function HistoryView({ onOpenDay, settings }: Props) {
   const doImport = (file: File) => {
     file.text().then((txt) => {
       try {
-        const n = importAll(txt)
+        if (getDataOwner() !== owner.current) throw new Error('帳號已變更，請重新載入再選擇備份檔')
+        if (hasUnsavedDrafts()) throw new Error('請先複製並保存尚未儲存的草稿')
+        const preview = inspectImport(txt)
+        const confirmed = !preview.requiresOwnerConfirmation || confirm(
+          `此檔來自另一帳號或未記錄帳號，含 ${preview.count} 筆。確認轉入目前登入帳號？同名記錄會更新，其他記錄保留；之後會同步到目前帳號。`
+        )
+        if (!confirmed) return
+        if (inspectImport(txt).currentOwner !== preview.currentOwner) throw new Error('帳號已變更，請重新選擇備份檔')
+        const n = importAll(txt, { confirmOwnerChange: preview.requiresOwnerConfirmation })
         alert(`已匯入 ${n} 筆資料，重新整理後生效。`)
         location.reload()
-      } catch {
-        alert('匯入失敗：檔案格式不正確')
+      } catch (error) {
+        alert(`匯入失敗：${error instanceof Error ? error.message : '請重新選擇備份檔'}`)
       }
     })
   }

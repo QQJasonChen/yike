@@ -1,20 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { query, withInsert } from './supabaseMock'
 
 const auth = { getSession: vi.fn() }
 let upserted: unknown[] = []
 type UpsertResult = {
-  data: { key: string; updated_at: string }[] | null
+  data: { key: string; updated_at: string; client_rev?: number }[] | null
   error: { message: string } | null
 }
 let savedRows: { key: string; updated_at: string }[] = []
 let serverRows: { key: string; value: unknown; updated_at: string }[] = []
-const from = vi.fn(() => ({
-  select: async () => ({ data: serverRows, error: null }),
+const from = vi.fn(() => (withInsert({
+  select: () => query(() => ({ data: serverRows, error: null })),
   upsert: (rows: unknown[]) => {
     upserted = rows
-    return { select: async (): Promise<UpsertResult> => ({ data: savedRows, error: null }) }
+    return { select: () => query((): UpsertResult => ({ data: savedRows, error: null })) }
   },
-}))
+})))
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ auth, from }) }))
 
 import { syncNow } from '../cloud'
@@ -78,25 +79,57 @@ describe('push 的失敗與邊界', () => {
     const { saveDay, loadDirty, setDataOwner } = await import('../storage')
     localStorage.clear()
     setDataOwner(ME)
-    from.mockReturnValue({
-      select: async () => ({ data: [], error: null }),
-      upsert: () => ({ select: async (): Promise<UpsertResult> => ({ data: null, error: { message: '網路斷線' } }) }),
-    })
+    from.mockReturnValue(withInsert({
+      select: () => query(() => ({ data: [], error: null })),
+      upsert: () => ({ select: () => query((): UpsertResult => ({ data: null, error: { message: '網路斷線' } })) }),
+    }))
     saveDay('2026-09-02', day('上傳會失敗'))
     await expect(syncNow()).rejects.toThrow('上傳失敗')
     expect(loadDirty()['pp:day:2026-09-02']).toBeGreaterThan(0)
   })
 
-  it('upsert 成功但伺服器沒回內容時，髒標記仍要清掉（否則每次同步都重推）', async () => {
+  // 這條的期望在互審第 5 輪反過來了。原本「回空就當成功、把髒標記清掉」是為了
+  // 避免每次同步都重推，但伺服器加上過期寫入護欄之後，回空還有第二種意思：
+  // 「這批寫入被擋下來了，一筆都沒進去」。清掉髒標記等於讓本機這份永遠不再被推上去。
+  // 重推是浪費頻寬，清錯是資料消失——兩害相權，選重推。
+  it('帶版號推送卻沒回任何一列時，髒標記必須留著（可能整批被過期護欄擋下）', async () => {
     const { saveDay, loadDirty, setDataOwner } = await import('../storage')
     localStorage.clear()
     setDataOwner(ME)
-    from.mockReturnValue({
-      select: async () => ({ data: [], error: null }),
-      upsert: () => ({ select: async (): Promise<UpsertResult> => ({ data: [], error: null }) }), // 成功但回空
-    })
+    from.mockReturnValue(withInsert({
+      select: () => query(() => ({ data: [], error: null })),
+      upsert: () => ({ select: () => query((): UpsertResult => ({ data: [], error: null })) }), // 成功但回空
+    }))
     saveDay('2026-09-03', day('伺服器沒回內容'))
     await syncNow()
-    expect(loadDirty()['pp:day:2026-09-03']).toBeUndefined()
+    expect(loadDirty()['pp:day:2026-09-03']).toBeGreaterThan(0)
+  })
+
+  it('伺服器回的 client_rev 不是我送出的那個 → 寫入被拒，髒標記不准清', async () => {
+    const { saveDay, loadDirty, setDataOwner } = await import('../storage')
+    localStorage.clear()
+    setDataOwner(ME)
+    from.mockReturnValue(withInsert({
+      select: () => query(() => ({ data: [], error: null })),
+      upsert: () => ({
+        select: () =>
+          query(
+            (): UpsertResult => ({
+              // 另一個分頁已經寫進更新的版本，伺服器留著它的 client_rev
+              data: [
+                {
+                  key: 'pp:day:2026-09-04',
+                  updated_at: '2026-09-04T00:00:00.000Z',
+                  client_rev: 99999999999999,
+                },
+              ],
+              error: null,
+            })
+          ),
+      }),
+    }))
+    saveDay('2026-09-04', day('我的版本被拒'))
+    await syncNow()
+    expect(loadDirty()['pp:day:2026-09-04']).toBeGreaterThan(0)
   })
 })
