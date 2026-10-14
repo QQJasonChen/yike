@@ -31,37 +31,11 @@ describe('signInOrUp', () => {
     await expect(signInOrUp('a@b.com', 'password123')).resolves.toBe('in')
   })
 
-  it("returns 'up' when account does not exist and public signup is open", async () => {
-    auth.signInWithPassword.mockResolvedValueOnce({
-      error: { message: 'Invalid login credentials' },
-    })
-    auth.signUp.mockResolvedValueOnce({ data: { session: {} }, error: null })
-    await expect(signInOrUp('new@b.com', 'password123')).resolves.toBe('up')
-  })
-
-  it("returns 'up' via the paid whitelist when signup is disabled but email is entitled", async () => {
-    // initial sign-in fails (no account), then activateLicense's sign-in succeeds
-    auth.signInWithPassword
-      .mockResolvedValueOnce({ error: { message: 'Invalid login credentials' } })
-      .mockResolvedValueOnce({ error: null })
-    auth.signUp.mockResolvedValueOnce({
-      data: {},
-      error: { message: 'Signups not allowed for this instance' },
-    })
-    fetchMock.mockResolvedValueOnce(okJson({ ok: true })) // activate succeeds
-    await expect(signInOrUp('buyer@b.com', 'password123')).resolves.toBe('up')
-  })
-
-  it('throws a friendly 尚未開通 message when email is not entitled', async () => {
-    auth.signInWithPassword.mockResolvedValueOnce({
-      error: { message: 'Invalid login credentials' },
-    })
-    auth.signUp.mockResolvedValueOnce({
-      data: {},
-      error: { message: 'Signups not allowed for this instance' },
-    })
-    fetchMock.mockResolvedValueOnce(okJson({ error: 'not-entitled' }, false, 403))
-    await expect(signInOrUp('stranger@b.com', 'password123')).rejects.toThrow(/尚未開通/)
+  it('invalid credentials do not register an account or use a paid Email whitelist', async () => {
+    auth.signInWithPassword.mockResolvedValueOnce({ error: { message: 'Invalid login credentials' } })
+    await expect(signInOrUp('buyer@b.com', 'password123')).rejects.toThrow(/Email 或密碼不正確/)
+    expect(auth.signUp).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('rejects when sign-in errors for a non-credential reason', async () => {
@@ -86,38 +60,27 @@ describe('activateLicense', () => {
   })
 })
 
-describe('activateWithCode 空序號（買家用購買 Email 開通）', () => {
-  it("留空序號時走白名單，開通成功回 'up'", async () => {
-    fetchMock.mockResolvedValueOnce(okJson({ ok: true }))
-    auth.signInWithPassword.mockResolvedValueOnce({ error: null })
-    await expect(activateWithCode('', 'buyer@b.com', 'password123')).resolves.toBe('up')
-    // 送給 activate 的 licenseKey 必須是空字串，才會命中 edge function 的白名單路徑
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string)
-    expect(body.licenseKey).toBe('')
-    expect(body.email).toBe('buyer@b.com')
+describe('activateWithCode 購買證明', () => {
+  it.each(['', '   '])('空序號 %j 不得只憑 Email 建立帳號', async (code) => {
+    await expect(activateWithCode(code, 'buyer@b.com', 'password123')).rejects.toThrow(/購買序號/)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(auth.signInWithPassword).not.toHaveBeenCalled()
   })
 
-  it('只打空白也視為留空', async () => {
+  it('非空購買序號交給伺服器驗證，不走公開註冊', async () => {
+    const code = 'SOME-CODE'
     fetchMock.mockResolvedValueOnce(okJson({ ok: true }))
     auth.signInWithPassword.mockResolvedValueOnce({ error: null })
-    await expect(activateWithCode('   ', 'buyer@b.com', 'password123')).resolves.toBe('up')
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).licenseKey).toBe('')
+    await expect(activateWithCode(code, 'friend@b.com', 'password123')).resolves.toBe('up')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).licenseKey).toBe(code)
+    expect(auth.signUp).not.toHaveBeenCalled()
   })
 
-  it('沒買過時給看得懂的指引，不是丟 not-entitled', async () => {
-    fetchMock.mockResolvedValueOnce(okJson({ error: 'not-entitled' }, false, 403))
-    await expect(activateWithCode('', 'nobody@b.com', 'password123')).rejects.toThrow(
-      /購買時填的那個 Email/
-    )
-  })
-
-  it('有填序號時照舊原樣送去後端驗證', async () => {
-    // 這裡刻意用假字串。真正的邀請碼只存在 Supabase secret，
-    // 絕不寫進測試——這是公開 repo，寫進來等於公告全世界。
-    const FAKE = 'SOME-CODE'
-    fetchMock.mockResolvedValueOnce(okJson({ ok: true }))
-    auth.signInWithPassword.mockResolvedValueOnce({ error: null })
-    await expect(activateWithCode(FAKE, 'friend@b.com', 'password123')).resolves.toBe('up')
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).licenseKey).toBe(FAKE)
+  it('舊共用邀請碼不能繞過伺服器驗證建立帳號', async () => {
+    fetchMock.mockResolvedValueOnce(okJson({ error: '共用邀請碼已停止開通新帳號' }, false, 403))
+    await expect(activateWithCode('QQ', 'friend@b.com', 'password123')).rejects.toThrow(/停止開通/)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).licenseKey).toBe('QQ')
+    expect(auth.signUp).not.toHaveBeenCalled()
+    expect(auth.signInWithPassword).not.toHaveBeenCalled()
   })
 })

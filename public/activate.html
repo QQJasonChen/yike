@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" data-static-csp content="default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://yike.goatcounter.com; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>雲端同步開通圖解 — 一刻手帳 Yike</title>
+<meta name="description" content="一刻手帳雲端同步開通圖解：從 Gumroad 檢視內容取得 License Key，填購買序號、購買 Email 和至少 8 碼密碼開通；已有帳號直接登入。" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<style>
+:root{--paper:#f5f0e6;--card:#faf7ef;--ink:#2b2620;--soft:#5c5347;--rule:#d8cfba;--gold:#96732b;--terra:#a44f30}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:ui-serif,"Songti TC","Noto Serif TC",serif;line-height:1.85}
+a{color:var(--gold);text-underline-offset:4px}
+a:focus-visible{outline:3px solid var(--gold);outline-offset:5px}
+.wrap{max-width:980px;margin:0 auto;padding:0 24px}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;padding:24px 0;font-size:14px}
+.brand{text-decoration:none;font-weight:600;letter-spacing:.08em}
+.links{display:flex;flex-wrap:wrap;gap:18px}
+header{padding:30px 0 24px;text-align:center}
+.kicker{font-size:12px;letter-spacing:.18em;color:var(--gold)}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.4;margin:12px 0}
+.lead{font-size:18px;color:var(--soft);max-width:680px;margin:0 auto}
+.route{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:18px;margin:24px auto;max-width:700px;font-size:18px;font-weight:600}
+.route span{display:inline-block;margin:0 6px}
+.note{font-size:13px;color:var(--soft)}
+.toc{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 20px;margin:16px 0 26px;font-size:14px}
+section{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:clamp(20px,4vw,36px);margin:0 0 26px}
+h2{font-size:clamp(21px,3.5vw,26px);line-height:1.5;margin:0 0 16px}
+h2 .n{color:var(--gold);margin-right:8px}
+h3{font-size:17px;margin:22px 0 6px}
+p{margin:0 0 12px;color:var(--soft)}
+ol,ul{margin:8px 0 16px;padding-left:25px;color:var(--soft)}
+li{margin:6px 0}
+strong{color:var(--ink)}
+kbd{font-family:inherit;background:#efe5cf;border:1px solid var(--rule);border-radius:5px;padding:2px 6px;font-size:.94em}
+figure{margin:22px 0 0}
+img{display:block;width:100%;height:auto;border:1px solid var(--rule);border-radius:6px}
+figcaption{font-size:13px;color:var(--soft);margin-top:8px}
+.tip,.warning{border-left:3px solid var(--gold);background:#f2ead9;border-radius:0 6px 6px 0;padding:14px 18px;margin:16px 0;color:var(--soft)}
+.warning{border-left-color:var(--terra);background:#f6eae1}
+.tip p,.warning p{margin:0}
+.btn{display:inline-block;background:var(--ink);color:var(--paper);text-decoration:none;padding:10px 22px;border-radius:999px;margin:6px 0}
+.btn:hover{background:var(--gold)}
+footer{text-align:center;font-size:13px;color:var(--soft);padding:12px 0 40px}
+@media(max-width:540px){.wrap{padding:0 16px}.top{gap:10px}.links{gap:12px}.route{font-size:16px}.route span{margin:0 3px}.lead{font-size:16px}}
+@media print{body{background:#fff}.top,.toc,.btn{display:none}.wrap{max-width:none;padding:0}section{break-inside:avoid;border-color:#aaa}a{color:#2b2620}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top" aria-label="網站導覽">
+    <a class="brand" href="landing.html">一刻手帳 Yike</a>
+    <div class="links"><a href="manual.html#cloud">使用手冊</a><a href="https://yikeday.com/">打開一刻手帳 →</a></div>
+  </nav>
+  <header>
+    <div class="kicker">CLOUD SYNC</div>
+    <h1>雲端同步開通圖解</h1>
+    <p class="lead">已在 Gumroad 購買雲端同步版？先從購買完成頁或收據找到 <strong>License Key（購買序號）</strong>，再到一刻手帳開通。</p>
+    <div class="route"><span>取得 License Key</span>→<span>填序號、Email、自設密碼</span>→<span>開通並登入</span></div>
+    <p class="note">已經開通過？直接跳到<a href="#login">已有帳號或換裝置</a>，用原本的帳密登入。</p>
+  </header>
+  <nav class="toc" aria-label="圖解章節"><a href="#license">1. 找到序號</a><a href="#open">2. 打開手帳</a><a href="#activate">3. 第一次開通</a><a href="#login">4. 其他裝置登入</a><a href="#help">遇到問題</a></nav>
+
+  <main>
+    <section id="license">
+      <h2><span class="n">1</span>從 Gumroad「檢視內容」取得 License Key</h2>
+      <ol>
+        <li>打開 Gumroad <strong>購買完成頁</strong>，或購買後收到的<strong>收據</strong>。</li>
+        <li>點「<strong>檢視內容</strong>」，在內容頁找到 <strong>License Key</strong>。</li>
+        <li>複製這組序號，稍後貼入一刻手帳的購買序號欄。</li>
+      </ol>
+      <p>找不到收據或序號時，請<a href="mailto:qqleveragelearning@gmail.com">聯絡客服</a>核對購買資料，不需要再買一次。</p>
+    </section>
+
+    <section id="open">
+      <h2><span class="n">2</span>打開一刻手帳，點右上「☁ 登入」</h2>
+      <p>用手機的 Safari、Chrome，或電腦瀏覽器開啟 <a href="https://yikeday.com/">yikeday.com</a>。第一次開啟若看到歡迎畫面，先按 <kbd>開始寫今天 →</kbd>，再點右上角 <kbd>☁ 登入</kbd>。它會打開「設定」裡的「雲端同步（帳號制）」。</p>
+      <p>手機排版可能不同；也可點「設定」，找到「雲端同步」。</p>
+      <figure>
+        <img src="activation-guide/01-open-yike.jpg" width="1365" height="950" alt="空白手帳畫面，右上角有「☁ 登入」按鈕" />
+        <figcaption>從右上角「☁ 登入」進入雲端同步設定。</figcaption>
+      </figure>
+    </section>
+
+    <section id="activate">
+      <h2><span class="n">3</span>填購買序號、購買 Email 和密碼，再按「開通並登入」</h2>
+      <ol>
+        <li><strong>購買序號：</strong>貼上剛從 Gumroad 內容頁複製的 License Key。</li>
+        <li><strong>Email：</strong>填購買時使用的 Email，需與 Gumroad 購買確認信一致；之後各裝置都使用同一個。</li>
+        <li><strong>密碼：</strong>自己設定至少 8 碼，並自行保存。</li>
+        <li>按 <kbd>開通並登入</kbd>，等候畫面回應。</li>
+        <li>看到<strong>「開通成功」</strong>並顯示<strong>「已同步」</strong>，才確認開通完成。</li>
+      </ol>
+      <div class="tip"><p><strong>第一次開通需要購買序號：</strong>只有購買 Email 不能設定新帳號密碼。若先前收到免序號教學，請改從 Gumroad 購買內容取得 License Key。雲端同步不需要 OpenAI API key。</p></div>
+      <figure>
+        <img src="activation-guide/02-activate-account.jpg" width="1365" height="950" loading="lazy" alt="雲端同步開通表單示範，Email、密碼與序號欄都留空，下方有「開通並登入」及「已經有帳號？直接登入」" />
+        <figcaption>填購買序號、購買 Email 和自設密碼，再按「開通並登入」。示範欄位留空，請填自己的資料。</figcaption>
+      </figure>
+    </section>
+
+    <section id="login">
+      <h2><span class="n">4</span>已有帳號或換裝置，用同一組帳密登入</h2>
+      <ol>
+        <li>在另一台裝置開啟一刻手帳，點右上角 <kbd>☁ 登入</kbd>。</li>
+        <li>選 <kbd>已經有帳號？直接登入</kbd>。</li>
+        <li>填入開通時的<strong>同一個 Email 和密碼</strong>。</li>
+        <li>按 <kbd>登入</kbd>，確認顯示<strong>「已同步」</strong>。</li>
+      </ol>
+      <p>不需要重新設定帳號，也不用為了另一台裝置再購買一次。</p>
+      <figure>
+        <img src="activation-guide/03-login-other-device.jpg" width="1365" height="950" loading="lazy" alt="雲端同步登入表單，只有 Email 與密碼欄，以及「登入」按鈕" />
+        <figcaption>切換到登入畫面後，用原本的 Email 和密碼即可。</figcaption>
+      </figure>
+    </section>
+
+    <section id="help">
+      <h2>遇到問題時</h2>
+      <h3>找不到序號，或序號無法使用</h3>
+      <p>先從 Gumroad 購買完成頁或收據點「檢視內容」，核對 License Key 是否完整複製。若已付款仍無法取得序號或開通，請<a href="mailto:qqleveragelearning@gmail.com">聯絡客服</a>，附購買確認信與錯誤畫面，請客服核對。</p>
+      <h3>先前收到的教學說序號可留空</h3>
+      <p>新帳號需使用購買序號和購買 Email 開通。請改從 Gumroad 購買內容取得 License Key；若找不到，請聯絡客服核對。已開通的帳號仍可使用原本的帳密登入。</p>
+      <h3>顯示已註冊，或忘記原本的密碼</h3>
+      <p>已註冊的帳號請改用「已經有帳號？直接登入」，填原本的帳密。忘記密碼時請聯絡客服詢問處理方式。</p>
+      <h3>另一台裝置看不到資料</h3>
+      <p>確認兩台都使用同一個 Email，並顯示「已同步」。若仍有問題，保留原本的手帳資料與錯誤畫面，再聯絡客服。</p>
+      <div class="warning"><p>遇到錯誤時不用重新付款。客服可核對購買 Email、購買確認信與錯誤截圖；<strong>不用提供密碼，截圖也請勿露出密碼。</strong></p></div>
+      <p><a href="mailto:qqleveragelearning@gmail.com">客服：qqleveragelearning@gmail.com</a></p>
+      <a class="btn" href="https://yikeday.com/">打開一刻手帳 →</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>畫面示範：2026/10/14 空白手帳示範，僅供操作位置參考，沒有買家資料。<br/>表單排版及提示可能略有不同；請依本文的序號開通步驟操作。</p>
+    <a href="landing.html">產品介紹</a> ・ <a href="manual.html#cloud">使用手冊</a> ・ <a href="privacy.html">隱私政策</a>
+  </footer>
+</div>
+</body>
+</html>

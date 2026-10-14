@@ -1,5 +1,5 @@
 // 帳號制雲端同步（Supabase）
-// - Email 驗證碼登入（免密碼）
+// - 購買序號開通，既有帳號以 Email + 密碼登入
 // - journal 資料表：每個 localStorage key 一列，Row Level Security 隔離每個用戶
 // - 同步策略：逐 key 比時間戳，新的贏（pull 先、push 後）
 import { Capacitor } from '@capacitor/core'
@@ -58,67 +58,27 @@ export const activateLicense = async (
   if (error) throw new Error('帳號已開通，但自動登入失敗——請直接用帳密登入')
 }
 
-/** 登入；帳號不存在時自動註冊（autoconfirm 已開，註冊即用） */
+/** 既有帳號登入。新帳號須另走持有購買序號的開通流程。 */
 export const signInOrUp = async (email: string, password: string): Promise<'in' | 'up'> => {
   const db = await supa()
   const { error } = await db.auth.signInWithPassword({ email, password })
   if (!error) return 'in'
   if (!/invalid login credentials/i.test(error.message)) throw new Error(error.message)
-  // 帳號不存在 → 嘗試註冊（邀請制關閉公開註冊時會被擋下）
-  const { data, error: upErr } = await db.auth.signUp({ email, password })
-  if (upErr) {
-    if (/signup.*(disabled|not allowed)/i.test(upErr.message)) {
-      // 公開註冊已關 → 試付費白名單（Portaly 買家用購買 Email 自動開通）
-      try {
-        await activateLicense('', email, password)
-        return 'up'
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : ''
-        if (msg !== 'not-entitled') throw e
-        throw new Error(
-          Capacitor.isNativePlatform()
-            ? '此 Email 尚未開通帳號。雲端同步目前開放給既有帳號，請確認 Email 與密碼是否正確。'
-            : '此 Email 尚未開通。請改用「購買時填的那個 Email」登入即可自動開通（Gumroad / Portaly 皆同）。購買後若隔幾分鐘仍無法登入，或想用序號開通，請點下方「我有購買序號」。'
-        )
-      }
-    }
-    if (/already registered/i.test(upErr.message))
-      throw new Error('這個 Email 已經開通過——請確認密碼是否輸入正確')
-    throw new Error(upErr.message)
-  }
-  if (!data.session)
-    throw new Error('一刻手帳採邀請制——請聯繫站方開通帳號，或確認密碼是否輸入正確')
-  return 'up'
+  throw new Error(
+    Capacitor.isNativePlatform()
+      ? 'Email 或密碼不正確。請使用開通時的 Email 與密碼登入。'
+      : 'Email 或密碼不正確。已有帳號請確認帳密；第一次使用請回「啟用雲端同步」，填購買序號開通。'
+  )
 }
 
-// 朋友共用邀請碼（軟性 gate）。Beta 期間 Supabase 已開放註冊，輸入此碼＝直接建免費帳號。
-// Beta 結束把 Supabase 註冊關掉，這條路自然失效，已建好的朋友帳號照常。
-export const FRIEND_CODE = 'QQ'
-
-/** 開通：邀請碼 → 直接建免費帳號；其他字串 → 當作 Gumroad 購買序號 */
+/** 新帳號開通：購買序號與購買 Email 都交給伺服器驗證。 */
 export const activateWithCode = async (
   code: string,
   email: string,
   password: string
 ): Promise<'in' | 'up'> => {
   const c = code.trim()
-  if (c.toUpperCase() === FRIEND_CODE) return signInOrUp(email, password)
-  // 沒填序號 → 走付費白名單：買家用「購買時填的 Email」直接開通（Gumroad Ping / Portaly 寫入）。
-  // 這條路以前被前端擋著，導致交付信寫的「用購買 Email 設密碼」根本做不到。
-  if (!c) {
-    try {
-      await activateLicense('', email, password)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : ''
-      if (msg === 'not-entitled')
-        throw new Error(
-          '這個 Email 查不到購買紀錄。請改填「購買時填的那個 Email」；' +
-            '若剛買完幾分鐘內請稍等再試，仍不行請來信 qqleveragelearning@gmail.com，我手動幫你開通。'
-        )
-      throw e
-    }
-    return 'up'
-  }
+  if (!c) throw new Error('請填入購買序號（License Key）；購買信的「檢視內容」裡可以找到。')
   await activateLicense(c, email, password)
   return 'up'
 }
