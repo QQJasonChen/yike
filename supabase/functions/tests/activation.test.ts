@@ -136,8 +136,10 @@ test('activation caps empty stream fragments before they can starve timers or RP
 })
 test('activation times out a stalled body without waiting on cancellation or doing RPC work', baseEnv, noFetch, async () => {
   const originalSetTimeout = globalThis.setTimeout
-  globalThis.setTimeout = ((handler: Parameters<typeof setTimeout>[0], ms?: number, ...args: unknown[]) =>
-    originalSetTimeout(handler, ms === 5000 ? 5 : ms, ...args)) as typeof setTimeout
+  // This fixture only shortens the handler's no-argument body deadline.
+  // Current Deno infers void timer args, so no unknown args are forwarded.
+  globalThis.setTimeout = ((handler: Parameters<typeof setTimeout>[0], ms?: number) =>
+    originalSetTimeout(handler, ms === 5000 ? 5 : ms)) as typeof setTimeout
   let cancelled = false
   try {
     const stream = new ReadableStream<Uint8Array>({ cancel() { cancelled = true; return new Promise<void>(() => {}) } })
