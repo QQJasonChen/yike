@@ -43,6 +43,8 @@ jobs:
         run: npm run test:notion
       - name: Static page CSP checks
         run: node scripts/static-csp.mjs --check
+      - name: Service worker recovery privacy and offline cache regression
+        run: node --test scripts/service-worker-security-test.mjs
       - name: Anonymous journal isolation probe regression
         run: node --test scripts/anonymous-journal-check.test.mjs
       - name: Deployed activation handler regression (no network or secrets)
