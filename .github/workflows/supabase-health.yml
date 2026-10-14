@@ -1,4 +1,4 @@
-# Supabase 保活 ＋ 每日健康檢查（一個排程做兩件事）
+# Supabase 保活 ＋ 每小時健康檢查
 #
 # 為什麼存在：2026-08-03 踩到 Supabase 免費方案「閒置約 7 天自動暫停」——
 # 專案狀態變 INACTIVE、網域直接 NXDOMAIN，結果 app 的雲端功能整組死：
@@ -6,9 +6,9 @@
 # 最糟的是它「靜默」發生：沒有任何通知，使用者只看到「Failed to fetch」，
 # 買家付了錢開不通，而我們完全不知道。
 #
-# 這個 workflow 每天跑一次：
+# 這個 workflow 每小時排程一次（實際觸發可能延遲）：
 #   1. 保活——對 Postgres 送一個極輕的讀取，增加存取活動，但不能保證供應商永不暫停
-#   2. 健康檢查——驗證「收錢/開通」這條金流路徑上的每個端點都活著
+#   2. 健康檢查——驗證公開頁面、登入與開通端點，並確認匿名讀取不洩漏手帳資料
 # 任一探測失敗會使 workflow 失敗；管理者仍須確認自己的 GitHub Actions 通知設定。
 # 探測只證明端點當時可達，不代表付款／序號／同步的完整交易已通過。
 #
@@ -35,6 +35,13 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: 匿名資料隔離探測回歸
+        run: node --test scripts/anonymous-journal-check.test.mjs
+
       - name: 從 src/cloudConfig.ts 讀出 Supabase 設定
         id: cfg
         run: |
@@ -53,6 +60,9 @@ jobs:
           URL: ${{ steps.cfg.outputs.url }}
           KEY: ${{ steps.cfg.outputs.key }}
         run: |
+          umask 077
+          probe_file=$(mktemp)
+          trap 'rm -f "$probe_file"' EXIT
           FAILED=""
 
           # 送一個請求，最多重試 3 次（避免偶發網路波動誤報）。$1=標籤 $2=期望碼 之後=curl 參數
@@ -60,7 +70,7 @@ jobs:
             local label="$1" want="$2"; shift 2
             local code
             for i in 1 2 3; do
-              code=$(curl -s -o /tmp/out.txt -w '%{http_code}' --max-time 30 "$@")
+              code=$(curl -s -o "$probe_file" -w '%{http_code}' --max-time 30 "$@")
               if echo "$want" | tr ',' '\n' | grep -qx "$code"; then
                 echo "  ✅ $label  (HTTP $code)"
                 return 0
@@ -74,9 +84,17 @@ jobs:
           }
 
           echo "── 1. 保活：讀 Postgres（RLS 會擋掉資料，只是製造活動）──"
-          check "Postgres / PostgREST" 200 \
+          if check "Postgres / PostgREST" 200 \
             "$URL/rest/v1/journal?select=user_id&limit=1" \
-            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" || true
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY"; then
+            if ! node scripts/anonymous-journal-check.mjs "$probe_file"; then
+              FAILED="$FAILED\n  - 匿名手帳資料隔離失敗（不輸出回應內容）"
+            fi
+          fi
+
+          echo "── 1b. 正式網站與購買開通教學 ──"
+          check "正式網站" 200 --location "https://yikeday.com/" || true
+          check "購買開通教學" 200 --location "https://yikeday.com/activate.html" || true
 
           echo "── 2. 健康：登入與帳號系統 ──"
           # /auth/v1/health 需要 apikey 標頭，少了會回 401（不是真的掛）

@@ -528,7 +528,7 @@ function OpenAIKeySettings() {
         <li>按 <b>Create new secret key</b>，取個名字如「一刻手帳」，建立</li>
         <li>複製那串 <code>sk-</code> 開頭的字（<b>只會顯示這一次</b>），貼到下面</li>
         <li>
-          OpenAI 需要先儲值才能用（最低 US$5）。建議到{' '}
+          先確認 OpenAI API 帳戶的計費方式與可用額度，再到{' '}
           <a
             href="https://platform.openai.com/settings/organization/limits"
             target="_blank"
@@ -536,11 +536,19 @@ function OpenAIKeySettings() {
           >
             Limits
           </a>{' '}
-          設一個每月上限，以防萬一
+          查看用量、設定預算提醒或支出限制，並確認限制的實際作用
         </li>
       </ol>
       <p className="hint" style={{ marginTop: 6 }}>
-        一次分析大約 US$0.001（約新台幣三分錢）。儲值 US$5 大概夠用好幾年。
+        分析費用依模型、記錄長度與回覆量而異。預付額度有使用期限，請查看{' '}
+        <a
+          href="https://help.openai.com/en/articles/8264644-setting-up-and-managing-prepaid-api-billing"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          OpenAI 的計費資訊
+        </a>{' '}
+        與自動儲值設定。
       </p>
       <div className="line-input sync-token" style={{ marginTop: 8 }}>
         <input
