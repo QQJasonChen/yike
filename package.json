@@ -10,6 +10,7 @@
     "build:ios": "CAP_BUILD=1 vite build && cap sync ios",
     "test": "vitest run",
     "test:db": "node scripts/journal-resource-limits-test.mjs",
+    "test:keys": "node scripts/journal-key-namespace-test.mjs",
     "test:notion": "node scripts/notion-security-test.mjs",
     "test:watch": "vitest",
     "lint": "eslint ."

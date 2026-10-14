@@ -37,6 +37,8 @@ jobs:
         run: npm test
       - name: Database resource limits and ownership regression
         run: npm run test:db
+      - name: Cloud key namespace and rollback regression
+        run: npm run test:keys
       - name: Notion request and partial write regression
         run: npm run test:notion
       - name: Static page CSP checks
