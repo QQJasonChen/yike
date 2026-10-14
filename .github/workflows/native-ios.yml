@@ -1,0 +1,86 @@
+# Builds the locked patched native framework; does not sign or distribute an app.
+# Standard runner is free while QQJasonChen/yike remains public. No larger runner,
+# package publication, artifact upload/cache, credentials, signing or distribution.
+name: Verify native iOS
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ios-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-ios:
+    name: Native iOS unsigned build
+    # Exact JSON avoids a missing/null field being coerced to false.
+    if: ${{ github.repository == 'QQJasonChen/yike' && toJSON(github.event.repository.private) == 'false' }}
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      COCOAPODS_DISABLE_STATS: 'true'
+      GIT_TERMINAL_PROMPT: '0'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify existing native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "$DEVELOPER_DIR"
+          xcodebuild -version
+          xcodebuild -version | grep -Fx 'Xcode 26.2'
+          xcrun --sdk iphonesimulator --show-sdk-version
+          pod --version
+          df -h "$RUNNER_TEMP"
+      - name: Install locked public dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --registry=https://registry.npmjs.org
+      - name: Known dependency vulnerability gate
+        run: npm audit --audit-level=high --registry=https://registry.npmjs.org
+      - name: Build native web assets and TypeScript
+        env:
+          CAP_BUILD: '1'
+        run: npm run build
+      - name: Actual Capacitor sync and locked Pods install
+        run: node node_modules/@capacitor/cli/bin/capacitor sync ios --deployment
+      - name: Verify actual installed patched framework versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          for (const name of ['Capacitor', 'CapacitorCordova']) {
+            const p = JSON.parse(fs.readFileSync(`ios/App/Pods/Local Podspecs/${name}.podspec.json`, 'utf8'));
+            assert.equal(p.version, '8.5.3');
+          }
+          assert.deepEqual(fs.readFileSync('ios/App/Podfile.lock'), fs.readFileSync('ios/App/Pods/Manifest.lock'));
+          JS
+          git diff --exit-code -- ios/App/Podfile.lock
+      - name: Unsigned iOS Simulator build
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/yike-native-derived" \
+            -resultBundlePath "$RUNNER_TEMP/yike-native-build.xcresult" \
+            -disableAutomaticPackageResolution \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build | tee "$RUNNER_TEMP/yike-native-build.log"

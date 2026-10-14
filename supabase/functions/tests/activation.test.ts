@@ -30,6 +30,7 @@ const equal = (actual: unknown, expected: unknown) => {
 const baseEnv: Record<string, string> = {
   SUPABASE_URL: 'https://database.example',
   SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
+  SUPABASE_ANON_KEY: 'test-anon-key',
   GUMROAD_PRODUCT_ID: 'YIKE-PRODUCT',
 }
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>
@@ -60,26 +61,23 @@ test('activation operational failures never log buyer identifiers or echoed upst
   async (url, init) => {
     if (url.endsWith('/rpc/rate_limit_bump')) return json(true)
     if (url === 'https://api.gumroad.com/v2/licenses/verify') {
-      const form = new URLSearchParams(init?.body as URLSearchParams)
-      return form.get('increment_uses_count') === 'false'
-        ? json({ success: true, uses: 0, purchase: { email: 'buyer@example.com' } })
-        : json({ detail: PRIVATE_ERROR_MARKER }, 500)
+      equal(new URLSearchParams(init?.body as URLSearchParams).get('increment_uses_count'), 'false')
+      return json({ success: true, uses: 0, purchase: { email: 'buyer@example.com' } })
     }
-    if (url.endsWith('/auth/v1/admin/users')) return json({ id: 'test-user' })
-    if (url.endsWith('/rpc/license_redeem') || url.endsWith('/rpc/license_force_record') ||
-      url.endsWith('/auth/v1/admin/users/test-user') || url.endsWith('/rest/v1/entitlements'))
-      return json({ detail: PRIVATE_ERROR_MARKER }, 500)
+    if (url.endsWith('/auth/v1/admin/users')) return json({ id: '00000000-0000-4000-8000-000000000001', email: 'buyer@example.com' })
+    if (url.endsWith('/rpc/license_activate_grant')) return json({ detail: PRIVATE_ERROR_MARKER }, 500)
     throw new Error('unexpected request')
   }, async () => {
     const originalError = console.error
     const logs: unknown[][] = []
     console.error = (...args) => { logs.push(args) }
     try {
-      equal((await activate(activationRequest())).status, 200)
-      assert(logs.length >= 4, 'failure signals must remain visible')
-      const text = JSON.stringify(logs)
-      for (const value of [PRIVATE_ERROR_MARKER, 'buyer@example.com', 'TEST-LIC', 'test-user'])
-        assert(!text.includes(value), 'logs must not expose private operational values')
+      const response = await activate(activationRequest())
+      equal(response.status, 503)
+      assert(logs.length >= 1, 'safe atomic-grant failure signal must remain visible')
+      const text = JSON.stringify(logs) + await response.text()
+      for (const value of [PRIVATE_ERROR_MARKER, 'buyer@example.com', 'TEST-LIC', '00000000-0000-4000-8000-000000000001'])
+        assert(!text.includes(value), 'logs/response must not expose private operational values')
     } finally { console.error = originalError }
   })
 const gumroadFetcher = (verification: Fetcher): Fetcher => (url, init) => {
@@ -156,7 +154,7 @@ test('oversized forwarded header cannot become an unbounded database limiter key
       return json(true)
     }
     equal(url, 'https://api.gumroad.com/v2/licenses/verify')
-    return json({ success: false })
+    return json({ success: false }, 404)
   }, async () => {
     equal((await activate(customActivationRequest(validActivationBody, { 'x-forwarded-for': 'x'.repeat(5000) }))).status, 403)
   })
@@ -173,14 +171,13 @@ test('20 fake licenses cannot consume another buyer Email quota or block their v
     }
     if (url === 'https://api.gumroad.com/v2/licenses/verify') {
       const form = new URLSearchParams(init?.body as URLSearchParams)
-      if (form.get('license_key') === 'FAKE-LICENSE') return json({ success: false })
+      if (form.get('license_key') === 'FAKE-LICENSE') return json({ success: false }, 404)
       legitimateVerify = true
       return json({ success: true, uses: 0, purchase: { email: 'buyer@example.com' } })
     }
-    if (url.endsWith('/auth/v1/admin/users')) return json({ id: 'test-user' })
-    if (url.endsWith('/rpc/license_redeem')) return json(true)
-    equal(url, 'https://database.example/rest/v1/entitlements')
-    return json({})
+    if (url.endsWith('/auth/v1/admin/users')) return json({ id: '00000000-0000-4000-8000-000000000001', email: 'buyer@example.com' })
+    equal(url, 'https://database.example/rest/v1/rpc/license_activate_grant')
+    return json({ ok: true, new_redemption: true })
   }, async () => {
     counters.clear()
     legitimateVerify = false
@@ -319,7 +316,8 @@ test('activate handles malformed upstream JSON as temporary failure', baseEnv,
   })
 
 let verificationCalls = 0
-test('successful activation verifies first, then records the account and counts one use', {
+let granted = false
+test('successful activation verifies first, commits atomic grant, then counts one use', {
   ...baseEnv, GUMROAD_PRODUCT_ID: 'YIKE-PRODUCT',
 }, async (url, init) => {
   if (url.endsWith('/rpc/rate_limit_bump')) return json(true)
@@ -327,51 +325,38 @@ test('successful activation verifies first, then records the account and counts 
     const form = new URLSearchParams(init?.body as URLSearchParams)
     equal(form.get('product_id'), 'YIKE-PRODUCT')
     equal(form.get('increment_uses_count'), verificationCalls++ === 0 ? 'false' : 'true')
+    if (form.get('increment_uses_count') === 'true') equal(granted, true)
     return json({ success: true, uses: 0, purchase: { email: ' Buyer@Example.COM ' } })
   }
   if (url.endsWith('/auth/v1/admin/users')) {
     equal(verificationCalls, 1)
-    return json({ id: 'test-user' })
+    return json({ id: '00000000-0000-4000-8000-000000000001', email: 'buyer@example.com' })
   }
-  if (url.endsWith('/rpc/license_redeem')) return json(true)
-  equal(url, 'https://database.example/rest/v1/entitlements')
-  equal(verificationCalls, 2)
-  equal(JSON.parse(init?.body as string).source, 'gumroad-license')
-  return json({})
+  equal(url, 'https://database.example/rest/v1/rpc/license_activate_grant')
+  equal(JSON.parse(init?.body as string), {
+    p_license_key: 'TEST-LICENSE', p_email: 'buyer@example.com',
+    p_user_id: '00000000-0000-4000-8000-000000000001', p_seed_uses: 0,
+  })
+  granted = true
+  return json({ ok: true, new_redemption: true })
 }, async () => {
-  verificationCalls = 0
+  verificationCalls = 0; granted = false
   equal((await activate(activationRequest())).status, 200)
-  equal(verificationCalls, 2)
+  equal(verificationCalls, 2); equal(granted, true)
 })
 
-let forcedRecord = false
-test('retains the newer safety fix: record an account when over-quota rollback fails', baseEnv,
+test('permanent cap rejection returns403 without deleting Auth or granting entitlement', baseEnv,
   async (url, init) => {
     if (url.endsWith('/rpc/rate_limit_bump')) return json(true)
-    if (url === 'https://api.gumroad.com/v2/licenses/verify')
+    if (url === 'https://api.gumroad.com/v2/licenses/verify') {
+      equal(new URLSearchParams(init?.body as URLSearchParams).get('increment_uses_count'), 'false')
       return json({ success: true, uses: 0, purchase: { email: 'buyer@example.com' } })
-    if (url.endsWith('/auth/v1/admin/users')) return json({ id: 'test-user' })
-    if (url.endsWith('/rpc/license_redeem')) return json(false)
-    if (url.endsWith('/auth/v1/admin/users/test-user')) {
-      equal(init?.method, 'DELETE')
-      return json({}, 500)
     }
-    if (url.endsWith('/rpc/license_force_record')) {
-      forcedRecord = true
-      return json(true)
-    }
-    equal(url, 'https://database.example/rest/v1/entitlements')
-    equal(forcedRecord, true)
-    equal(JSON.parse(init?.body as string).raw.over_quota_kept, true)
-    return json({})
+    if (url.endsWith('/auth/v1/admin/users')) return json({ id: '00000000-0000-4000-8000-000000000001', email: 'buyer@example.com' })
+    equal(url, 'https://database.example/rest/v1/rpc/license_activate_grant')
+    return json({ ok: false, new_redemption: false, reason: 'cap-reached' })
   }, async () => {
-    forcedRecord = false
-    const originalError = console.error
-    console.error = () => {} // Expected warnings for the intentionally failed rollback.
-    try {
-      equal((await activate(activationRequest())).status, 200)
-      equal(forcedRecord, true)
-    } finally {
-      console.error = originalError
-    }
+    const response = await activate(activationRequest())
+    equal(response.status, 403)
+    equal((await response.json()).code, 'activation-cap-reached')
   })

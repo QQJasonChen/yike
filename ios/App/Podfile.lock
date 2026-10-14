@@ -1,7 +1,7 @@
 PODS:
-  - Capacitor (8.4.0):
+  - Capacitor (8.5.3):
     - CapacitorCordova
-  - CapacitorCordova (8.4.0)
+  - CapacitorCordova (8.5.3)
   - CapacitorLocalNotifications (8.2.0):
     - Capacitor
   - PurchasesHybridCommon (18.19.0):
@@ -33,8 +33,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@revenuecat/purchases-capacitor"
 
 SPEC CHECKSUMS:
-  Capacitor: 75bd117ba037a51bb0f19ded32c67f4b3bc16600
-  CapacitorCordova: 71d81f350e6c30bf2a846593b5c480fbd68e9bac
+  Capacitor: 2f67eaeb8ed79909cd35b5e7439a5c2a9ca58e0f
+  CapacitorCordova: 0b7326439c7a09fc5d20eced5e0dab986327a493
   CapacitorLocalNotifications: 2615aa008f608b95d3921a778ee1988abf1e6148
   PurchasesHybridCommon: 1eb67a6c8997233b35ed9b4eee8205dd8dd92890
   RevenueCat: b772273e51fa103a2ecc644439dd54a5dec199f3
