@@ -105,8 +105,7 @@ const read = <T>(key: string): T | null => {
 }
 
 // ppl: 前綴 = 只屬於這台裝置，絕不同步上雲、絕不進匯出檔。
-// 用前綴而不是逐一加白名單：allDataKeys() 預設收錄所有 pp: 開頭的 key，
-// 忘記把新 key 加進排除清單就會被同步出去——把它做成結構保證，不靠人記得。
+// 本機namespace永不同步。雲端資料另以isSyncDataKey正向白名單隔離。
 const LOCAL_ONLY_PREFIX = 'ppl:'
 
 const META_KEY = 'pp:meta' // 每個 key 的最後修改時間（雲端同步用）
@@ -233,6 +232,7 @@ export const markSynced = (
   // 只清「推送期間沒再被改過」的 key。版號對不上代表使用者在等回應時又編輯了，
   // 那筆更新的內容還沒上去，標記必須留著讓下次同步帶走。
   const clear = (k: string) => {
+    if (!isSyncDataKey(k)) return
     if (pushedRevs[k] !== undefined && d[k] !== pushedRevs[k]) return
     delete d[k]
   }
@@ -243,6 +243,7 @@ export const markSynced = (
     for (const k of Object.keys(pushedRevs)) clear(k)
   }
   for (const r of rows) {
+    if (!isSyncDataKey(r.key) || !isSyncTimestamp(r.updated_at)) continue
     // 伺服器端的單調版號護欄可能「靜默拒絕」這次寫入（同一台裝置的過期請求
     // 晚到、或另一個分頁已經寫過更新的版本）。回來的 client_rev 不是我送的那個，
     // 就代表雲端沒有吃下我的內容——這時絕不能清 dirty，否則本機這份永遠不會再被推
@@ -341,6 +342,11 @@ const write = (key: string, value: unknown): boolean => {
 
 /** 雲端拉下來的資料直接落地（不觸發 push 迴圈），並記下伺服器時間戳 */
 export const writeFromCloud = (key: string, value: unknown, serverTs: number) => {
+  if (!isSyncDataKey(key) || !isSyncDataValue(key, value) ||
+      !Number.isSafeInteger(serverTs) || Math.abs(serverTs) > 8640000000000000)
+    throw new Error('cloud-data-not-allowed')
+  // Older backups may encode the PiP preference as boolean; the actual reader uses raw0/1.
+  value = normalizeSyncValue(key, value)
   localStorage.setItem(key, JSON.stringify(value))
   const m = loadMeta()
   m[key] = serverTs
@@ -620,6 +626,7 @@ export interface ConflictMeta {
 /** 把雲端版本另存成本機衝突副本。同帳號、時間與內容相同才去重。 */
 export const saveConflictCopy = (key: string, value: unknown, serverTs: number): boolean => {
   try {
+    if (!isSyncDataKey(key) || !isSyncDataValue(key, value)) throw new Error('cloud-data-not-allowed')
     if (!Number.isSafeInteger(serverTs) || serverTs < 0) throw new Error('invalid-conflict-time')
     const owner = getDataOwner()
     const serialized = JSON.stringify(value)
@@ -733,23 +740,40 @@ export const clearAllLocalData = () => {
   gatedKeys.clear()
 }
 
-/** 所有要同步/備份的資料 key（排除裝置本地的 sync 設定與 meta） */
+/** Actual app writers: user records/preferences plus harmless legacy fixed flags.
+ * No credentials, metadata, owner, device state, backup/conflict or unknown namespaces. */
+const validCalendarDate = (year: number, month: number, day = 1): boolean => {
+  if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1) return false
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  return day <= [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+}
+
+export const isSyncDataKey = (key: unknown): key is string => {
+  if (typeof key !== 'string') return false
+  if ([SETTINGS_KEY, LIFE_KEY, BIZ_KEY, 'pp:pipAuto', 'pp:onboarded'].includes(key)) return true
+  const date = key.match(/^pp:(?:day|week):(\d{4})-(\d{2})-(\d{2})$/)
+  if (date) return validCalendarDate(Number(date[1]), Number(date[2]), Number(date[3]))
+  const month = key.match(/^pp:month:(\d{4})-(\d{2})$/)
+  if (month) return validCalendarDate(Number(month[1]), Number(month[2]))
+  const period = key.match(/^pp:(?:year:(\d{4})|quarter:(\d{4})-Q[1-4])$/)
+  return !!period && validCalendarDate(Number(period[1] ?? period[2]), 1)
+}
+
+/** Accept PostgREST ISO or PostgreSQL timestamp text, retaining its raw microseconds for CAS. */
+export const isSyncTimestamp = (value: unknown): value is string => {
+  if (typeof value !== 'string') return false
+  const parts = value.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-]\d{2}(?::?\d{2})?)$/)
+  return !!parts && validCalendarDate(Number(parts[1]), Number(parts[2]), Number(parts[3])) &&
+    Number(parts[4]) < 24 && Number(parts[5]) < 60 && Number(parts[6]) < 60 &&
+    Number.isSafeInteger(new Date(value).getTime())
+}
+
+/** 同步/匯出只收已知key；未知舊資料留在裝置上，不上傳或自行刪除。 */
 export const allDataKeys = (): string[] => {
   const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)
-    if (
-      k?.startsWith('pp:') &&
-      k !== SYNC_KEY &&
-      k !== INTEGRATIONS_KEY && // Notion token 只留本機：不上雲同步、不進匯出檔
-      k !== META_KEY &&
-      k !== CLOUD_BOUND_KEY &&
-      k !== HABITS_RESTORED_KEY &&
-      k !== LAST_BACKUP_KEY &&
-      !k.startsWith(BACKUP_PREFIX) &&
-      !k.startsWith(LOCAL_ONLY_PREFIX)
-    )
-      keys.push(k)
+    if (isSyncDataKey(k)) keys.push(k)
   }
   return keys
 }
@@ -775,6 +799,16 @@ const textItems = (v: unknown): boolean =>
   Array.isArray(v) && v.every((x) => isRecord(x) && typeof x.text === 'string')
 const optional = (v: Record<string, unknown>, k: string, check: (x: unknown) => boolean): boolean =>
   v[k] === undefined || check(v[k])
+const finiteNumber = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v)
+const inkData = (v: unknown): boolean => v === null || (isRecord(v) &&
+  ['png','drawing'].every((k) => optional(v, k, (x) => typeof x === 'string')) &&
+  optional(v, 'fmt', (fmt) => fmt === 'pk' || fmt === 'web'))
+const planItems = (v: unknown): boolean => textItems(v) && (v as Record<string, unknown>[]).every((t) =>
+  optional(t, 'done', (x) => typeof x === 'boolean') &&
+  optional(t, 'span', (x) => x === null || (Array.isArray(x) && x.length === 2 && x.every(finiteNumber))) &&
+  optional(t, 'cells', (x) => Array.isArray(x) && x.every(finiteNumber)))
+const normalizeSyncValue = (key: string, value: unknown): unknown =>
+  key === 'pp:pipAuto' && typeof value === 'boolean' ? (value ? 1 : 0) : value
 
 /** 匯入只收已知的使用者資料；裝置標記、憑證與未知 pp:* 都不能進來。 */
 const validateDataEntry = (key: string, value: unknown): void => {
@@ -786,38 +820,60 @@ const validateDataEntry = (key: string, value: unknown): void => {
     validateDataEntry(match[1], value.value)
     return
   }
+  if (!isSyncDataKey(key)) return bad()
   if (key === 'pp:pipAuto') {
-    if (typeof value !== 'boolean') bad()
+    if (typeof value !== 'boolean' && value !== 0 && value !== 1) bad()
+    return
+  }
+  if (key === 'pp:onboarded') {
+    if (value !== 1) bad()
     return
   }
   if (!isRecord(value)) return bad()
   if (/^pp:day:\d{4}-\d{2}-\d{2}$/.test(key)) {
-    if (!textItems(value.tasks) ||
-        !optional(value, 'blocks', (x) => Array.isArray(x) && x.every((b) => isRecord(b) && typeof b.text === 'string' && typeof b.start === 'number' && typeof b.end === 'number')) ||
+    // v1 fixed-question day records can omit tasks/answers/blocks; loadDay supplies defaults.
+    if (!optional(value, 'tasks', (x) => textItems(x) && (x as Record<string, unknown>[]).every((t) =>
+          ['target','actual'].every((k) => optional(t, k, (v) => v === null || finiteNumber(v))) &&
+          ['done','withered'].every((k) => optional(t, k, finiteNumber)) &&
+          optional(t, 'completed', (v) => typeof v === 'boolean') &&
+          optional(t, 'grove', (v) => Array.isArray(v) && v.every(finiteNumber)))) ||
+        !optional(value, 'blocks', (x) => Array.isArray(x) && x.every((b) => isRecord(b) && typeof b.text === 'string' && finiteNumber(b.start) && finiteNumber(b.end) &&
+          ['id','color','note'].every((k) => optional(b, k, (v) => typeof v === 'string')) &&
+          optional(b, 'taskIndex', (v) => v === null || finiteNumber(v)) &&
+          optional(b, 'notify', (v) => typeof v === 'boolean') && optional(b, 'notifyLead', finiteNumber))) ||
         !optional(value, 'answers', stringMap) ||
-        !optional(value, 'habitsDone', (x) => isRecord(x) && Object.values(x).every((b) => typeof b === 'boolean'))) bad()
+        !optional(value, 'habitsDone', (x) => isRecord(x) && Object.values(x).every((b) => typeof b === 'boolean')) ||
+        !['mood','score'].every((k) => optional(value, k, (v) => v === null || finiteNumber(v))) ||
+        !optional(value, 'habit', (v) => typeof v === 'boolean') ||
+        !['gratitude','intention','highlight','learned','remember'].every((k) => optional(value, k, (v) => typeof v === 'string')) ||
+        !optional(value, 'ink', inkData) ||
+        !optional(value, 'inkAnswers', (v) => isRecord(v) && Object.values(v).every(inkData))) bad()
     return
   }
   if (/^pp:week:\d{4}-\d{2}-\d{2}$/.test(key)) {
-    if (!textItems(value.tasks) || !optional(value, 'review', stringMap)) bad()
+    if (!planItems(value.tasks) || !optional(value, 'intention', (x) => typeof x === 'string') || !optional(value, 'review', stringMap)) bad()
     return
   }
   if (/^pp:month:\d{4}-\d{2}$/.test(key) || /^pp:quarter:\d{4}-Q[1-4]$/.test(key)) {
-    if (!textItems(value.priorities) || !optional(value, 'highlights', (x) => typeof x === 'string')) bad()
+    if (!planItems(value.priorities) || !optional(value, 'highlights', (x) => typeof x === 'string')) bad()
     return
   }
   if (/^pp:year:\d{4}$/.test(key)) {
-    if (!textItems(value.goals) || !optional(value, 'notes', stringMap) ||
+    if (!optional(value, 'goals', planItems) || !optional(value, 'notes', stringMap) ||
         !optional(value, 'monthFocus', (x) => Array.isArray(x) && x.every((t) => typeof t === 'string'))) bad()
     return
   }
   if (key === LIFE_KEY) {
-    if (!textItems(value.goals) || !optional(value, 'northStar', (x) => typeof x === 'string') ||
-        !optional(value, 'odyssey', (x) => Array.isArray(x) && x.every((p) => isRecord(p) && typeof p.title === 'string' && typeof p.body === 'string'))) bad()
+    if (!optional(value, 'goals', planItems) || !optional(value, 'northStar', (x) => typeof x === 'string') ||
+        !optional(value, 'startYear', finiteNumber) || !optional(value, 'odysseyOpen', (x) => typeof x === 'boolean') ||
+        !optional(value, 'reflection', (x) => typeof x === 'string') ||
+        !optional(value, 'odyssey', (x) => Array.isArray(x) && x.every((p) => isRecord(p) && typeof p.title === 'string' && typeof p.body === 'string' &&
+          ['excitement','resources','confidence','coherence'].every((k) => optional(p, k, finiteNumber)) &&
+          optional(p, 'questions', (x) => typeof x === 'string')))) bad()
     return
   }
   if (key === BIZ_KEY) {
-    if (!['partners','activities','resources','value','relationships','channels','segments','costs','revenue'].every((k) => textItems(value[k])) ||
+    if (!['partners','activities','resources','value','relationships','channels','segments','costs','revenue'].every((k) => optional(value, k, (x) => textItems(x) && (x as Record<string, unknown>[]).every((t) => optional(t, 'tag', (x) => typeof x === 'string')))) ||
         !optional(value, 'tags', (x) => Array.isArray(x) && x.every((t) => isRecord(t) && typeof t.id === 'string' && typeof t.label === 'string' && typeof t.color === 'string'))) bad()
     return
   }
@@ -828,11 +884,17 @@ const validateDataEntry = (key: string, value: unknown): void => {
       if (['habitName','reminderTime'].includes(k) && typeof v !== 'string') bad()
       if (['focusLock','showRollover','autoLoop','reminderEnabled'].includes(k) && typeof v !== 'boolean') bad()
       if (k === 'focusStyle' && v !== 'tree' && v !== 'grid') bad()
-      if (k === 'routines' && (!Array.isArray(v) || !v.every((r) => isRecord(r) && typeof r.label === 'string' && typeof r.emoji === 'string' && typeof r.start === 'number' && typeof r.dur === 'number' && typeof r.color === 'string'))) bad()
+      if (k === 'routines' && (!Array.isArray(v) || !v.every((r) => isRecord(r) && typeof r.label === 'string' && typeof r.emoji === 'string' && finiteNumber(r.start) && finiteNumber(r.dur) && typeof r.color === 'string'))) bad()
     }
     return
   }
   bad()
+}
+
+/** Shared validation at both the pull boundary and the storage sink. */
+export const isSyncDataValue = (key: string, value: unknown): boolean => {
+  if (!isSyncDataKey(key)) return false
+  try { validateDataEntry(key, value); return true } catch { return false }
 }
 
 interface ImportEnvelope {
@@ -879,7 +941,7 @@ const mergeBackupData = (data: Record<string, unknown>, action: string): number 
     if (syncGateClosed) gates.add(k)
     else dirty[k] = (dirty[k] ?? 0) + 1
   }
-  const updates = new Map(entries.map(([k, v]) => [k, JSON.stringify(v)]))
+  const updates = new Map(entries.map(([k, v]) => [k, JSON.stringify(normalizeSyncValue(k, v))]))
   if (syncGateClosed) updates.set(GATED_KEY, JSON.stringify([...gates]))
   else updates.set(DIRTY_KEY, JSON.stringify(dirty))
   const before = new Map([...updates.keys()].map((k) => [k, localStorage.getItem(k)]))
