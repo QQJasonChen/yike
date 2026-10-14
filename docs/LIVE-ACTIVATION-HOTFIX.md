@@ -16,3 +16,11 @@
 `public/sw.js` 保留基準的 navigation network-first。正式驗收須讓兩個測試 context 連網重新載入、確認實際載入新 build 的 asset hash，不清除使用者 localStorage。這份 commit 本身沒有部署，也沒有替買家設定密碼、使用買家序號或讀取日記。
 
 原 lock 的依賴漏洞仍是獨立 release gate；本次沒有 audit=0 的宣稱。正式部署前由維護者決定與驗證必要依賴修補、前端版本及後端 readback，再以專用 QA 身分／本人操作做開通與跨裝置同步驗收。
+
+## Publication hardening follow-up
+
+The follow-up release uses the previously verified Capacitor 8.5.3, CLI 8.4.3, Vite 6.4.4 and Vitest 5.0.4 with Node >=22.12.0. The lockfile was resolved against the official npm registry; run the new verification workflow before publishing. The workflow gates deployment on dependency audit, lint, application tests, isolated activation-handler tests and a production build, using the already verified full commit SHA references for official actions.
+
+The activate source and bounded-body helper in this branch are byte-identical to the source downloaded from production after the named activation deployment on 2026-10-14 (ACTIVE v19). Gumroad Ping and all database migrations remain outside this deployment. No secrets, buyer records, or QA credentials belong in the repository. This is a web release; it does not update installed native iOS apps or claim to finish backup recovery, SMTP, server quota or the separate comprehensive security candidate.
+
+The landing price is NT$490, read from the live Gumroad product on 2026-10-14; the checkout conversion depends on Gumroad. Each order receives its own License Key; shared fixed keys are not used. Positive checkout/activation/two-context sync acceptance remains pending until the approved dedicated zero-cost QA order is completed.

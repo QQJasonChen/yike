@@ -1,0 +1,46 @@
+name: Verify Yike
+
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      upload_pages_artifact:
+        description: Upload the verified build for the calling Pages deployment
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (official verified ref 2026-10-14)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (official verified ref 2026-10-14)
+        with:
+          node-version: '22'
+          check-latest: true
+          cache: npm
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2 (official verified ref 2026-10-14)
+        with:
+          deno-version: v2.x
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Dependency vulnerability gate
+        run: npm audit --audit-level=high
+      - name: ESLint errors gate
+        run: npm run lint
+      - name: App and privacy regression tests
+        run: npm test
+      - name: Deployed activation handler regression (no network or secrets)
+        run: deno test supabase/functions/tests/activation.test.ts
+      - name: TypeScript and production build
+        run: npm run build
+      - name: Upload verified Pages artifact
+        if: ${{ inputs.upload_pages_artifact == true }}
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3 (official verified ref 2026-10-14)
+        with:
+          path: dist
