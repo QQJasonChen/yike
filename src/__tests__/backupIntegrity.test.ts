@@ -114,7 +114,7 @@ describe('備份檔驗證與帳號預覽', () => {
       [KEY]: day('測試資料'), 'pp:week:2026-10-12': emptyWeek(),
       'pp:month:2026-10': emptyMonth(), 'pp:quarter:2026-Q4': emptyQuarter(),
       'pp:year:2026': emptyYear(), 'pp:life': emptyLife(),
-      'pp:bizmodel': emptyBizModel(), 'pp:settings': defaultSettings(), 'pp:pipAuto': true,
+      'pp:bizmodel': emptyBizModel(), 'pp:settings': defaultSettings(), 'pp:pipAuto': 1,
     }
     localStorage.clear()
     expect(importAll(envelope(data))).toBe(9)

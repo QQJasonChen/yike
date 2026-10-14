@@ -13,6 +13,9 @@ import {
   deviceId,
   getDataOwner,
   isGated,
+  isSyncDataKey,
+  isSyncDataValue,
+  isSyncTimestamp,
   nextClientRev,
   saveConflictCopy,
   hasCloudArtifact,
@@ -150,6 +153,7 @@ export interface SyncResult {
   rejected: number
   conflicts: number
   held: number
+  ignored?: number // untrusted/unsupported download rows; never silently report a complete pull
 }
 
 /** UI 必須區分伺服器已接受的版本與仍只在本機的草稿。 */
@@ -157,6 +161,7 @@ export const syncStatusMessage = (result: SyncResult): string => {
   const pending = result.rejected + result.held
   const counts = `↓${result.pulled} ↑${result.pushed}`
   const conflicts = result.conflicts ? `；保留 ${result.conflicts} 份雲端衝突副本，請到資料備份檢查` : ''
+  if (result.ignored) return `有 ${result.ignored} 筆同步資料格式未支援，已跳過並保留本機內容（${counts}）${pending ? `；尚有 ${pending} 筆未上傳` : ''}${conflicts}；請聯絡客服檢查`
   return pending
     ? `尚有 ${pending} 筆未上傳，資料仍在這台裝置（${counts}）${conflicts}`
     : `已同步（${counts}）${conflicts}`
@@ -253,7 +258,7 @@ const syncNowInner = async (opts?: {
   //    悄悄少拉，使用者在新裝置上永遠看不到那些日子，而且沒有任何錯誤
   //    （Codex 互審第 5 輪 P1-2）。
   const PAGE = 1000
-  const rows: Row[] = []
+  const downloaded: unknown[] = []
   for (let from = 0; ; from += PAGE) {
     const { data: page, error } = await withTimeout(
       (signal) =>
@@ -266,10 +271,20 @@ const syncNowInner = async (opts?: {
       '下載'
     )
     if (error) throw new Error(`下載失敗：${error.message}`)
-    const got = (page ?? []) as Row[]
-    rows.push(...got)
+    if (page !== null && !Array.isArray(page)) throw new Error('下載資料格式不正確')
+    const got = (page ?? []) as unknown[]
+    downloaded.push(...got)
     if (got.length < PAGE) break
   }
+  // Finish every page before any local migration/write. An own-UID journal row is
+  // still untrusted data, never authority to replace local credentials or metadata.
+  const rows = downloaded.filter((row): row is Row => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return false
+    const r = row as Partial<Row>
+    return isSyncDataKey(r.key) && isSyncDataValue(r.key, r.value) &&
+      isSyncTimestamp(r.updated_at)
+  })
+  let ignored = downloaded.length - rows.length
   const serverTs: Record<string, number> = {}
   // 伺服器回的原始字串，一個字都不能動。
   // 用 new Date(ts).toISOString() 重建會截成毫秒，而 Postgres 的 now() 是微秒
@@ -344,7 +359,14 @@ const syncNowInner = async (opts?: {
   // 不推的話它永遠不會上雲，而登出前的「還有沒上傳的東西嗎」檢查也看不到它——
   // 使用者按下登出就沒了（Codex 互審第 8 輪 P1-4）。
   const wanted = new Set([...Object.keys(dirty), ...pendingGatedKeys()])
-  const pushKeys = [...wanted].filter((k) => existing.has(k) && !holdBack.has(k))
+  const pushKeys = [...wanted].filter((k) => {
+    if (!existing.has(k) || holdBack.has(k)) return false
+    try {
+      if (isSyncDataValue(k, JSON.parse(localStorage.getItem(k)!))) return true
+    } catch { /* Invalid local JSON must keep its pending marker for recovery/export. */ }
+    ignored++
+    return false
+  })
   const pushedRevs = Object.fromEntries(pushKeys.map((k) => [k, dirty[k] ?? 0]))
   // client_id + client_rev 是伺服器端的過期寫入護欄。abort() 只取消瀏覽器這邊的等待，
   // 已經進到 PostgREST/Postgres 的那筆仍可能晚一步 commit，把較新的版本蓋回去；
@@ -431,7 +453,7 @@ const syncNowInner = async (opts?: {
     // 回應回來時如果已經換人了，這些 key 屬於上一個人。照著清 dirty／寫 meta 的話
     // 會把新帳號剛寫的髒標記刪掉，那一筆從此不會上傳（Codex 互審第 8 輪 P1-6）。
     assertStillMine()
-    const confirmedRows = savedRows.filter((r) => sentClientRev[r.key] !== undefined &&
+    const confirmedRows = savedRows.filter((r) => isSyncDataKey(r?.key) && isSyncTimestamp(r.updated_at) && sentClientRev[r.key] !== undefined &&
       (r.client_rev == null || Number(r.client_rev) === sentClientRev[r.key]))
     markSynced(confirmedRows, pushedRevs, sentClientRev)
     // 伺服器確認收下了，就不必再靠記憶體閘門保護（不清的話這個 key 在本次執行期間
@@ -449,7 +471,7 @@ const syncNowInner = async (opts?: {
 
   // holdBack 的 key 沒送出去，所以不在 rejected 裡。不回報的話畫面會顯示
   // 「✓ 已同步」，而使用者剛寫的那一天其實兩邊都還沒對上（Codex 互審第 7 輪 P1-13）。
-  return { pulled, pushed: accepted, rejected, conflicts, held: holdBack.size }
+  return { pulled, pushed: accepted, rejected, conflicts, held: holdBack.size, ...(ignored ? { ignored } : {}) }
 }
 
 let pushTimer: ReturnType<typeof setTimeout> | null = null

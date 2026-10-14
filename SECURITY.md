@@ -10,9 +10,9 @@
 |---|---|
 | 正式開通 | `activate` v19 已部署並回讀。新帳號必須提供 Gumroad 每筆訂單的序號，伺服器核對商品、有效購買與購買 Email；沒有空序號或共用邀請碼 bypass。既有帳號使用原帳密登入。 |
 | Auth 與資料隔離 | 公開 signup 維持關閉。journal 的四種 row 操作依 `auth.uid() = user_id` 隔離；匿名查詢不回傳 journal。這不限制持有受控高權限伺服器憑證的營運者。 |
-| 正式 DB 保護 | CAS function 固定 `search_path`，已撤應用角色的 journal `TRUNCATE`／`REFERENCES`／`TRIGGER`。journal quota 已部署；166 筆資料的完整內容、RLS 與 CAS 在套用前後核對相等，計帳一致。 |
+| 正式 DB 保護 | CAS function 固定 `search_path`，已撤應用角色的 journal `TRUNCATE`／`REFERENCES`／`TRIGGER`。quota 與已驗證的 key namespace CHECK 均已部署；最新 CHECK 套用前後 166 筆資料、RLS、CAS 與 account／global counters hash 相同。不接受 Auth／owner／token／備份與未知 key，舊 client 也不能新增這些 rows。 |
 | 備份格式 2 | 專用 TLS 唯讀 reader、`REPEATABLE READ` snapshot 與 AES-256-GCM 已驗收：19 個 Auth 身分 metadata、166 筆 journal、4 筆 entitlement、1 筆 license ledger；原生 PostgreSQL 17.6 隔離還原的內容 hash 相等，時間比較固定 UTC。**新版每日 GitHub workflow 尚待部署及首次排程回讀**；不能以這次演練代替後續每日成功證據。 |
-| 此輪 Web 候選 | 更嚴格的第一方 CSP／analytics、local backup／owner／同步與 Notion UI 修補尚待本輪部署及正式回讀。已存在 CSP 的頁面不等於所有候選 policy 都已上線。 |
+| 正式 Web 與新候選 | PR16 的第一方 CSP／analytics、local backup／owner／同步與 Notion UI 已部署，27 個 HTML／JS／CSS 與驗收 build 完全相等；專用 QA 的 UI／獨立登入雙向同步通過。本次新增的 key／typed value／timestamp client 守門仍須跟隨此 PR 部署後回讀。 |
 | 自助密碼重設 | recovery 程式預設 OFF。SMTP、正式郵件模板／callback、專用 QA 寄達與重設登入驗收完成前，不宣稱自助重設可用。 |
 | 其他營運條件 | 付費主機／方案、管理帳號 MFA 與完整 Auth 災難復原仍待核實或完成；此文件不保證 PITR、可用性 SLA 或立即撤銷既有 access JWT。 |
 
@@ -24,12 +24,14 @@
 4. **永久授權紀錄不得因刪帳或重試消失。** `license_redemptions` 與原子 RPC 執行目前每序號 cap 3 的上限；這不是三台裝置限制。開通失敗不得假稱成功，帳號刪除不得重新釋放付款額度，備份合併不得降低歷史 seed。webhook 必須核對 secret／商品／退款爭議，重複送達不得重複增發權益。
 5. **節流／計帳失敗要拒絕。** 原子 RPC 缺失、錯誤或無法判定時 fail closed，不可「先查再扣」或 RPC 出錯就放行。activate 先限制來訪 IP，只有有效序號與購買 Email proof 通過後才消耗該 Email 額度，避免假碼鎖住買家。IP header 不是可信身分 proof。
 6. **同步時間與並發由伺服器守門。** `updated_at` 由資料庫產生；保留 CAS／device revision 與 dirty 編輯保護。失敗的 CAS 不得計入新增 quota，失敗寫入不得被前端標成已同步。
-7. **本機資料不得混進另一帳號。** `ppl:owner` 與同步閘門用來防止帳號切換／共享裝置的誤送；候選修補的 owner／legacy quarantine／匯入確認須保留。這是 app 邏輯保護，localStorage 沒有因此成為加密或 OS 帳號隔離。
-8. **本機憑證不進一般同步、匯出或備份。** 排除 Auth session、OpenAI key、Notion token、`pp:sync`／`pp:integrations` 與 `ppl:` 的內部敏感狀態。候選可明確匯出目前 owner 的結構化 `ppl:conflict:` 內容作復原，但不能因此開放任意 `ppl:` key 或他人的副本。使用者主動執行 Notion／AI 時，所需 token 與選取內容會透過 TLS 傳到對應服務流程。
+7. **本機資料不得混進另一帳號。** `ppl:owner` 與同步閘門用來防止帳號切換／共享裝置的誤送；既有 owner／legacy quarantine／匯入確認須保留。這是 app 邏輯保護，localStorage 沒有因此成為加密或 OS 帳號隔離。
+8. **本機憑證不進一般同步、匯出或備份。** 使用者資料 key 採正向清單，雲端下載須完成全部分頁、驗證 key／型別／時間後，才進 dirty migration 與寫入；storage sink 再驗一次。排除 Auth session、OpenAI key、Notion token、`pp:sync`／`pp:integrations`、metadata、backups 及 `ppl:` 敏感狀態。明確匯出目前 owner 的結構化 `ppl:conflict:` 作復原，不因此開放任意 `ppl:` key 或他人的副本。未知舊資料留在原處，不自動刪除。使用者主動執行 Notion／AI 時，所需 token 與選取內容會透過 TLS 傳到對應服務流程。
 9. **備份落地與上傳前必須加密。** 未加密資料不能寫入暫存 dump、log、artifact 或上傳備份庫；TLS 傳輸及受控 process memory 中可以存在明文。明文 offline 檢視只能在明確授權、私有檔案權限與隔離環境中進行，不能成為每日備份捷徑。
 10. **功能啟用前須具備完整安全與復原條件。** 暫缺商戶 OpenAI／RevenueCat 憑證的入口不得僅因補 secret 就視為可商用。商戶 AI 要有 Auth、原子用量、請求大小／timeout／總成本限制；IAP 要有真實交易驗證與永久購買 owner 綁定。原型、舊端點或 HTTP 200／OPTIONS 不足以證明付款與同步可用。
 
 ## Journal 容量與失敗處理
+
+key CHECK 只允許 day／week／month／quarter／year，以及 settings／life／bizmodel／pipAuto／onboarded。日期使用 ASCII Gregorian 閏年規則，year 0001–9999；week 不強迫星期一，以保留歷史合法日期。CHECK 不限制 JSON payload 型別，更新後 client 額外防範會造成 UI 錯誤的欄位；舊版空白手寫、固定問答與數字偏好仍可同步／匯入／還原。沒有確認跨 UID RLS 繞過或已發生買家攻擊。
 
 版本化設定目前為：key 最多 1,024 bytes、JSON value 最多 512 KiB、`client_id` 最多 256 bytes；每帳號最多 40,000 rows／100 MiB，全站 250 MiB 的**邏輯 key＋JSON 文字用量**。這不是 PostgreSQL 實體磁碟、索引／WAL、網路、Auth、Edge Functions 或供應商帳單的上限，亦不是每位買家的容量承諾。
 
