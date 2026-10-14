@@ -34,6 +34,21 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - name: Select locked CocoaPods 1.16.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          gem install cocoapods --version 1.16.2 --no-document --clear-sources --source https://rubygems.org
+          YIKE_NATIVE_POD_BIN="$RUNNER_TEMP/yike-native-pod-bin"
+          mkdir -p "$YIKE_NATIVE_POD_BIN"
+          cat > "$YIKE_NATIVE_POD_BIN/pod" <<'RUBY'
+          #!/usr/bin/env ruby
+          require 'rubygems'
+          load Gem.activate_bin_path('cocoapods', 'pod', '=1.16.2')
+          RUBY
+          chmod 0755 "$YIKE_NATIVE_POD_BIN/pod"
+          echo "$YIKE_NATIVE_POD_BIN" >> "$GITHUB_PATH"
+          test "$("$YIKE_NATIVE_POD_BIN/pod" --version)" = '1.16.2'
       - name: Verify existing native toolchain
         shell: bash
         run: |
@@ -42,7 +57,7 @@ jobs:
           xcodebuild -version
           xcodebuild -version | grep -Fx 'Xcode 26.2'
           xcrun --sdk iphonesimulator --show-sdk-version
-          pod --version
+          pod --version | grep -Fx '1.16.2'
           df -h "$RUNNER_TEMP"
       - name: Install locked public dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --registry=https://registry.npmjs.org
