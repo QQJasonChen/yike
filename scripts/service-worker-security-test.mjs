@@ -86,6 +86,41 @@ test('normal home offline fallback keeps existing content', async () => {
   assert.equal(await result.res.text(), 'old offline home')
   assert.equal(w.calls.cacheMatches, 1); assert.equal(w.calls.puts.length, 0)
 })
+for (const status of [404, 500]) {
+  test(`navigation HTTP${status} cannot replace the existing offline home`, async () => {
+    let offline = false
+    const w = worker({ entries: { 'pp-cache-v2': { [home]: response('good offline home') } },
+      fetcher: async () => { if (offline) throw Error('synthetic offline'); return response('error page', 'public', status) } })
+    const online = await w.fetch(home)
+    assert.equal(online.res.status, status); assert.equal(w.calls.puts.length, 0)
+    offline = true
+    assert.equal(await (await w.fetch(home)).res.text(), 'good offline home')
+  })
+}
+for (const finalPath of ['/recover', '/recover.html?type=recovery']) {
+  test(`final recovery redirect ${finalPath.split('?')[0]} is rendered but never stored under original home`, async () => {
+    const res = new Response('synthetic recovery page', { status: 200 }) // Deliberately no no-store.
+    Object.defineProperty(res, 'url', { value: origin + finalPath })
+    const w = worker({ fetcher: async () => res })
+    const result = await w.fetch(home)
+    assert.equal(await result.res.text(), 'synthetic recovery page')
+    assert.equal(w.calls.puts.length, 0)
+  })
+}
+test('normal successful redirect still stores its content under the requested URL', async () => {
+  const res = response('normal redirected home')
+  Object.defineProperty(res, 'url', { value: origin + '/index.html' })
+  const w = worker({ fetcher: async () => res })
+  assert.equal(await (await w.fetch(home)).res.text(), 'normal redirected home')
+  assert.deepEqual(w.calls.puts, [['pp-cache-v2', home]])
+})
+test('malformed final response URL rejects storage without blocking rendering', async () => {
+  const res = response('normal visible response')
+  Object.defineProperty(res, 'url', { value: 'synthetic invalid absolute URL' })
+  const w = worker({ fetcher: async () => res })
+  assert.equal(await (await w.fetch(home)).res.text(), 'normal visible response')
+  assert.equal(w.calls.puts.length, 0)
+})
 test('normal asset remains cache-first with no network on an existing cached asset', async () => {
   const w = worker({ entries: { 'pp-cache-v2': { [asset]: response('cached asset') } } })
   const result = await w.fetch(asset, 'cors')

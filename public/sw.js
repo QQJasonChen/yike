@@ -5,10 +5,16 @@ const CACHE = 'pp-cache-v2'
 const isRecovery = (url) =>
   url.origin === self.location.origin &&
   (url.pathname === '/recover' || url.pathname === '/recover.html')
-const mayStore = (res) =>
-  !(res.headers.get('Cache-Control') || '')
+const mayStore = (res) => {
+  // A normal navigation can follow a redirect into recovery. Do not persist
+  // that final page under the original URL, even without a no-store header.
+  try {
+    if (res.url && isRecovery(new URL(res.url))) return false
+  } catch { return false }
+  return !(res.headers.get('Cache-Control') || '')
     .split(',')
     .some((directive) => directive.split('=')[0].trim().toLowerCase() === 'no-store')
+}
 
 self.addEventListener('install', () => {
   self.skipWaiting()
@@ -49,7 +55,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(request)
         .then((res) => {
-          if (mayStore(res)) {
+          if (res.ok && mayStore(res)) {
             const clone = res.clone()
             caches.open(CACHE).then((c) => c.put(request, clone))
           }
