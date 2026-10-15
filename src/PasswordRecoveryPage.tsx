@@ -7,11 +7,12 @@ import {
 
 export interface RecoveryPageProps {
   enabled: boolean
+  requestEnabled?: boolean
   hadUrlData?: boolean
   takeInitialToken?: () => string | null
   createRecovery?: () => ReturnType<typeof passwordRecovery>
 }
-export function RecoveryPage({ enabled, hadUrlData = false, takeInitialToken, createRecovery }: RecoveryPageProps) {
+export function RecoveryPage({ enabled, requestEnabled = true, hadUrlData = false, takeInitialToken, createRecovery }: RecoveryPageProps) {
   const makeApi = () => createRecovery?.() ?? passwordRecovery({ enabled, url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY, redirectTo: RECOVERY_REDIRECT_URL })
   const [api, setApi] = useState(makeApi)
   const [pendingProof] = useState(() => ({ value: takeInitialToken?.() ?? null }))
@@ -45,7 +46,7 @@ export function RecoveryPage({ enabled, hadUrlData = false, takeInitialToken, cr
     return () => clearTimeout(timer)
   }, [cooldown])
   const act = async () => {
-    if (!enabled || acting.current || (phase === 'request' && cooldown > 0)) return
+    if (!enabled || acting.current || (phase === 'request' && (!requestEnabled || cooldown > 0))) return
     const operationEpoch = epoch.current
     acting.current = true; setBusy(true); setMessage('')
     try {
@@ -81,9 +82,9 @@ export function RecoveryPage({ enabled, hadUrlData = false, takeInitialToken, cr
         <p>已驗證重設連結：{session.email}</p><p>此重設流程不會修改或刪除手帳。完成後請以同一帳號登入。</p>
         <label>新密碼<input type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} maxLength={128} disabled={busy}/></label>
         <label>再輸入一次新密碼<input type="password" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} maxLength={128} disabled={busy}/></label>
-      </> : <><p>填寫開通帳號的 Email，到自己的信箱開啟重設連結。</p>
+      </> : !requestEnabled ? <p>這次重設流程已結束。一般自助申請尚未開放；請回原信或由本人驗收人員確認下一步。</p> : <><p>填寫開通帳號的 Email，到自己的信箱開啟重設連結。</p>
         <label>Email<input type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} maxLength={254} disabled={busy}/></label></>}
-    {enabled && <button disabled={busy || cooldown > 0 || (phase === 'request' && !email.includes('@')) || (phase === 'password' && (password.length < 8 || !confirm))} onClick={() => void act()}>
+    {enabled && (phase !== 'request' || requestEnabled) && <button disabled={busy || cooldown > 0 || (phase === 'request' && !email.includes('@')) || (phase === 'password' && (password.length < 8 || !confirm))} onClick={() => void act()}>
       {busy ? '處理中⋯' : cooldown > 0 ? `請等待 ${cooldown} 秒` : phase === 'link' ? '繼續重設密碼' : phase === 'password' ? '更新密碼' : '寄送重設連結'}
     </button>}
     <p role="status">{message}</p>
