@@ -1,14 +1,17 @@
 // iOS In-App Purchase（RevenueCat）：買斷「雲端同步」。
-// 只在原生 iOS 且已設定 RevenueCat key 時生效；web 一律 no-op（動態 import，不進 web bundle 主路徑）。
+// 只在原生 iOS、已設定 key 且購買歸屬驗證協定完成後生效；目前安全停用。
 // 流程：purchase() 成功 → 拿 appUserId → iap-activate edge function 驗證 entitlement → 建 Supabase 帳號 → 登入同步。
 // 設定步驟：docs/IAP-SETUP.md
 
 import { Capacitor } from '@capacitor/core'
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './cloudConfig'
-import { ENTITLEMENT_SYNC, REVENUECAT_APPLE_API_KEY, iapConfigured } from './iapConfig'
+import { ENTITLEMENT_SYNC, IAP_ACTIVATION_READY, REVENUECAT_APPLE_API_KEY, iapConfigured } from './iapConfig'
 
-/** IAP 是否可用（原生 iOS + key 已設定） */
-export const iapAvailable = (): boolean => Capacitor.isNativePlatform() && iapConfigured()
+/** A configured SDK alone is insufficient while server activation is closed. */
+export const iapAvailable = (): boolean => IAP_ACTIVATION_READY && Capacitor.isNativePlatform() && iapConfigured()
+const requireAvailable = (): void => {
+  if (!iapAvailable()) throw new Error('App 內購新帳號開通尚未開放。已有 Yike 帳號請直接登入；已付款者請聯絡客服核對，不必重新購買。')
+}
 
 type PurchasesModule = typeof import('@revenuecat/purchases-capacitor')
 
@@ -16,6 +19,7 @@ let purchasesPromise: Promise<PurchasesModule['Purchases']> | null = null
 
 /** 動態載入並初始化 RevenueCat（只跑一次） */
 const rc = (): Promise<PurchasesModule['Purchases']> => {
+  requireAvailable()
   if (!purchasesPromise) {
     purchasesPromise = import('@revenuecat/purchases-capacitor').then(async ({ Purchases, LOG_LEVEL }) => {
       await Purchases.setLogLevel({ level: LOG_LEVEL.WARN })
@@ -59,6 +63,7 @@ export const hasSyncEntitlement = async (): Promise<boolean> => {
 
 /** 發起購買。回傳 RevenueCat appUserId（開通帳號用）；使用者取消回 null，其他錯誤丟出。 */
 export const purchaseSync = async (): Promise<string | null> => {
+  requireAvailable()
   const P = await rc()
   const { current } = await P.getOfferings()
   const pkg = current?.availablePackages?.[0]
@@ -77,6 +82,7 @@ export const purchaseSync = async (): Promise<string | null> => {
 
 /** 恢復購買（Apple 規定必備）。回傳 appUserId（有 entitlement 時）或 null。 */
 export const restoreSync = async (): Promise<string | null> => {
+  requireAvailable()
   const P = await rc()
   const { customerInfo } = await P.restorePurchases()
   return customerInfo.entitlements.active[ENTITLEMENT_SYNC] ? customerInfo.originalAppUserId : null
@@ -84,6 +90,7 @@ export const restoreSync = async (): Promise<string | null> => {
 
 /** 購買後開通：edge function 驗 RevenueCat entitlement → 建 Supabase 帳號（冪等，已存在回 409 訊息） */
 export const activateWithIap = async (appUserId: string, email: string, password: string): Promise<void> => {
+  requireAvailable()
   const res = await fetch(`${SUPABASE_URL}/functions/v1/iap-activate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },

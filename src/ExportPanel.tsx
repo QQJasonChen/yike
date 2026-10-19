@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { rangeToIcs } from './icsExport'
-import { addDays, allDayKeys, loadDay, toDateKey } from './storage'
+import { addDays, allDayKeys, getDataOwner, loadDay, toDateKey } from './storage'
 import { dayToMarkdown } from './exportMd'
 import {
   RangePreset,
@@ -43,6 +43,30 @@ export default function ExportPanel({ settings }: Props) {
   const [showSetup, setShowSetup] = useState(false)
   const [tokenDraft, setTokenDraft] = useState(cfg?.token ?? '')
   const [pageDraft, setPageDraft] = useState(cfg?.parentUrl ?? '')
+  const account = useRef({ owner: getDataOwner(), epoch: 0 })
+  useEffect(() => {
+    const ready = (event: Event) => {
+      const next = (event as CustomEvent<{ owner: string | null }>).detail?.owner
+      if (next === undefined || next !== getDataOwner() || next === account.current.owner) return
+      account.current = { owner: next, epoch: account.current.epoch + 1 }
+      const current = loadNotionConfig()
+      setCfg(current)
+      setTokenDraft(current?.token ?? '')
+      setPageDraft(current?.parentUrl ?? '')
+      setShowSetup(false)
+      setNotionResult(null)
+      setMsg(null)
+    }
+    window.addEventListener('yike:local-owner-ready', ready)
+    return () => window.removeEventListener('yike:local-owner-ready', ready)
+  }, [])
+  const canUseAccount = () => {
+    if (account.current.owner === getDataOwner()) return true
+    window.dispatchEvent(new Event('yike:owner-change-blocked'))
+    return false
+  }
+  const sameOperationAccount = (captured: typeof account.current) =>
+    account.current === captured && captured.owner === getDataOwner()
 
   const applyPreset = (p: RangePreset) => {
     const r = presetRange(p, todayKey)
@@ -72,6 +96,7 @@ export default function ExportPanel({ settings }: Props) {
   }
 
   const doCopy = async () => {
+    if (!canUseAccount()) return
     const out = buildMarkdown()
     if (!out) return flash('這段日期內沒有任何記錄。', true)
     try {
@@ -83,6 +108,7 @@ export default function ExportPanel({ settings }: Props) {
   }
 
   const doDownload = () => {
+    if (!canUseAccount()) return
     const out = buildMarkdown()
     if (!out) return flash('這段日期內沒有任何記錄。', true)
     downloadMarkdown(`${out.title.replace(/\s/g, '')}.md`, `# ${out.title}\n\n${out.md}`)
@@ -90,6 +116,7 @@ export default function ExportPanel({ settings }: Props) {
   }
 
   const doIcs = () => {
+    if (!canUseAccount()) return
     const lo = from <= to ? from : to
     const hi = from <= to ? to : from
     const keys: string[] = []
@@ -106,8 +133,13 @@ export default function ExportPanel({ settings }: Props) {
   }
 
   const doNotion = async () => {
-    if (busyRef.current) return
-    if (!cfg) {
+    if (busyRef.current || !canUseAccount()) return
+    const captured = account.current
+    const current = loadNotionConfig()
+    if (!current || JSON.stringify(current) !== JSON.stringify(cfg)) {
+      setCfg(current)
+      setTokenDraft(current?.token ?? '')
+      setPageDraft(current?.parentUrl ?? '')
       setShowSetup(true)
       flash('先完成下方的 Notion 設定（一次就好，約 1 分鐘）', true)
       return
@@ -120,11 +152,13 @@ export default function ExportPanel({ settings }: Props) {
     busyRef.current = true
     setBusy(true)
     try {
-      const r = await pushToNotion(cfg, out.title, out.md)
+      const r = await pushToNotion(current, out.title, out.md)
+      if (!sameOperationAccount(captured)) return
       const url = r.url ? notionPageUrl(r.url) : null
       setNotionResult(url ? { text: '✓ 已送到你的 Notion', outcome: 'complete', url }
         : { text: '無法確認這次匯出的頁面。請先到 Notion 檢查，避免重複匯出。', outcome: 'uncertain' })
     } catch (e) {
+      if (!sameOperationAccount(captured)) return
       setNotionResult(e instanceof NotionPushError
         ? { text: e.message, outcome: e.outcome, url: e.url ? notionPageUrl(e.url) ?? undefined : undefined }
         : { text: '無法確認這次是否已寫入。請先到 Notion 檢查，避免重複匯出。', outcome: 'uncertain' })
@@ -135,7 +169,8 @@ export default function ExportPanel({ settings }: Props) {
   }
 
   const doSaveSetup = async (test: boolean) => {
-    if (busyRef.current) return
+    if (busyRef.current || !canUseAccount()) return
+    const captured = account.current
     const pageId = extractNotionPageId(pageDraft)
     if (!tokenDraft.trim()) return flash('請先貼上 Integration Secret（步驟 1）', true)
     if (!pageId) return flash('看不懂這個頁面連結——請直接複製 Notion 頁面的分享連結', true)
@@ -148,11 +183,13 @@ export default function ExportPanel({ settings }: Props) {
       } catch (e) {
         busyRef.current = false
         setBusy(false)
+        if (!sameOperationAccount(captured)) return
         return flash(e instanceof Error ? e.message : '連線測試失敗', true)
       }
       busyRef.current = false
       setBusy(false)
     }
+    if (!sameOperationAccount(captured)) return
     try { saveNotionConfig(next) } catch {
       return flash('設定未儲存，請確認頁面與 Secret，或裝置儲存空間後再試。', true)
     }

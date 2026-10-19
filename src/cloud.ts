@@ -265,6 +265,9 @@ const syncNowInner = async (opts?: {
         db
           .from('journal')
           .select('key,value,updated_at')
+          // Pin every page to the captured owner. The SDK may use a newer JWT
+          // after another tab signs in, before the local owner is switched.
+          .eq('user_id', user.id)
           .order('key', { ascending: true })
           .range(from, from + PAGE - 1)
           .abortSignal(signal),

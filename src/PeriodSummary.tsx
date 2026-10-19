@@ -1,8 +1,9 @@
 // 期間總結（週/月共用）：自動統計 + 複製 MD + AI 總結 prompt
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useExternalPrefix } from './useExternalKey'
 import { aiEnabled, generateInsight } from './ai'
-import { loadDay } from './storage'
+import { getDataOwner, loadDay } from './storage'
+import { watchOwnerChange } from './ownerWatch'
 import { treeTier } from './plantCells'
 import { TIER_NAME, treeGlyph } from './plantGlyphs'
 
@@ -129,38 +130,111 @@ const AI_PROMPT = `你是我的生產力教練。以下是我這個期間的手�
 
 `
 
-export default function PeriodSummary({ title, dayKeys, periodLabel, showGrove }: Props) {
+export default function PeriodSummary(props: Props) {
+  const accepted = useRef({ owner: getDataOwner(), epoch: 0, blocked: false })
+  const [account, setAccount] = useState(accepted.current)
   const externalDays = useExternalPrefix('pp:day:')
+  useEffect(() => {
+    const replace = (owner: string | null, blocked: boolean) => {
+      accepted.current = { owner, epoch: accepted.current.epoch + 1, blocked }
+      setAccount(accepted.current)
+    }
+    const block = () => replace(accepted.current.owner, true)
+    const ready = (event: Event) => {
+      const owner = (event as CustomEvent<{ owner: string | null }>).detail?.owner
+      if (owner === undefined || owner !== getDataOwner()) return
+      // A fresh local login is a new epoch, including A → B → A or a blocked A → A.
+      replace(owner, false)
+    }
+    const unwatch = watchOwnerChange(block)
+    window.addEventListener('yike:owner-change-blocked', block)
+    window.addEventListener('yike:local-owner-ready', ready)
+    return () => {
+      unwatch()
+      window.removeEventListener('yike:owner-change-blocked', block)
+      window.removeEventListener('yike:local-owner-ready', ready)
+    }
+  }, [])
+  const canUseAccount = () => {
+    if (accepted.current !== account || account.blocked) return false
+    if (account.owner === getDataOwner()) return true
+    window.dispatchEvent(new Event('yike:owner-change-blocked'))
+    return false
+  }
+  // Never read the new owner's storage through an old summary cache. Only the local
+  // authenticated owner-ready event can adopt a different account in this view.
+  if (account.blocked || account.owner !== getDataOwner()) return (
+    <p className="sync-help" role="status">
+      資料尚未確認，期間總結暫停顯示。若登入失敗，請重新整理後再試。
+    </p>
+  )
+  const key = JSON.stringify([account.epoch, props.title, props.periodLabel, props.dayKeys])
+  return <OwnedPeriodSummary key={key} {...props} externalDays={externalDays} canUseAccount={canUseAccount} />
+}
+
+function OwnedPeriodSummary({ title, dayKeys, periodLabel, showGrove, externalDays, canUseAccount }: Props & {
+  externalDays: number
+  canUseAccount: () => boolean
+}) {
   const s = useMemo(() => { void externalDays; return build(dayKeys) }, [dayKeys, externalDays])
   const [copied, setCopied] = useState<'' | 'md' | 'ai'>('')
   const [aiText, setAiText] = useState('')
   const [aiBusy, setAiBusy] = useState(false)
   const [aiErr, setAiErr] = useState('')
+  const active = useRef(true)
+  const aiInFlight = useRef(false)
+  const copyTimer = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => {
+    active.current = true
+    return () => {
+      active.current = false
+      clearTimeout(copyTimer.current)
+    }
+  }, [])
+  const canUse = () => active.current && canUseAccount()
 
   if (s.recorded === 0) return null
 
   const copy = async (kind: 'md' | 'ai') => {
+    if (!canUse()) return
     const md = toMarkdown(title, periodLabel, s)
     try {
       await navigator.clipboard.writeText(kind === 'ai' ? AI_PROMPT + md : md)
+      if (!canUse()) return
       setCopied(kind)
-      setTimeout(() => setCopied(''), 2000)
+      clearTimeout(copyTimer.current)
+      copyTimer.current = setTimeout(() => { if (canUse()) setCopied('') }, 2000)
     } catch {
-      alert('複製失敗')
+      if (canUse()) alert('複製失敗')
+    }
+  }
+
+  const copyInsight = async () => {
+    if (!canUse()) return
+    try {
+      await navigator.clipboard.writeText(aiText)
+    } catch {
+      if (canUse()) alert('複製失敗')
     }
   }
 
   const runAI = async () => {
+    if (!canUse() || aiInFlight.current) return
+    aiInFlight.current = true
     setAiBusy(true)
     setAiErr('')
     setAiText('')
     try {
       const md = toMarkdown(title, periodLabel, s)
-      setAiText(await generateInsight(AI_PROMPT, md))
+      const result = await generateInsight(AI_PROMPT, md)
+      if (canUse()) setAiText(result)
     } catch (e) {
-      setAiErr(e instanceof Error ? e.message : 'AI 失敗')
+      if (canUse()) setAiErr(e instanceof Error ? e.message : 'AI 失敗')
     } finally {
-      setAiBusy(false)
+      if (canUse()) {
+        aiInFlight.current = false
+        setAiBusy(false)
+      }
     }
   }
 
@@ -236,7 +310,7 @@ export default function PeriodSummary({ title, dayKeys, periodLabel, showGrove }
         <div className="ai-result">
           <div className="ai-result-head">
             🤖 AI 洞察
-            <button className="ai-copy" onClick={() => navigator.clipboard.writeText(aiText)}>
+            <button className="ai-copy" onClick={copyInsight}>
               複製
             </button>
           </div>

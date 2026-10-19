@@ -1,6 +1,8 @@
-// Portaly 售出 webhook → 把買家 Email 寫進付費白名單
-// 部署：supabase functions deploy portaly-webhook --no-verify-jwt
-// 驗證：URL query ?secret=<PORTALY_SECRET>（supabase secrets set PORTALY_SECRET=...）
+// Portaly new entitlement grants are intentionally unavailable in this candidate.
+// The configured live product, buyer/event mapping and callback verification
+// contract have not been confirmed. A query secret is not payment/product proof.
+// See docs/security-acceptance-20261018/portaly-contract-gate.md before integration.
+import { BodyReadError, readBoundedJson } from '../_shared/boundedBody.ts'
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -8,57 +10,28 @@ const json = (status: number, body: unknown) =>
     headers: { 'Content-Type': 'application/json' },
   })
 
-/** 在任意巢狀 payload 裡撈出第一個像 email 的值（容忍 Portaly 格式變動） */
-const findEmail = (obj: unknown, depth = 0): string | null => {
-  if (depth > 5 || obj === null || typeof obj !== 'object') return null
-  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-    if (typeof v === 'string' && /email/i.test(k) && v.includes('@')) return v.toLowerCase().trim()
-    const nested = findEmail(v, depth + 1)
-    if (nested) return nested
-  }
-  return null
-}
-
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'method not allowed' })
 
   const url = new URL(req.url)
-  if (url.searchParams.get('secret') !== Deno.env.get('PORTALY_SECRET'))
+  const expectedSecret = Deno.env.get('PORTALY_SECRET')
+  if (!expectedSecret || url.searchParams.getAll('secret').length !== 1 || url.searchParams.get('secret') !== expectedSecret)
     return json(401, { error: 'bad secret' })
 
   let payload: unknown
   try {
-    payload = await req.json()
-  } catch {
-    return json(400, { error: 'invalid json' })
+    payload = await readBoundedJson(req, 64 * 1024, 5000)
+  } catch (error) {
+    return json(error instanceof BodyReadError ? error.status : 400, { error: 'invalid json' })
   }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload))
+    return json(400, { error: 'invalid payload' })
 
-  // 退款／爭議／測試／未完成付款一律不開通。
-  // gumroad-ping 本來就有這層檢查，這支漏了——任何通過 secret 的 JSON，
-  // 只要有個看起來像 email 的欄位就直接發權益，退款事件也照發。
-  const p = payload as Record<string, unknown>
-  const flag = (k: string) => p[k] === true || p[k] === 'true'
-  if (flag('refunded') || flag('disputed') || flag('test') || flag('is_test'))
-    return json(200, { ok: true, skipped: 'refunded/disputed/test' })
-  const status = String(p.status ?? p.payment_status ?? p.event ?? '').toLowerCase()
-  if (status && !/paid|success|succeeded|completed|complete/.test(status))
-    return json(200, { ok: true, skipped: `status=${status}` })
-
-  const email = findEmail(payload)
-  if (!email) return json(422, { error: 'no email in payload' })
-
-  const base = Deno.env.get('SUPABASE_URL')!
-  const srk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const res = await fetch(`${base}/rest/v1/entitlements`, {
-    method: 'POST',
-    headers: {
-      apikey: srk,
-      Authorization: `Bearer ${srk}`,
-      'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates',
-    },
-    body: JSON.stringify({ email, source: 'portaly', raw: payload }),
-  })
-  if (!res.ok) return json(500, { error: `db ${res.status}` })
-  return json(200, { ok: true, email })
+  // Fail closed for ALL products until a verified, explicitly Yike-bound adapter
+  // is implemented against approved sanitized fixtures. Do not add an env toggle
+  // or revive generic status / recursive email or product searches to bypass this.
+  // No provider/DB calls, receipt changes, account creation or entitlement grants.
+  // Existing accounts and entitlements are unaffected. A 503 also avoids falsely
+  // acknowledging an unprocessed paid event as a successful entitlement grant.
+  return json(503, { error: 'portaly contract unavailable' })
 })

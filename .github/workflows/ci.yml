@@ -39,12 +39,18 @@ jobs:
         run: npm run test:db
       - name: Cloud key namespace and rollback regression
         run: npm run test:keys
+      - name: Cross-account journal attacker regression
+        run: npm run test:security:db
+      - name: Server AI opt-in and atomic global budget regression
+        run: npm run test:security:ai-budget
       - name: Notion request and partial write regression
         run: npm run test:notion
+      - name: Public anonymous-data and health boundary regression
+        run: npm run test:ops
       - name: Static page CSP checks
         run: node scripts/static-csp.mjs --check
       - name: Deployed activation handler regression (no network or secrets)
-        run: deno test supabase/functions/tests/activation.test.ts supabase/functions/tests/activation-edgecases.test.ts supabase/functions/tests/activation-retry.test.ts
+        run: deno test --no-prompt --deny-net --deny-env --deny-read --deny-write --deny-run supabase/functions/tests/
       - name: TypeScript and production build
         run: npm run build
       - name: Upload verified Pages artifact

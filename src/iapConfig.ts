@@ -5,6 +5,11 @@
 
 export const REVENUECAT_APPLE_API_KEY = '' // TODO: 貼 RevenueCat 的 Apple 平台 Public API key（appl_ 開頭）
 
+/** Closed in source until one verified purchase is bound to one authenticated UID.
+ * Filling a public SDK key or environment flag must not reopen purchases while
+ * the matching activation endpoint deliberately refuses new account grants. */
+export const IAP_ACTIVATION_READY = false
+
 /** RevenueCat 上定義的「買斷雲端同步」entitlement 識別碼（跟 dashboard 一致） */
 export const ENTITLEMENT_SYNC = 'sync'
 
