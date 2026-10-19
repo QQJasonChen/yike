@@ -507,6 +507,18 @@ function OpenAIKeySettings() {
   const [key, setKey] = useState('')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const account = useRef({ owner: getDataOwner() })
+  useEffect(() => {
+    const ready = (event: Event) => {
+      const next = (event as CustomEvent<{ owner: string | null }>).detail?.owner
+      if (next === undefined || next !== getDataOwner() || next === account.current.owner) return
+      account.current = { owner: next }
+      setKey('')
+      setMsg('')
+    }
+    window.addEventListener('yike:local-owner-ready', ready)
+    return () => window.removeEventListener('yike:local-owner-ready', ready)
+  }, [])
   const saved = getOpenAIKey()
   const masked = saved ? `${saved.slice(0, 7)}…${saved.slice(-4)}` : ''
   return (
@@ -554,6 +566,11 @@ function OpenAIKeySettings() {
         <button
           disabled={busy}
           onClick={() => {
+            const captured = account.current
+            if (captured.owner !== getDataOwner()) {
+              window.dispatchEvent(new Event('yike:owner-change-blocked'))
+              return
+            }
             const v = key.trim()
             if (!v) {
               setOpenAIKey('')
@@ -568,6 +585,7 @@ function OpenAIKeySettings() {
             setMsg('驗證中…')
             void verifyKeyAndPickModel(v).then((r) => {
               setBusy(false)
+              if (captured !== account.current || captured.owner !== getDataOwner()) return
               if (!r.ok) {
                 setMsg(`✗ ${r.error}`)
                 return

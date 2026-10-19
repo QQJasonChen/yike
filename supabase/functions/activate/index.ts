@@ -3,6 +3,7 @@
 // 環境：SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY 由平台自動注入；
 //       GUMROAD_PRODUCT_ID 優先使用；未設定時沿用 GUMROAD_PERMALINK（預設 'yike'）
 import { BodyReadError, readBoundedJson } from '../_shared/boundedBody.ts'
+import { activationUpstream } from '../_shared/activationUpstream.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -17,12 +18,22 @@ const json = (status: number, body: unknown) =>
   })
 
 Deno.serve(async (req) => {
+  const deadline = new AbortController()
+  const timer = setTimeout(() => deadline.abort(), 45_000)
+  const budget = AbortSignal.any([req.signal, deadline.signal])
+  try { return await activate(req, budget) }
+  catch { return activationUnconfirmed() }
+  finally { clearTimeout(timer) }
+})
+
+async function activate(req: Request, budget: AbortSignal): Promise<Response> {
+  const fetch = (url: string, init: RequestInit) => activationUpstream(url, init, budget)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json(405, { error: 'method not allowed' })
 
   let licenseKey = '', email = '', password = ''
   try {
-    const body = await readBoundedJson(req, 16 * 1024, 5000)
+    const body = await readBoundedJson(req, 16 * 1024, 5000, budget)
     if (body === null || typeof body !== 'object' || Array.isArray(body))
       return json(400, { error: '格式錯誤' })
     const data = body as Record<string, unknown>
@@ -66,7 +77,7 @@ Deno.serve(async (req) => {
   const bump = async (key: string, cap: number, windowSeconds = 3600) => {
     try {
       const r = await fetch(`${url}/rest/v1/rpc/rate_limit_bump`, {
-        method: 'POST', signal: AbortSignal.timeout(10_000),
+        method: 'POST',
         headers: { apikey: srk, Authorization: `Bearer ${srk}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ k: key, cap, window_seconds: windowSeconds }),
       })
@@ -113,7 +124,6 @@ Deno.serve(async (req) => {
     fetch('https://api.gumroad.com/v2/licenses/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      signal: AbortSignal.timeout(10_000),
       body: new URLSearchParams({
         ...(productId ? { product_id: productId } : { product_permalink: permalink }),
         license_key: licenseKey,
@@ -176,13 +186,13 @@ Deno.serve(async (req) => {
 
   // Existing accounts are repaired only after the supplied original password proves ownership.
   // No password reset, receipt-only UID lookup or destructive Auth compensation.
-  const created = await createUser(url, srk, email, password)
+  const created = await createUser(url, srk, email, password, budget)
   if (!created.ok || !created.userId) return created.response
 
   let grantResponse: Response
   try {
     grantResponse = await fetch(`${url}/rest/v1/rpc/license_activate_grant`, {
-      method: 'POST', signal: AbortSignal.timeout(10_000),
+      method: 'POST',
       headers: { apikey: srk, Authorization: `Bearer ${srk}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_license_key: licenseKey, p_email: email, p_user_id: created.userId, p_seed_uses: seed }),
     })
@@ -221,7 +231,7 @@ Deno.serve(async (req) => {
   }
   // Both durable ledger/cap and entitlement have committed before this success.
   return json(200, { ok: true })
-})
+}
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i
 const activationUnconfirmed = () => json(503, {
@@ -235,12 +245,13 @@ const accountId = (value: Record<string, unknown>, email: string): string | null
     value.email.trim().toLowerCase() === email ? value.id : null
 
 async function createUser(
-  url: string, srk: string, email: string, password: string
+  url: string, srk: string, email: string, password: string, budget: AbortSignal
 ): Promise<{ ok: boolean; response: Response; userId?: string }> {
+  const fetch = (target: string, init: RequestInit) => activationUpstream(target, init, budget)
   let createRes: Response
   try {
     createRes = await fetch(`${url}/auth/v1/admin/users`, {
-      method: 'POST', signal: AbortSignal.timeout(10_000),
+      method: 'POST',
       headers: { apikey: srk, Authorization: `Bearer ${srk}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, email_confirm: true }),
     })
@@ -260,7 +271,7 @@ async function createUser(
     let signedIn: Response
     try {
       signedIn = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-        method: 'POST', signal: AbortSignal.timeout(10_000),
+        method: 'POST',
         headers: { apikey: anon, Authorization: `Bearer ${anon}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })

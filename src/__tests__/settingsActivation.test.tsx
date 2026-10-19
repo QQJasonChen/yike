@@ -2,7 +2,8 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const h = vi.hoisted(() => ({ activate: vi.fn(), login: vi.fn(), sync: vi.fn(), start: vi.fn(), email: vi.fn(), uid: vi.fn(), logout: vi.fn() }))
+const h = vi.hoisted(() => ({ activate: vi.fn(), login: vi.fn(), sync: vi.fn(), start: vi.fn(), email: vi.fn(), uid: vi.fn(), logout: vi.fn(), verify: vi.fn() }))
+vi.mock('../ai', () => ({ OPENAI_KEY_HELP_URL: 'https://platform.openai.com/api-keys', verifyKeyAndPickModel: h.verify }))
 vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => false }, registerPlugin: () => ({}),
 }))
@@ -19,7 +20,7 @@ vi.mock('../IapPanel', () => ({ default: () => null }))
 
 import SettingsPanel from '../SettingsPanel'
 import { defaultSettings, emptyDay, emptyTask } from '../types'
-import { autoBackup, exportBackupAsFile, getDataOwner, listBackups, loadDay, loadDirty, saveConflictCopy, saveDay, setDataOwner } from '../storage'
+import { autoBackup, claimDeviceFor, exportBackupAsFile, getDataOwner, getOpenAIKey, listBackups, loadDay, loadDirty, saveConflictCopy, saveDay, setDataOwner } from '../storage'
 import { clearUnsavedDrafts, useStoredEntry } from '../useStoredEntry'
 
 let container: HTMLDivElement
@@ -34,6 +35,7 @@ beforeEach(() => {
   h.login.mockReset().mockResolvedValue('in')
   h.sync.mockReset().mockResolvedValue({ pulled: 0, pushed: 0, rejected: 0, held: 0, conflicts: 0 })
   h.start.mockReset().mockResolvedValue(undefined)
+  h.verify.mockReset().mockResolvedValue({ ok: true, model: 'synthetic-model' })
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   container = document.createElement('div')
   document.body.appendChild(container)
@@ -102,6 +104,38 @@ describe('actual Settings activation and login controls', () => {
     expect(h.login).toHaveBeenCalledWith('qa@example.com', 'synthetic-password')
     expect(h.activate).not.toHaveBeenCalled()
     expect(container.textContent).toContain('登入成功，已同步')
+  })
+})
+
+describe('OpenAI verification keeps the initiating account boundary', () => {
+  const keyInput = '.backup-box input[placeholder="sk-..."]'
+  it('the same account can verify and save its own key', async () => {
+    setDataOwner('synthetic-owner-a')
+    await render(); await fill(keyInput, 'sk-synthetic-owner-a')
+    await act(async () => button('驗證並儲存').click())
+    expect(getOpenAIKey()).toBe('sk-synthetic-owner-a')
+  })
+  it('a late A verification response cannot restore A key after B login', async () => {
+    let resolve!: (value: { ok: true; model: string }) => void
+    h.verify.mockImplementationOnce(() => new Promise((done) => { resolve = done }))
+    setDataOwner('synthetic-owner-a')
+    await render(); await fill(keyInput, 'sk-synthetic-owner-a')
+    await act(async () => button('驗證並儲存').click())
+    await act(async () => {
+      claimDeviceFor('synthetic-owner-b')
+      window.dispatchEvent(new CustomEvent('yike:local-owner-ready', { detail: { owner: 'synthetic-owner-b' } }))
+    })
+    await act(async () => resolve({ ok: true, model: 'synthetic-model' }))
+    expect(getOpenAIKey()).toBe('')
+    expect(container.querySelector<HTMLInputElement>(keyInput)?.value).toBe('')
+  })
+  it('a stale settings frame cannot verify an A key after the owner already became B', async () => {
+    setDataOwner('synthetic-owner-a')
+    await render(); await fill(keyInput, 'sk-synthetic-owner-a')
+    claimDeviceFor('synthetic-owner-b')
+    await act(async () => button('驗證並儲存').click())
+    expect(h.verify).not.toHaveBeenCalled()
+    expect(getOpenAIKey()).toBe('')
   })
 })
 

@@ -9,6 +9,7 @@ vi.mock('../integrations', async () => ({
 }))
 vi.mock('../storage', () => ({
   toDateKey: () => '2026-10-14', allDayKeys: () => ['2026-10-14'], loadDay: () => ({}),
+  getDataOwner: () => localStorage.getItem('ppl:owner'),
   addDays: () => '2026-10-08', mondayOf: () => '2026-10-12',
 }))
 vi.mock('../exportMd', () => ({ dayToMarkdown: () => 'Synthetic content only' }))

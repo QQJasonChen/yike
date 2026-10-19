@@ -11,9 +11,12 @@
     "test": "vitest run",
     "test:db": "node scripts/journal-resource-limits-test.mjs",
     "test:keys": "node scripts/journal-key-namespace-test.mjs",
+    "test:security:db": "node scripts/journal-attacker-boundary-test.mjs",
     "test:notion": "node scripts/notion-security-test.mjs",
     "test:watch": "vitest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:security:ai-budget": "node scripts/ai-proxy-budget-test.mjs",
+    "test:ops": "node --test scripts/public-health-probe.test.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.3",

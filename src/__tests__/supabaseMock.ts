@@ -7,6 +7,7 @@ export interface LazyQuery<T> {
   abortSignal: (s: AbortSignal) => Promise<T>
   then: <R>(res: (v: T) => R, rej?: (e: unknown) => R) => Promise<R>
   order: (col: string, opts?: unknown) => LazyQuery<T>
+  eq: (column: string, value: unknown) => LazyQuery<T>
   range: (from: number, to: number) => LazyQuery<T>
 }
 
@@ -17,6 +18,7 @@ export const lazyQuery = <T>(exec: (signal?: AbortSignal) => Promise<T>): LazyQu
     abortSignal: (s: AbortSignal) => exec(s),
     then: <R>(res: (v: T) => R, rej?: (e: unknown) => R) => exec().then(res, rej),
     order: () => q,
+    eq: () => q,
     range: () => q,
   }
   return q

@@ -934,6 +934,40 @@ export const inspectImport = (json: string): ImportPreview => {
 const mergeBackupData = (data: Record<string, unknown>, action: string): number => {
   const entries = Object.entries(data)
   const owner = getDataOwner()
+  const updates = new Map<string, string>()
+  const reservedIds = new Set(entries.filter(([k]) => k.startsWith(CONFLICT_PREFIX)).map(([k]) => k))
+  // A backup's conflict ID is not authority to replace a rescue copy already on
+  // this device. IDs can collide across owners or independently used devices.
+  // Allocate before any writes, so exhaustion rejects the complete restore.
+  for (const [key, value] of entries) {
+    if (!key.startsWith(CONFLICT_PREFIX)) {
+      updates.set(key, JSON.stringify(normalizeSyncValue(key, value)))
+      continue
+    }
+    const match = key.match(/^ppl:conflict:(\d+):(pp:.+)$/)!
+    const base = Number(match[1])
+    if (!Number.isSafeInteger(base) || base < 0) throw new Error('備份副本識別碼格式不正確')
+    const incoming = parseConflict(JSON.stringify(value))
+    const at = incoming.at ?? base
+    let resolved = false
+    for (let slot = 0; slot < 1024 && Number.isSafeInteger(base + slot); slot++) {
+      const id = `${CONFLICT_PREFIX}${base + slot}:${match[2]}`
+      if (id !== key && reservedIds.has(id)) continue
+      const existingRaw = updates.get(id) ?? localStorage.getItem(id)
+      if (existingRaw !== null && existingRaw !== undefined) {
+        const existing = parseConflict(existingRaw)
+        if (existing.owner !== incoming.owner || (existing.at ?? base + slot) !== at ||
+            JSON.stringify(existing.value) !== JSON.stringify(incoming.value)) continue
+        updates.set(id, existingRaw) // Identical owner/version/value: do not multiply copies.
+      } else {
+        const saved = slot === 0 ? value : { ...(value as Record<string, unknown>), at }
+        updates.set(id, JSON.stringify(saved))
+      }
+      resolved = true
+      break
+    }
+    if (!resolved) throw new Error('備份副本識別碼空間不足，沒有動任何資料')
+  }
   const normalKeys = entries.filter(([k]) => !k.startsWith(CONFLICT_PREFIX)).map(([k]) => k)
   const dirty = loadDirty()
   const gates = new Set(gatedKeys)
@@ -941,7 +975,6 @@ const mergeBackupData = (data: Record<string, unknown>, action: string): number 
     if (syncGateClosed) gates.add(k)
     else dirty[k] = (dirty[k] ?? 0) + 1
   }
-  const updates = new Map(entries.map(([k, v]) => [k, JSON.stringify(normalizeSyncValue(k, v))]))
   if (syncGateClosed) updates.set(GATED_KEY, JSON.stringify([...gates]))
   else updates.set(DIRTY_KEY, JSON.stringify(dirty))
   const before = new Map([...updates.keys()].map((k) => [k, localStorage.getItem(k)]))
@@ -1276,6 +1309,12 @@ export const setDataOwner = (uid: string) => localStorage.setItem(OWNER_KEY, uid
 /** 這台裝置上有幾個資料 key（用來判斷「登入前就有東西」）。 */
 export const localDataCount = (): number => allDataKeys().length
 
+/** An explicit journal merge transfers content, never the previous account's integrations. */
+const clearPreviousAccountIntegrations = (): void => {
+  for (const key of [OPENAI_KEY_KEY, OPENAI_MODEL_KEY, INTEGRATIONS_KEY, SYNC_KEY, 'ppl:timer'])
+    localStorage.removeItem(key)
+}
+
 /** 放棄這台裝置的本機資料改用雲端那份。先存一份快照再清，才有得後悔。 */
 export const discardLocalForNewOwner = (uid: string): void => {
   // 備份失敗就不准刪。原本吞掉 autoBackup 的錯誤直接往下刪，
@@ -1295,13 +1334,10 @@ export const discardLocalForNewOwner = (uid: string): void => {
   gatedKeys.clear() // 記憶體保護也屬於上一個人的資料，不能擋住新owner的pull
   // 上一個人的 OpenAI 金鑰綁著他的信用卡。換人了還留著，等於新使用者的每一次
   // AI 分析都在刷前一個人的帳單，而且他從同 origin 的 localStorage 就讀得到完整金鑰。
-  localStorage.removeItem(OPENAI_KEY_KEY)
-  localStorage.removeItem(OPENAI_MODEL_KEY)
   // Notion token 一併清掉。留著的話新使用者按「送到 Notion」，日記會送進
   // 上一個人的 workspace（Codex 互審第 6 輪 P1-4）。
-  localStorage.removeItem(INTEGRATIONS_KEY)
   // 計時狀態也是上一個人的：會顯示他的任務名稱，完成後還會寫進新使用者的今天。
-  localStorage.removeItem('ppl:timer')
+  clearPreviousAccountIntegrations()
   // 未處理的衝突副本屬於上一個人，不能留給接手的人看
   for (const c of listConflicts()) localStorage.removeItem(c.id)
   setDataOwner(uid)
@@ -1312,6 +1348,7 @@ export const claimDeviceFor = (uid: string): void => {
   const before = getDataOwner()
   if (before === null && (!stampLegacyConflictOwners() || !quarantineLegacyBackups()))
     throw new Error('舊副本隔離標記存不下，沒有變更資料歸屬；請先釋放儲存空間')
+  if (before !== null && before !== uid) clearPreviousAccountIntegrations()
   setDataOwner(uid)
   if (before !== null) return
   const keys: string[] = []
