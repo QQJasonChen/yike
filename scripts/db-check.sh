@@ -79,7 +79,7 @@ echo ""
 echo "③ RPC 只給 service_role"
 for fn in license_redeem license_force_record rate_limit_bump ai_usage_bump; do
   check "${fn} 沒有給 public/anon/authenticated" \
-    "select case when coalesce(array_to_string(p.proacl,','),'') ~ '(^|,)(=|anon=|authenticated=)' then 'leaked' else 'ok' end from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='${fn}'" "ok"
+    "select case when has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute') then 'leaked' else 'ok' end from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='${fn}'" "ok"
 done
 
 echo ""

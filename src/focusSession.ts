@@ -172,6 +172,27 @@ const endedIds = (): string[] => {
   }
 }
 export const isTimerEnded = (id: string | undefined): boolean => !!id && endedIds().includes(id)
+
+/** storage 事件收到的磁碟狀態要不要採用？
+ *  - 磁碟上有一段：不是本地剛結束的、也不在墓碑裡才採用。
+ *  - 磁碟空了（刪除事件）：只有「刪掉的是我現在這段」才跟著清。排隊中的舊刪除（A 的休息段
+ *    T1 結束）不能把 B 剛開始、還沒落盤的 T2 清掉（Codex 第 14 輪 #1）。刪了誰看 e.oldValue。 */
+export const shouldAdoptDiskTimer = (
+  disk: PersistedTimer | null,
+  oldValueJson: string | null,
+  local: { id?: string } | null,
+  endedLocally: string | undefined
+): boolean => {
+  if (disk) return !(disk.id === endedLocally || isTimerEnded(disk.id))
+  if (!local) return true
+  let oldId: string | undefined
+  try {
+    oldId = oldValueJson ? (JSON.parse(oldValueJson) as { id?: string }).id : undefined
+  } catch {
+    oldId = undefined
+  }
+  return !oldId || oldId === local.id
+}
 const markEnded = (id: string) => {
   try {
     localStorage.setItem(ENDED_KEY, JSON.stringify([...endedIds(), id].slice(-20)))
@@ -297,7 +318,8 @@ export const recordAbandon = (
   dateKey: string,
   taskIndex: number,
   taskId?: string,
-  owner?: string | null
+  owner?: string | null,
+  taskText = ''
 ): boolean => {
   const ok = editStoredKey<ReturnType<typeof loadDay>>(
     `pp:day:${dateKey}`,
@@ -305,7 +327,7 @@ export const recordAbandon = (
     (v) => saveDay(dateKey, v),
     (prev) => {
       const tasks = prev.tasks.slice()
-      const at = locate(tasks, taskId, taskIndex, '')
+      const at = locate(tasks, taskId, taskIndex, taskText) // 還原備份洗掉 id 時靠文字找（Codex 第 14 輪 #2）
       const t = tasks[at]
       if (!t) return prev // 放棄＝枯樹，那件事已經不在今天就不追加
       tasks[at] = { ...t, withered: (t.withered ?? 0) + 1 }

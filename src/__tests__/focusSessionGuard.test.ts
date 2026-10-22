@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from '../focusSession'
+import { claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
@@ -389,5 +389,32 @@ describe('isTimerEnded', () => {
     saveTimer(null, 'E1')
     expect(isTimerEnded('E1')).toBe(true)
     expect(isTimerEnded(undefined)).toBe(false)
+  })
+})
+
+describe('storage 事件要不要採用（shouldAdoptDiskTimer）', () => {
+  const t = (id: string) => ({ id, startedAt: Date.now(), phase: 'focus' as const, taskIndex: 0, taskText: 'x', endsAt: Date.now() + 60_000, pausedRemaining: null, totalMs: 1 })
+  it('排隊中的舊刪除（刪的是 T1）不能清掉本地剛開始的 T2', () => {
+    expect(shouldAdoptDiskTimer(null, JSON.stringify(t('T1')), t('T2'), undefined)).toBe(false)
+  })
+  it('刪的就是我這段 → 跟著清', () => {
+    expect(shouldAdoptDiskTimer(null, JSON.stringify(t('T2')), t('T2'), undefined)).toBe(true)
+  })
+  it('本地沒計時 → 磁碟空就空', () => {
+    expect(shouldAdoptDiskTimer(null, JSON.stringify(t('T1')), null, undefined)).toBe(true)
+  })
+  it('磁碟上的段是本地剛結束的或墓碑裡的 → 不採用', () => {
+    expect(shouldAdoptDiskTimer(t('E'), null, null, 'E')).toBe(false)
+    saveTimer(t('G')); saveTimer(null, 'G')
+    expect(shouldAdoptDiskTimer(t('G'), null, null, undefined)).toBe(false)
+    expect(shouldAdoptDiskTimer(t('H'), null, null, undefined)).toBe(true)
+  })
+})
+
+describe('放棄時 id 不見了（還原備份）→ 靠文字找', () => {
+  it('同名列照記枯樹', () => {
+    saveDay('2026-09-03', { ...emptyDay(), tasks: [{ ...emptyTask(), text: '回信' }] })
+    expect(recordAbandon('2026-09-03', 0, 'gone', BOB, '回信')).toBe(true)
+    expect(loadDay('2026-09-03').tasks[0].withered).toBe(1)
   })
 })

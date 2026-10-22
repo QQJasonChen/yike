@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { TIMER_KEY, claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from './focusSession'
+import { TIMER_KEY, claimTimerCompletion, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -160,8 +160,7 @@ export default function App() {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== TIMER_KEY && e.key !== null) return
       const disk = loadTimer()
-      // 已經結束的段（本地剛結束還沒落盤、或墓碑裡有）不採用
-      if (disk && (disk.id === endedLocally.current || isTimerEnded(disk.id))) return
+      if (!shouldAdoptDiskTimer(disk, e.oldValue, timerRef.current, endedLocally.current)) return
       setTimer(disk)
     }
     window.addEventListener('storage', onStorage)
@@ -615,7 +614,7 @@ export default function App() {
             void (async () => {
               // 放棄也要認領：另一個分頁已經把這段完成（已認領）的話，不能再記一棵枯樹
               if (!(await claimTimerCompletion(timer.id))) return
-              if (!recordAbandon(timer.dateKey ?? toDateKey(new Date(timer.startedAt)), ti, timer.taskId, timer.owner))
+              if (!recordAbandon(timer.dateKey ?? toDateKey(new Date(timer.startedAt)), ti, timer.taskId, timer.owner, timer.taskText))
                 celebrate('⚠ 沒存進去——請檢查儲存空間或登入狀態')
             })()
           }}
