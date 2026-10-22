@@ -277,10 +277,10 @@ export default function App() {
   // 計時狀態落地：App 被殺（iOS 清記憶體、使用者滑掉）再開，計時器原本就消失了。
   // 只存絕對時間戳，重開用現在時間重算。清成 null 時帶上「剛才那段的 id」，
   // 磁碟上若已是別人（另一帳號／另一分頁）的新計時就不碰它。
-  const prevTimerId = useRef<string | undefined>(timer?.id)
+  const prevTimer = useRef<TimerState | null>(timer)
   useEffect(() => {
-    void saveTimer(timer, prevTimerId.current)
-    prevTimerId.current = timer?.id
+    void saveTimer(timer, prevTimer.current)
+    prevTimer.current = timer
   }, [timer])
   useEffect(() => setPipTimerSource(() => timerRef.current), [])
   // 安全網：每次開 App 若沒有進行中的計時，確保專注鎖已解除（避免殘留鎖死）

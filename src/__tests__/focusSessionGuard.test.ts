@@ -268,13 +268,13 @@ describe('清掉磁碟上的計時只准清自己那一段', () => {
   })
   it('舊帳號分頁把本地 timer 設成 null 時，磁碟上已是新帳號的計時 → 不刪', () => {
     saveTimer(seg2('bob-1', BOB)) // Bob 在另一分頁開的
-    saveTimer(null, 'alice-0') // Alice 的分頁被 owner-change-blocked → setTimer(null)
+    saveTimer(null, { ...seg2('alice-0', ALICE), startedAt: NOW2 + 1 }) // Alice 的分頁被 owner-change-blocked → setTimer(null)
     expect(localStorage.getItem('ppl:timer')).not.toBeNull()
     expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('bob-1')
   })
   it('清的是自己那段 → 照刪', () => {
     saveTimer(seg2('mine', BOB))
-    saveTimer(null, 'mine')
+    saveTimer(null, seg2('mine', BOB))
     expect(localStorage.getItem('ppl:timer')).toBeNull()
   })
   it('磁碟停在 focus、我已經在 break（存失敗的殘影）→ 不算被取代，還能重新開始', () => {
@@ -320,7 +320,7 @@ describe('同一段的版本：落盤只准較新的贏；從沒落盤過就不�
   })
   it('A 開啟時沒計時（prevId undefined）→ saveTimer(null) 不會刪掉 B 剛開的', () => {
     saveTimer(seg4('bob', 1))
-    saveTimer(null, undefined)
+    saveTimer(null, null)
     expect(localStorage.getItem('ppl:timer')).not.toBeNull()
   })
 })
@@ -334,7 +334,7 @@ describe('舊格式計時（沒有 id）', () => {
     const t = loadTimer()!
     expect(t.id).toBe(`legacy-${NOW5 - 60_000}`)
     expect(loadTimer()!.id).toBe(t.id) // 另一個分頁算出來一樣
-    saveTimer(null, t.id)
+    saveTimer(null, t)
     expect(localStorage.getItem('ppl:timer')).toBeNull()
     expect(await claimTimerCompletion(t.id)).toBe(true)
     expect(await claimTimerCompletion(t.id)).toBe(false)
@@ -346,7 +346,7 @@ describe('被別的分頁結束的段不能復活', () => {
     const NOW6 = Date.now()
     const t = { id: 'T1', owner: BOB, rev: 1, startedAt: NOW6 - 60_000, phase: 'focus' as const, taskIndex: 0, taskText: 'x', endsAt: NOW6 + 20 * 60_000, pausedRemaining: null, totalMs: 1 }
     saveTimer(t)
-    saveTimer(null, 'T1') // B 放棄
+    saveTimer(null, t) // B 放棄
     saveTimer({ ...t, rev: 2, pausedRemaining: 999 }) // A 的舊 effect
     expect(localStorage.getItem('ppl:timer')).toBeNull()
   })
@@ -386,7 +386,7 @@ describe('isTimerEnded', () => {
     const NOW8 = Date.now()
     saveTimer({ id: 'E1', owner: BOB, startedAt: NOW8 - 1000, phase: 'focus', taskIndex: 0, taskText: 'x', endsAt: NOW8 + 60_000, pausedRemaining: null, totalMs: 1 })
     expect(isTimerEnded('E1')).toBe(false)
-    saveTimer(null, 'E1')
+    saveTimer(null, { id: 'E1', owner: BOB, startedAt: NOW8 - 1000, phase: 'focus', taskIndex: 0, taskText: 'x', endsAt: NOW8 + 60_000, pausedRemaining: null, totalMs: 1 })
     expect(isTimerEnded('E1')).toBe(true)
     expect(isTimerEnded(undefined)).toBe(false)
   })
@@ -405,7 +405,7 @@ describe('storage 事件要不要採用（shouldAdoptDiskTimer）', () => {
   })
   it('磁碟上的段是本地剛結束的或墓碑裡的 → 不採用', () => {
     expect(shouldAdoptDiskTimer(t('E'), null, null, 'E')).toBe(false)
-    saveTimer(t('G')); saveTimer(null, 'G')
+    saveTimer(t('G')); saveTimer(null, t('G'))
     expect(shouldAdoptDiskTimer(t('G'), null, null, undefined)).toBe(false)
     expect(shouldAdoptDiskTimer(t('H'), null, null, undefined)).toBe(true)
   })
@@ -416,5 +416,30 @@ describe('放棄時 id 不見了（還原備份）→ 靠文字找', () => {
     saveDay('2026-09-03', { ...emptyDay(), tasks: [{ ...emptyTask(), text: '回信' }] })
     expect(recordAbandon('2026-09-03', 0, 'gone', BOB, '回信')).toBe(true)
     expect(loadDay('2026-09-03').tasks[0].withered).toBe(1)
+  })
+})
+
+
+describe('Codex 第 15 輪', () => {
+  const NOW9 = Date.now()
+  const mk = (id: string, offset: number, rev = 1) => ({ id, owner: BOB, rev, startedAt: NOW9 + offset, phase: 'focus' as const, taskIndex: 0, taskText: 'x', endsAt: NOW9 + offset + 60_000, pausedRemaining: null, totalMs: 1 })
+  it('#1 排隊中的舊事件（A 暫停 T1）不能把本地剛開始的 T2 倒退回 T1', () => {
+    expect(shouldAdoptDiskTimer(mk('T1', -60_000), null, mk('T2', 0), undefined)).toBe(false)
+    expect(shouldAdoptDiskTimer(mk('T2', 0, 1), null, mk('T2', 0, 2), undefined)).toBe(false) // 同段較舊版本
+    expect(shouldAdoptDiskTimer(mk('T3', 1000), null, mk('T2', 0), undefined)).toBe(true) // 真的更新的段
+  })
+  it('#2 T2 存失敗、磁碟留著更舊的 T1 → 放棄 T2 時連 T1 殘影一起清，兩個都進墓碑', () => {
+    saveTimer(mk('T1', -60_000))
+    // T2 從來沒存成功（假裝配額滿），現在放棄 T2
+    saveTimer(null, mk('T2', 0))
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+    expect(isTimerEnded('T2')).toBe(true)
+    expect(isTimerEnded('T1')).toBe(true)
+  })
+  it('磁碟上是別人更新的段 → 不碰，但自己那段仍留墓碑', () => {
+    saveTimer(mk('NEW', 1000))
+    saveTimer(null, mk('OLD', 0))
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('NEW')
+    expect(isTimerEnded('OLD')).toBe(true)
   })
 })
