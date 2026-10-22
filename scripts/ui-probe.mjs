@@ -202,6 +202,12 @@ for (const [name, sel] of views) {
 //    自己的數字再大也翻不過外面的計時器。注入一個假計時器，開「更多」，看重疊處誰接到點擊。
 const moreSel = '.tab-bar > button:nth-child(5)'
 if (await page.$(moreSel)) {
+  // 先把設定面板關掉（上一個檢視開著它），再開選單，**然後**才注入假計時器——
+  // 先注入的話它蓋在 tab-bar 上，連「更多」都按不到
+  await page.keyboard.press('Escape').catch(() => {})
+  await page.waitForSelector('.settings-overlay', { state: 'detached', timeout: 3000 }).catch(() => {})
+  await page.click(moreSel)
+  const menu = await page.waitForSelector('.tab-more', { timeout: 3000 }).catch(() => null)
   await page.evaluate(() => {
     const fake = document.createElement('div')
     fake.className = 'timer-bar'
@@ -209,8 +215,6 @@ if (await page.$(moreSel)) {
     fake.style.cssText += ';height:60px;background:rgba(255,0,0,.3);pointer-events:auto;'
     document.body.appendChild(fake)
   })
-  await page.click(moreSel)
-  const menu = await page.waitForSelector('.tab-more', { timeout: 3000 }).catch(() => null)
   if (!menu) {
     console.error('按了「更多」但 .tab-more 沒出現')
     allFails += 1

@@ -57,7 +57,9 @@ export const editStoredKey = <T,>(
   const ok = save(next)
   if (ok) failedDrafts.delete(id)
   else failedDrafts.set(id, next)
-  if (ok) window.dispatchEvent(new CustomEvent(EXTERNAL_KEY_EVENT, { detail: { key } }))
+  // 失敗也要發：畫面要重讀，才會把 map 裡這份「含結果的草稿」當成自己的基準，
+  // 否則它下一次 edit 用舊草稿整頁回存，剛記的格數就沒了（Codex 第 3 輪 #2）
+  window.dispatchEvent(new CustomEvent(EXTERNAL_KEY_EVENT, { detail: { key } }))
   return ok
 }
 
@@ -114,8 +116,12 @@ export const useStoredEntry = <T,>(key: string, load: () => T, save: (value: T) 
     const current = latest.current
     // A native editor or delayed callback may finish after the user navigated to a different key.
     if (current.key !== key) return false
-    const base = draft.current.key === current.key && draft.current.failed
-      ? draft.current.value : current.load()
+    // 共用的 failedDrafts 是唯一真相：別處（番茄鐘完成）可能已把含結果的草稿放進去，
+    // 這裡不能用自己手上那份舊草稿當基準
+    const pendingNow = failedDrafts.get(draftId(current.key, owner.current)) as T | undefined
+    const base = pendingNow !== undefined
+      ? pendingNow
+      : draft.current.key === current.key && draft.current.failed ? draft.current.value : current.load()
     const next = change(base)
     const ok = current.save(next)
     const id = draftId(current.key, owner.current)

@@ -12,6 +12,7 @@
 // 直接 saveDay 會繞過兩件事——①另一個分頁換了帳號後替上一個人寫進新帳號的今天；
 // ②配額滿時畫面留著的草稿，下次存檔整頁寫回會把剛記的格數抹掉（Codex 第 1 輪 #1/#2）。
 import { syncGrove } from './plantCells'
+import { type Task, emptyTask, newTaskId } from './types'
 import { getDataOwner, loadDay, saveDay } from './storage'
 import { editStoredKey } from './useStoredEntry'
 
@@ -37,13 +38,28 @@ const toMin = (ms: number) => {
 const expected = (owner: string | null | undefined): string | null =>
   owner === undefined ? getDataOwner() : owner
 
-/** 這段專注／放棄要記在哪一列？id 優先，退回 index。 */
-const locate = (tasks: { id?: string }[], taskId: string | undefined, index: number): number => {
+/** 這段專注／放棄要記在哪一列？
+ *  id 對得上 → 那一列。id 對不上（例如計時中從備份匯入，整份任務換了）→ **不能**退回 index：
+ *  index 現在指到別件事，會把格數塗到它身上（Codex 第 3 輪 #1）。改用文字找，找不到就追加一列。
+ *  沒有 id 的舊計時狀態才退回 index。回傳 -1 代表「要追加」。 */
+const locate = (
+  tasks: { id?: string; text: string }[],
+  taskId: string | undefined,
+  index: number,
+  text: string
+): number => {
   if (taskId) {
     const byId = tasks.findIndex((t) => t.id === taskId)
     if (byId >= 0) return byId
+    const byText = tasks.findIndex((t) => t.text.trim() === text.trim() && text.trim())
+    return byText >= 0 ? byText : -1
   }
   return index
+}
+const ensureRow = (tasks: Task[], at: number, taskId: string | undefined, text: string): number => {
+  if (at >= 0) return at
+  tasks.push({ ...emptyTask(), id: taskId ?? newTaskId(), text })
+  return tasks.length - 1
 }
 
 /** 同一段計時只准記一次。兩個分頁都還原了同一個 ppl:timer，各自到點各自呼叫記錄，
@@ -75,6 +91,41 @@ export const claimTimerCompletion = async (timerId: string | undefined): Promise
   return claimSync(timerId)
 }
 
+/** 連續番茄鐘跨午夜：新的一段屬於「新的今天」，dateKey/taskId 不能沿用昨天的（Codex 第 3 輪 #3）。
+ *  同一天就原樣回傳；換日了就在今天這一頁重新定位那件事（用文字），找不到就追加。 */
+export const renewSegmentForToday = <T extends { dateKey?: string; taskIndex: number; taskId?: string; taskText: string; owner?: string | null }>(
+  t: T,
+  todayKey: string
+): T => {
+  if (t.dateKey === todayKey) return t
+  const box: { at: number; id?: string } = { at: t.taskIndex, id: t.taskId }
+  const ok = editStoredKey<ReturnType<typeof loadDay>>(
+    `pp:day:${todayKey}`,
+    () => loadDay(todayKey),
+    (v) => saveDay(todayKey, v),
+    (base) => {
+      const tasks = base.tasks.slice()
+      const found = tasks.findIndex((x) => x.text.trim() === t.taskText.trim() && t.taskText.trim())
+      if (found >= 0) {
+        if (!tasks[found].id) tasks[found] = { ...tasks[found], id: newTaskId() }
+        box.at = found
+        box.id = tasks[found].id
+        return tasks[found] === base.tasks[found] ? base : { ...base, tasks }
+      }
+      const blank = tasks.findIndex((x) => !x.text.trim())
+      const row = { ...(blank >= 0 ? tasks[blank] : emptyTask()), id: newTaskId(), text: t.taskText }
+      if (blank >= 0) tasks[blank] = row
+      else tasks.push(row)
+      box.at = blank >= 0 ? blank : tasks.length - 1
+      box.id = row.id
+      return { ...base, tasks }
+    },
+    expected(t.owner)
+  )
+  if (!ok) return t // 換帳號途中或存不下：維持原樣，完成時 owner 守衛會擋
+  return { ...t, dateKey: todayKey, taskIndex: box.at, taskId: box.id }
+}
+
 /** editStoredKey 成功時已發 external-key-change；DayView 另外聽 external-day-change（date） */
 const announceDay = (dateKey: string) =>
   window.dispatchEvent(new CustomEvent('yike:external-day-change', { detail: { date: dateKey } }))
@@ -87,7 +138,7 @@ export const recordFocusSession = (s: FocusSession): boolean => {
     (v) => saveDay(s.dateKey, v),
     (prev) => {
       const tasks = prev.tasks.slice()
-      const at = locate(tasks, s.taskId, s.taskIndex)
+      const at = ensureRow(tasks, locate(tasks, s.taskId, s.taskIndex, s.taskText), s.taskId, s.taskText)
       const t = tasks[at]
       if (t) {
         const done = Math.min(t.done + 1, 16)
@@ -131,9 +182,9 @@ export const recordAbandon = (
     (v) => saveDay(dateKey, v),
     (prev) => {
       const tasks = prev.tasks.slice()
-      const at = locate(tasks, taskId, taskIndex)
+      const at = locate(tasks, taskId, taskIndex, '')
       const t = tasks[at]
-      if (!t) return prev
+      if (!t) return prev // 放棄＝枯樹，那件事已經不在今天就不追加
       tasks[at] = { ...t, withered: (t.withered ?? 0) + 1 }
       return { ...prev, tasks }
     },

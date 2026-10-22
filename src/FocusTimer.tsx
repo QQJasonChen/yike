@@ -46,6 +46,8 @@ interface Props {
   focusMinutes: number
   /** 連續番茄鐘：休息結束自動接下一段（使用者可在設定開關） */
   autoLoop: boolean
+  /** 新的一段開始前讓 App 重新定位日期與任務（跨午夜時 dateKey/taskId 不能沿用昨天） */
+  renewSegment?: (t: TimerState) => TimerState
   /** 專注時鎖住分心 App（僅原生 iOS 生效，其餘平台 no-op） */
   lockApps: boolean
 }
@@ -78,7 +80,7 @@ const chime = () => {
   navigator.vibrate?.([200, 80, 200])
 }
 
-export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, treeStyle, breakMinutes, focusMinutes, autoLoop, lockApps }: Props) {
+export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, treeStyle, breakMinutes, focusMinutes, autoLoop, lockApps , renewSegment}: Props) {
   const [, force] = useState(0)
   const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
@@ -113,7 +115,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
         })
       } else if (autoLoop) {
         // 連續番茄鐘：休息結束自動接下一段專注（保留懸浮窗，省去回網頁按開始）
-        onUpdate({
+        const next: TimerState = {
           ...timer,
           id: newTimerId(), // 新的一段＝新的完成識別，否則第二段被當成「已記過」整段漏記
           phase: 'focus',
@@ -121,12 +123,13 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
           endsAt: Date.now() + focusMinutes * 60_000,
           pausedRemaining: null,
           startedAt: Date.now(),
-        })
+        }
+        onUpdate(renewSegment ? renewSegment(next) : next)
       } else {
         onUpdate(null)
       }
     }
-  }, [remaining, timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, autoLoop])
+  }, [remaining, timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, autoLoop, renewSegment])
 
   // 頁面標題倒數，切到別的分頁也看得到
   useEffect(() => {

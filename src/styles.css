@@ -5285,7 +5285,9 @@ button.mc-month:disabled { cursor: default; }
   .tl-swatches,
   .block-pop .pop-swatches,
   .tl-edit-card .pop-swatches {
-    gap: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; /* 沒有 flex 的容器吃不到 gap；時間塊編輯卡的那排原本只是 inline */
   }
   .tl-swatch {
     width: 26px;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession } from './focusSession'
+import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -581,6 +581,7 @@ export default function App() {
           focusMinutes={settings.focusMinutes}
           autoLoop={settings.autoLoop}
           lockApps={settings.focusLock}
+          renewSegment={(t) => renewSegmentForToday(t, toDateKey(new Date()))}
           onSessionDone={(ti, s, e) => {
             // 直接寫進「這段計時所屬的那一天」，不經由 DayView 註冊的 callback。
             // 使用者切到週/月分頁時 DayView 沒 mount，那個 callback 是 null——

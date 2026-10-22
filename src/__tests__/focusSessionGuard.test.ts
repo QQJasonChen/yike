@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it } from 'vitest'
-import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession } from '../focusSession'
+import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
@@ -156,5 +156,36 @@ describe('畫面 hook 的草稿旗標以 map 為準', () => {
     expect(hasUnsavedDrafts()).toBe(false)
     expect(loadDay('2026-09-03').mood).toBe(3)
     expect(loadDay('2026-09-03').tasks[0].done).toBe(1)
+  })
+})
+
+describe('已知 id 消失（計時中匯入換了內容）', () => {
+  it('不退回 index 改到別件事：用文字找，找不到就追加一列', () => {
+    saveDay('2026-09-03', { ...emptyDay(), tasks: [{ ...emptyTask(), id: 'B-id', text: 'B 任務' }] })
+    expect(session({ taskId: 'A-id', taskIndex: 0, taskText: 'A 任務' })).toBe(true)
+    const d = loadDay('2026-09-03')
+    expect(d.tasks[0].text).toBe('B 任務')
+    expect(d.tasks[0].done).toBe(0) // B 沒被塗到
+    const a = d.tasks.find((t) => t.text === 'A 任務')!
+    expect(a.done).toBe(1)
+    expect(a.id).toBe('A-id')
+    expect(d.blocks[0].text).toBe('A 任務')
+  })
+})
+
+describe('跨午夜的連續番茄鐘', () => {
+  it('新的一段屬於新的今天：dateKey 換、任務在今天重新定位（找不到就追加）', () => {
+    saveDay('2026-09-03', { ...emptyDay(), tasks: [{ ...emptyTask(), id: 'y-id', text: '昨晚的事' }] })
+    const t = { dateKey: '2026-09-03', taskIndex: 0, taskId: 'y-id', taskText: '昨晚的事', owner: BOB }
+    const n = renewSegmentForToday(t, '2026-09-04')
+    expect(n.dateKey).toBe('2026-09-04')
+    const today = loadDay('2026-09-04')
+    expect(today.tasks[n.taskIndex].text).toBe('昨晚的事')
+    expect(today.tasks[n.taskIndex].id).toBe(n.taskId)
+    expect(loadDay('2026-09-03').tasks[0].done).toBe(0)
+  })
+  it('同一天就原樣', () => {
+    const t = { dateKey: '2026-09-03', taskIndex: 2, taskId: 'x', taskText: 'x', owner: BOB }
+    expect(renewSegmentForToday(t, '2026-09-03')).toBe(t)
   })
 })
