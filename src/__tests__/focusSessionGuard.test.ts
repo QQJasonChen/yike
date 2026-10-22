@@ -606,3 +606,29 @@ describe('Codex 第 20 輪：配額滿時墓碑要在刪掉計時之後還立得
     }
   })
 })
+
+describe('Codex 第 21 輪：重新開始時墓碑立不起來也要立', () => {
+  const NOW = Date.now()
+  const mk = (id: string, offset: number) => ({
+    id, owner: BOB, startedAt: NOW + offset, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + offset + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('配額滿：B 重新開始 T2（比 T1 舊）→ T1 仍進墓碑 → A 對 T1 的過期放棄擋下、T2 留著', () => {
+    saveTimer(mk('T1', 0))
+    const real = Storage.prototype.setItem
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k === 'ppl:timerEnded' && this.getItem('ppl:timer') !== null) throw new DOMException('quota', 'QuotaExceededError')
+      return real.call(this, k, v)
+    })
+    try {
+      saveTimer(mk('T2', -5 * 60_000), mk('T1', 0))
+      expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('T2')
+      expect(isTimerEnded('T1')).toBe(true)
+      expect(supersededOnDisk(mk('T1', 0))).toBe(true)
+      saveTimer(null, mk('T1', 0))
+      expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('T2')
+    } finally {
+      spy.mockRestore()
+    }
+  })
+})

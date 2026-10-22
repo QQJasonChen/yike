@@ -133,8 +133,14 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // 畫面跑 T2、磁碟留 T1，放棄也被同一判斷擋下（Codex 第 17 輪）。先把 T1 送進墓碑再寫。
       const disk0 = readDiskTimer()
       const replacingOwn = !!prev?.id && prev.id !== t.id && disk0?.id === prev.id
-      if (replacingOwn) markEnded(prev.id!)
-      else if (supersededOnDisk(t)) return
+      if (replacingOwn) {
+        // 墓碑立不起來（配額滿）就先把要換掉的那段刪了騰空間再立：否則 T2 寫進去、T1 沒墓碑，
+        // 別的分頁對 T1 的過期放棄會把較舊的 T2 當殘影刪掉（Codex 第 21 輪）
+        if (!markEnded(prev.id!)) {
+          localStorage.removeItem(TIMER_KEY)
+          ensureEnded([prev.id!])
+        }
+      } else if (supersededOnDisk(t)) return
       if (t.id && endedIds().includes(t.id)) return // 這段已經被別的分頁結束了，不准復活
       // 寫入當下再核對一次主人：A 暫停的落盤排在鎖後面，等它拿到鎖時另一分頁已經換成 B、
       // 把 ppl:timer 刪了，磁碟空白又沒墓碑，前面的檢查全放行 → A 的任務文字寫回 B 的裝置
@@ -172,13 +178,7 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // 剛放棄的段寫回剛釋出的空間，磁碟空白、沒墓碑、版本沒對象，守衛全放行（Codex 第 20 輪）。
       // 刪掉計時騰出空間後再立；還是不行就把墓碑縮成只剩這幾個 id（比一段計時小得多）。
       if (removeDisk) localStorage.removeItem(TIMER_KEY)
-      if (!toMark.every(markEnded)) {
-        try {
-          localStorage.setItem(ENDED_KEY, JSON.stringify(toMark))
-        } catch {
-          /* 連幾十 bytes 都塞不進去：這台裝置的儲存空間已經壞到什麼都存不了 */
-        }
-      }
+      ensureEnded(toMark)
     }
   } catch {
     /* 配額滿：計時照跑，只是被殺後救不回來 */
@@ -257,6 +257,16 @@ export const shouldAdoptDiskTimer = (
     oldId = undefined
   }
   return !oldId || oldId === local.id
+}
+/** 一定要把這幾個 id 立進墓碑：正常追加失敗（配額滿）就把墓碑縮成只剩這幾個（幾十 bytes）。
+ *  呼叫前先把能刪的計時刪掉騰空間。連這樣都塞不進去＝這台裝置什麼都存不了，只能放棄。 */
+const ensureEnded = (ids: string[]) => {
+  if (ids.every(markEnded)) return
+  try {
+    localStorage.setItem(ENDED_KEY, JSON.stringify(ids))
+  } catch {
+    /* 連幾十 bytes 都塞不進去 */
+  }
 }
 const markEnded = (id: string): boolean => {
   try {
