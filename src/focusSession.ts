@@ -148,8 +148,12 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // 從來沒落盤過自己的計時（prevId 沒值）就什麼都不刪：A 開啟時沒計時、首次 effect 還沒跑，
       // B 已經開了新段存進去，A 的 saveTimer(null, undefined) 不能把它刪掉（Codex 第 10 輪 #1）
       if (!prevId) return
+      // 我這段早就被（別的分頁的重新開始）送進墓碑了 → 這是過期的放棄確認：只准刪「還是我這段」
+      // 的磁碟，別碰其他段——否則時鐘回撥後 A 重新開始的 T2 比 T1 舊，會被當殘影清掉（Codex 第 18 輪）
+      const alreadyEnded = isTimerEnded(prevId)
       markEnded(prevId) // 不管磁碟上是誰，我這段結束了就留墓碑，不准復活
       const disk = readDiskTimer()
+      if (alreadyEnded && disk && disk.id !== prevId) return
       // 磁碟上是別人更新的一段 → 不碰。是比我舊的殘影（我這段從來沒存成功，例如配額滿）
       // → 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。
       // 「殘影」只限同一個主人的段：別的帳號的段再舊也不碰——系統時鐘回撥時 Bob 新開的段
@@ -186,7 +190,9 @@ export const saveTimer = (t: PersistedTimer | null, prev?: PersistedTimer | null
  *  否則儲存空間一滿，開始的專注就再也放棄不了（Codex 第 7 輪 #1）。 */
 export const supersededOnDisk = (mine: { id?: string; startedAt: number; phase: string }): boolean => {
   const disk = readDiskTimer() // 別人的段也算「被取代」：不能蓋掉它
-  if (!disk || !disk.id || !mine.id) return false
+  if (!mine.id) return false
+  if (isTimerEnded(mine.id)) return true // 我這段已經被別的分頁結束／換掉：確認框是過期的（Codex 第 18 輪）
+  if (!disk || !disk.id) return false
   if (isTimerEnded(disk.id)) return false // 磁碟上是已結束的殘影（我換掉它但自己存失敗），不算
   // 同一段：只有磁碟已經走到後面的階段（focus → break，另一分頁完成了它）才算。
   // 磁碟還停在 focus 而我已經在 break，是存失敗留下的殘影，不算（Codex 第 8 輪 #2）

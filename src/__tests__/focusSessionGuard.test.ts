@@ -524,3 +524,29 @@ describe('Codex 第 17 輪：時鐘回撥後重新開始', () => {
     expect(shouldAdoptDiskTimer(mk('T2', -5 * 60_000), null, mk('T1', 0), undefined)).toBe(true)
   })
 })
+
+describe('Codex 第 18 輪：舊分頁的過期放棄確認不能刪掉回撥後的新段', () => {
+  const NOW = Date.now()
+  const mk = (id: string, offset: number) => ({
+    id, owner: BOB, startedAt: NOW + offset, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + offset + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('A 重新開始 T2（比 T1 舊）後，B 接受對 T1 的過期放棄 → T1 已進墓碑算被取代', () => {
+    saveTimer(mk('T1', 0))
+    saveTimer(mk('T2', -5 * 60_000), mk('T1', 0))
+    expect(supersededOnDisk(mk('T1', 0))).toBe(true)
+  })
+  it('就算 B 沒檢查就 saveTimer(null, T1)：T1 早在墓碑 → 只准刪自己，T2 不動、不進墓碑', () => {
+    saveTimer(mk('T1', 0))
+    saveTimer(mk('T2', -5 * 60_000), mk('T1', 0))
+    saveTimer(null, mk('T1', 0))
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('T2')
+    expect(isTimerEnded('T2')).toBe(false)
+  })
+  it('磁碟上還是我自己這段（即使已在墓碑）→ 照刪', () => {
+    saveTimer(mk('T1', 0))
+    localStorage.setItem('ppl:timerEnded', JSON.stringify(['T1']))
+    saveTimer(null, mk('T1', 0))
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+  })
+})
