@@ -283,3 +283,21 @@ describe('清掉磁碟上的計時只准清自己那一段', () => {
     expect(supersededOnDisk({ ...t, phase: 'break' })).toBe(false)
   })
 })
+
+describe('落盤的舊 effect 不能把別人的新計時蓋回去', () => {
+  const NOW3 = Date.now()
+  const seg3 = (id: string, offset: number, extra: Partial<{ pausedRemaining: number | null; phase: 'focus' | 'break' }> = {}) => ({
+    id, owner: BOB, startedAt: NOW3 + offset, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW3 + offset + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000, ...extra,
+  })
+  it('B 先寫 T2（較新）→ A 的舊 effect 寫暫停的 T1 → 磁碟仍是 T2', () => {
+    saveTimer(seg3('T2', 0))
+    saveTimer(seg3('T1', -60_000, { pausedRemaining: 999 }))
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('T2')
+  })
+  it('沒有更新的一段 → 照寫', () => {
+    saveTimer(seg3('T1', -60_000))
+    saveTimer(seg3('T1', -60_000, { pausedRemaining: 999 }))
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).pausedRemaining).toBe(999)
+  })
+})

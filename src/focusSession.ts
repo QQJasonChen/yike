@@ -97,8 +97,13 @@ export const saveTimer = (t: PersistedTimer | null, prevId?: string) => {
   try {
     const next = t ? JSON.stringify(t) : null
     if (localStorage.getItem(TIMER_KEY) === next) return // 另一個分頁寫的同一份：不要再寫回去（乒乓）
-    if (next) localStorage.setItem(TIMER_KEY, next)
-    else {
+    if (next && t) {
+      // 非空寫入也要看磁碟：A 暫停 T1 的落盤 effect 還沒跑，B 已經開了 T2 存進去，
+      // A 的舊 effect 再寫就把 T2 蓋回 T1，B 收到 storage 事件後 T2 消失（Codex 第 9 輪）。
+      // 磁碟上是更新的一段就不寫；A 隨後會從 storage 事件拿到 T2。
+      if (supersededOnDisk(t)) return
+      localStorage.setItem(TIMER_KEY, next)
+    } else {
       // 清掉磁碟上的計時只准清「自己剛才那一段」。舊帳號的分頁被 owner-change-blocked 擋下時
       // 會把本地 timer 設成 null；這時磁碟上可能已經是新帳號在另一分頁開的計時，
       // 不比對 id 就把人家的整段刪掉（Codex 第 8 輪 #1）。
