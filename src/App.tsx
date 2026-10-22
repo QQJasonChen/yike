@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { TIMER_KEY, claimTimerCompletion, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from './focusSession'
+import { TIMER_KEY, claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -98,7 +98,14 @@ export default function App() {
   const [timer, setTimer] = useState<TimerState | null>(loadTimer)
   // 本地操作（開始／暫停／恢復／進休息／結束）走這個：版本 +1，讓同一段的落盤只准較新的贏。
   // 從 storage 事件收進來的、owner 變更的清空走原本的 setTimer，不加版本。
-  const setTimerLocal = (t: TimerState | null) => setTimer(t ? { ...t, rev: (t.rev ?? 0) + 1 } : null)
+  // 本地剛結束（放棄／收工）的那段：落盤的刪除是非同步的，在它完成前別的分頁的舊寫入可能
+  // 透過 storage 事件把同一段送回來，畫面會重新顯示已放棄的計時（Codex 第 13 輪 #2）
+  const endedLocally = useRef<string | undefined>(undefined)
+  const setTimerLocal = (t: TimerState | null) => {
+    if (!t) endedLocally.current = timerRef.current?.id
+    else endedLocally.current = undefined
+    setTimer(t ? { ...t, rev: (t.rev ?? 0) + 1 } : null)
+  }
   const [showSettings, setShowSettings] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -151,7 +158,11 @@ export default function App() {
   // 另一個分頁改了計時狀態（提前完成、暫停、放棄）→ 這邊跟著換，不要各算各的到點各記一次
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === TIMER_KEY || e.key === null) setTimer(loadTimer())
+      if (e.key !== TIMER_KEY && e.key !== null) return
+      const disk = loadTimer()
+      // 已經結束的段（本地剛結束還沒落盤、或墓碑裡有）不採用
+      if (disk && (disk.id === endedLocally.current || isTimerEnded(disk.id))) return
+      setTimer(disk)
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)

@@ -51,7 +51,11 @@ const locate = (
   if (taskId) {
     const byId = tasks.findIndex((t) => t.id === taskId)
     if (byId >= 0) return byId
-    const byText = tasks.findIndex((t) => t.text.trim() === text.trim() && text.trim())
+    const want = text.trim()
+    // id 不見了（還原備份把剛補的 id 洗掉）：原 index 那一列文字對得上就是它——同名多列時
+    // 不能跳到第一個相符的（Codex 第 13 輪 #1）
+    if (want && tasks[index]?.text.trim() === want) return index
+    const byText = tasks.findIndex((t) => t.text.trim() === want && want)
     return byText >= 0 ? byText : -1
   }
   return index
@@ -167,6 +171,7 @@ const endedIds = (): string[] => {
     return []
   }
 }
+export const isTimerEnded = (id: string | undefined): boolean => !!id && endedIds().includes(id)
 const markEnded = (id: string) => {
   try {
     localStorage.setItem(ENDED_KEY, JSON.stringify([...endedIds(), id].slice(-20)))

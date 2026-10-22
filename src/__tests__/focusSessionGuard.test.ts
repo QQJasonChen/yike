@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { claimTimerCompletion, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from '../focusSession'
+import { claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
@@ -368,5 +368,26 @@ describe('落盤走跨分頁鎖', () => {
     // 沒有鎖的環境：同步寫
     await saveTimer({ ...t, rev: 2, pausedRemaining: 5 })
     expect(JSON.parse(localStorage.getItem('ppl:timer')!).rev).toBe(2)
+  })
+})
+
+describe('id 不見了（還原備份洗掉）且同名多列', () => {
+  it('原 index 的文字對得上就記在原 index，不跳到第一個同名列', () => {
+    saveDay('2026-09-03', { ...emptyDay(), tasks: [{ ...emptyTask(), text: '回信' }, { ...emptyTask(), text: '回信' }] })
+    expect(session({ taskId: 'gone-id', taskIndex: 1, taskText: '回信' })).toBe(true)
+    const d = loadDay('2026-09-03')
+    expect(d.tasks[0].done).toBe(0)
+    expect(d.tasks[1].done).toBe(1)
+  })
+})
+
+describe('isTimerEnded', () => {
+  it('被清掉的段在墓碑裡', () => {
+    const NOW8 = Date.now()
+    saveTimer({ id: 'E1', owner: BOB, startedAt: NOW8 - 1000, phase: 'focus', taskIndex: 0, taskText: 'x', endsAt: NOW8 + 60_000, pausedRemaining: null, totalMs: 1 })
+    expect(isTimerEnded('E1')).toBe(false)
+    saveTimer(null, 'E1')
+    expect(isTimerEnded('E1')).toBe(true)
+    expect(isTimerEnded(undefined)).toBe(false)
   })
 })

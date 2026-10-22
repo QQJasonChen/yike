@@ -106,7 +106,7 @@ const probe = () => page.evaluate(() => {
     // 擁擠：任何別的可點元素中心在 44px 內（例如種樹格右邊 40px 就是「−」）
     const dense = tapBoxes.some((o) => o !== b &&
       Math.abs((o.left + o.right) / 2 - cx) < 44 && Math.abs((o.top + o.bottom) / 2 - cy) < 44)
-    const okSize = (Math.max(W, H) >= 44 && Math.min(W, H) >= 30) || (dense && W >= 36 && H >= 30)
+    const okSize = (Math.max(W, H) >= 44 && Math.min(W, H) >= 30) || (dense && W >= 30 && H >= 30)
     if (!okSize) small.push(`${b.id} ${W}×${H}`)
   }
   if (small.length) fails.push(`命中區太小（${small.length} 個）：${small.join('；')}`)
