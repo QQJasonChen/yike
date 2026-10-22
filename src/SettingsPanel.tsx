@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { clearUnsavedDrafts, hasUnsavedDrafts } from './useStoredEntry'
 import { Capacitor } from '@capacitor/core'
+import { SUPABASE_URL } from './cloudConfig'
+import {
+  type AgentTokenMeta,
+  createAgentToken,
+  listAgentTokens,
+  revokeAgentToken,
+} from './agentToken'
 import {
   activateWithCode,
   cloudEnabled,
@@ -486,6 +493,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
 
           <BackupSettings />
           <OpenAIKeySettings />
+          {cloudUser && <AgentApiSettings />}
 
           {!isNative && (
             <p className="sync-help" style={{ marginTop: 20, textAlign: 'center' }}>
@@ -503,6 +511,183 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
 }
 
 // AI 金鑰設定：使用者填自己的 OpenAI 金鑰，站方完全不碰。
+/** 給 AI 助理的唯讀存取。只在登入雲端帳號時顯示——純本機使用者的資料從沒離開過裝置，
+ *  要給 agent 看只能走「存成檔案」。這是一個新的外洩出口，所以：使用者自己開、自己給、
+ *  明文只顯示一次、隨時可撤銷，而且文案要講清楚內容會送去哪。 */
+function AgentApiSettings() {
+  const [items, setItems] = useState<AgentTokenMeta[] | null>(null) // null＝還不知道（載入中或讀取失敗）
+  const [loadFailed, setLoadFailed] = useState(false)
+  // 查詢序號：只有「最新一次」查詢可以更新清單。初始查詢延遲、期間產生了 token、
+  // 建立後的查詢先回來顯示了撤銷鈕，接著初始查詢的 [] 才回來把清單蓋成空的
+  // ——token 仍有效，撤銷入口卻消失（Codex 第 3 輪）。
+  const seq = useRef(0)
+  const [label, setLabel] = useState('')
+  // 剛產生、只顯示一次的明文，連同它的 id——撤銷別組時不能把它清掉（Codex 審查第 2 條）
+  const [fresh, setFresh] = useState<{ token: string; id: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const base = `${SUPABASE_URL}/functions/v1/agent-api`
+
+  // 重讀失敗時**保留上一份清單**。原本設成 []，畫面會說「目前沒有有效的 token」
+  // ——其實還有，只是這一次讀不到；撤銷入口因此消失（Codex 審查第 1 條）。
+  // 首次就失敗時 items 維持 null：畫面要說「讀不到」並給重試，不能說「沒有 token」
+  // ——那會讓人以為沒有任何 AI 拿得到他的日記（Codex 第 2 輪第 2 條）。
+  const reload = async (): Promise<boolean> => {
+    const mine = ++seq.current
+    try {
+      const list = await listAgentTokens()
+      if (mine !== seq.current) return true // 已經有更新的查詢在跑，這份過期了，不碰畫面
+      setItems(list)
+      setLoadFailed(false)
+      setMsg((m) => (m.startsWith('✗ 清單讀取失敗') ? '' : m)) // 重試成功就把舊錯誤收掉（Codex 第 4 輪 P3）
+      return true
+    } catch (e) {
+      if (mine !== seq.current) return false
+      setLoadFailed(true)
+      setMsg(`✗ 清單讀取失敗：${e instanceof Error ? e.message : '讀取失敗'}`)
+      return false
+    }
+  }
+  useEffect(() => {
+    void reload()
+  }, [])
+
+  const create = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const t = await createAgentToken(label || 'AI 助理')
+      setFresh(t)
+      setLabel('')
+      await reload()
+    } catch (e) {
+      setMsg(`✗ ${e instanceof Error ? e.message : '建立失敗'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const revoke = async (t: AgentTokenMeta) => {
+    if (!confirm(`撤銷「${t.label || '（未命名）'}」？用這組 token 的 AI 助理會立刻讀不到。`)) return
+    try {
+      await revokeAgentToken(t.id)
+      // 用 functional updater 看「現在」的 fresh：撤銷請求延遲期間使用者可能又產生了一組，
+      // 閉包裡的舊 fresh 會把新那組的唯一明文清掉（Codex 第 2 輪第 1 條）
+      setFresh((cur) => (cur?.id === t.id ? null : cur))
+      if (await reload()) setMsg('✓ 已撤銷')
+    } catch (e) {
+      setMsg(`✗ ${e instanceof Error ? e.message : '撤銷失敗'}`)
+    }
+  }
+
+  const copy = async (text: string, what: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setMsg(`✓ ${what}已複製`)
+    } catch {
+      setMsg('✗ 複製失敗，請手動選取')
+    }
+  }
+
+  return (
+    <div className="data-actions backup-box" style={{ marginTop: 18, display: 'block' }}>
+      <div className="label">給 AI 助理的唯讀存取</div>
+      <p className="sync-help">
+        產生一組 token 交給你信任的 AI 助理（Claude、ChatGPT、Grok…），它就能<b>讀</b>你的手帳：
+        幫你做週回顧、找出模式、提醒你。<b>只能讀，不能寫。</b>
+      </p>
+      <p className="sync-help">
+        ⚠️ 給出去之後，你的手帳內容會送到那個 AI 服務。這跟你把日記貼進聊天視窗是一樣的事，
+        只是不用手動貼。不信任的就別給；給了隨時可以在這裡撤銷。
+      </p>
+
+      {fresh && (
+        <div className="hint" style={{ marginTop: 8, padding: 10, border: '1px solid var(--gold)', borderRadius: 8 }}>
+          <b>這組 token 只會顯示這一次</b>，離開這頁就看不到了。現在複製給你的 AI 助理：
+          <code style={{ display: 'block', wordBreak: 'break-all', margin: '6px 0', userSelect: 'all' }}>
+            {fresh.token}
+          </code>
+          <button className="link-btn" onClick={() => void copy(fresh.token, 'token ')}>
+            複製 token
+          </button>
+          {' ・ '}
+          <button
+            className="link-btn"
+            onClick={() =>
+              void copy(
+                `我的一刻手帳唯讀 API：\n基底 ${base}\n每個請求帶 Authorization: Bearer ${fresh.token}\n先讀 ${base}/schema 了解資料格式，再用 /days?from=YYYY-MM-DD&to=YYYY-MM-DD 讀日記、/entry/pp:settings 讀問題清單。`,
+                '給 AI 的說明'
+              )
+            }
+          >
+            複製「給 AI 的完整說明」
+          </button>
+        </div>
+      )}
+
+      <div className="line-input sync-token" style={{ marginTop: 10 }}>
+        <input
+          placeholder="這組給誰用？例：Grok、Claude、週回顧機器人"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          maxLength={60}
+        />
+      </div>
+      <div className="data-actions" style={{ marginTop: 8 }}>
+        <button onClick={() => void create()} disabled={busy}>
+          {busy ? '產生中…' : '＋ 產生唯讀 token'}
+        </button>
+      </div>
+
+      {items && items.length > 0 && (
+        <ul className="backup-list" style={{ marginTop: 10 }}>
+          {items.map((t) => (
+            <li key={t.id}>
+              <span>
+                {t.label || '（未命名）'} · 建立於 {t.created_at.slice(0, 10)}
+                {t.last_used_at ? ` · 最後使用 ${t.last_used_at.slice(0, 10)}` : ' · 還沒用過'}
+              </span>
+              <button className="link-btn" onClick={() => void revoke(t)}>
+                撤銷
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {items === null && loadFailed && (
+        <p className="hint" style={{ marginTop: 6 }}>
+          讀不到 token 清單——<b>不代表沒有</b>。{' '}
+          <button className="link-btn" onClick={() => void reload()}>
+            重試
+          </button>
+        </p>
+      )}
+      {items === null && !loadFailed && <p className="hint" style={{ marginTop: 6 }}>載入中…</p>}
+      {items && loadFailed && (
+        <p className="hint" style={{ marginTop: 6 }}>
+          （上面是上次讀到的清單；最新狀態讀取失敗，
+          <button className="link-btn" onClick={() => void reload()}>
+            重試
+          </button>
+          ）
+        </p>
+      )}
+      {items && items.length === 0 && !loadFailed && !fresh && (
+        <p className="hint" style={{ marginTop: 6 }}>
+          目前沒有有效的 token。
+        </p>
+      )}
+
+      <p className="sync-help" style={{ marginTop: 10 }}>
+        API 說明：<a href="llms.txt" target="_blank" rel="noreferrer">yikeday.com/llms.txt</a>
+        {' ・ '}
+        資料格式：<a href={`${base}/schema`} target="_blank" rel="noreferrer">/schema</a>
+      </p>
+      {msg && <p className="hint">{msg}</p>}
+    </div>
+  )
+}
+
 function OpenAIKeySettings() {
   const [key, setKey] = useState('')
   const [msg, setMsg] = useState('')
