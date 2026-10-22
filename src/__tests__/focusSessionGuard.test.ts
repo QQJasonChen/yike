@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it } from 'vitest'
-import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, supersededOnDisk } from '../focusSession'
+import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
@@ -257,5 +257,29 @@ describe('確認框回來之後，閉包裡那段還算數嗎（supersededOnDisk
   it('同一段但另一分頁已把它完成（進入休息）→ 被取代', () => {
     localStorage.setItem('ppl:timer', JSON.stringify(seg('T1', -1000, 'break')))
     expect(supersededOnDisk(seg('T1', -1000))).toBe(true)
+  })
+})
+
+describe('清掉磁碟上的計時只准清自己那一段', () => {
+  const NOW2 = Date.now()
+  const seg2 = (id: string, owner: string) => ({
+    id, owner, startedAt: NOW2, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW2 + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('舊帳號分頁把本地 timer 設成 null 時，磁碟上已是新帳號的計時 → 不刪', () => {
+    saveTimer(seg2('bob-1', BOB)) // Bob 在另一分頁開的
+    saveTimer(null, 'alice-0') // Alice 的分頁被 owner-change-blocked → setTimer(null)
+    expect(localStorage.getItem('ppl:timer')).not.toBeNull()
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('bob-1')
+  })
+  it('清的是自己那段 → 照刪', () => {
+    saveTimer(seg2('mine', BOB))
+    saveTimer(null, 'mine')
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+  })
+  it('磁碟停在 focus、我已經在 break（存失敗的殘影）→ 不算被取代，還能重新開始', () => {
+    const t = seg2('T1', BOB)
+    saveTimer(t)
+    expect(supersededOnDisk({ ...t, phase: 'break' })).toBe(false)
   })
 })

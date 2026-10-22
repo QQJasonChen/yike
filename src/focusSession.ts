@@ -93,12 +93,19 @@ export const loadTimer = (): PersistedTimer | null => {
     return null
   }
 }
-export const saveTimer = (t: PersistedTimer | null) => {
+export const saveTimer = (t: PersistedTimer | null, prevId?: string) => {
   try {
     const next = t ? JSON.stringify(t) : null
     if (localStorage.getItem(TIMER_KEY) === next) return // 另一個分頁寫的同一份：不要再寫回去（乒乓）
     if (next) localStorage.setItem(TIMER_KEY, next)
-    else localStorage.removeItem(TIMER_KEY)
+    else {
+      // 清掉磁碟上的計時只准清「自己剛才那一段」。舊帳號的分頁被 owner-change-blocked 擋下時
+      // 會把本地 timer 設成 null；這時磁碟上可能已經是新帳號在另一分頁開的計時，
+      // 不比對 id 就把人家的整段刪掉（Codex 第 8 輪 #1）。
+      const disk = loadTimer()
+      if (disk && disk.id && prevId && disk.id !== prevId) return
+      localStorage.removeItem(TIMER_KEY)
+    }
   } catch {
     /* 配額滿：計時照跑，只是被殺後救不回來 */
   }
@@ -112,7 +119,9 @@ export const saveTimer = (t: PersistedTimer | null) => {
 export const supersededOnDisk = (mine: { id?: string; startedAt: number; phase: string }): boolean => {
   const disk = loadTimer()
   if (!disk || !disk.id || !mine.id) return false
-  if (disk.id === mine.id) return disk.phase !== mine.phase // 同一段但階段變了（另一分頁完成了它）
+  // 同一段：只有磁碟已經走到後面的階段（focus → break，另一分頁完成了它）才算。
+  // 磁碟還停在 focus 而我已經在 break，是存失敗留下的殘影，不算（Codex 第 8 輪 #2）
+  if (disk.id === mine.id) return mine.phase === 'focus' && disk.phase === 'break'
   return disk.startedAt > mine.startedAt // 別的分頁開了更新的一段；比我舊的是存失敗留下的殘影
 }
 
