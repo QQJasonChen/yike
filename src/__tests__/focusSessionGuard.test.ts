@@ -576,3 +576,33 @@ describe('Codex 第 19 輪：過期的放棄不能刪掉同一段已進休息的
     expect(localStorage.getItem('ppl:timer')).toBeNull()
   })
 })
+
+describe('Codex 第 20 輪：配額滿時墓碑要在刪掉計時之後還立得起來', () => {
+  const NOW = Date.now()
+  const mk = (rev: number, extra: Partial<{ pausedRemaining: number | null }> = {}) => ({
+    id: 'T1', owner: BOB, rev, startedAt: NOW - 60_000, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000, ...extra,
+  })
+  /** 假的配額：只要 ppl:timer 還在，ppl:timerEnded 就塞不進去（刪掉計時才有空間） */
+  const fullUntilTimerRemoved = () => {
+    const real = Storage.prototype.setItem // 先抓原本的，spy 裝上去之後 prototype 上就是 mock 自己
+    return vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k === 'ppl:timerEnded' && this.getItem('ppl:timer') !== null) throw new DOMException('quota', 'QuotaExceededError')
+      return real.call(this, k, v)
+    })
+  }
+  it('A 放棄：墓碑先失敗 → 刪掉計時後補立 → B 排隊中的暫停寫入被擋、重開不復活', () => {
+    saveTimer(mk(1))
+    const spy = fullUntilTimerRemoved()
+    try {
+      saveTimer(null, mk(1))
+      expect(localStorage.getItem('ppl:timer')).toBeNull()
+      expect(isTimerEnded('T1')).toBe(true)
+      saveTimer(mk(2, { pausedRemaining: 5000 })) // B 的舊寫入
+      expect(localStorage.getItem('ppl:timer')).toBeNull()
+      expect(loadTimer()).toBeNull()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+})

@@ -156,18 +156,29 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // 正在休息倒數，過期的放棄不准刪也不准立墓碑——立了 B 後續的寫入全被擋（Codex 第 19 輪）。
       // 跟 supersededOnDisk 同一條規則，只是搬進鎖內。
       if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'break') return
-      markEnded(prevId) // 不管磁碟上是誰，我這段結束了就留墓碑，不准復活
       if (alreadyEnded && disk && disk.id !== prevId) return
-      // 磁碟上是別人更新的一段 → 不碰。是比我舊的殘影（我這段從來沒存成功，例如配額滿）
-      // → 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。
+      // 磁碟上是別人更新的一段 → 不碰（自己仍留墓碑）。是比我舊的殘影（我這段從來沒存成功，
+      // 例如配額滿）→ 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。
       // 「殘影」只限同一個主人的段：別的帳號的段再舊也不碰——系統時鐘回撥時 Bob 新開的段
       // 會比 Alice 的舊，比時間就會把 Bob 合法的計時當殘影刪掉（Codex 第 16 輪 #2）
+      const toMark = [prevId]
+      let removeDisk = true
       if (disk && disk.id && disk.id !== prevId && !isTimerEnded(disk.id)) {
-        if (!prev || disk.startedAt >= prev.startedAt) return
-        if ((disk.owner ?? null) !== (prev.owner ?? null)) return
-        markEnded(disk.id)
+        if (!prev || disk.startedAt >= prev.startedAt) removeDisk = false
+        else if ((disk.owner ?? null) !== (prev.owner ?? null)) removeDisk = false
+        else toMark.push(disk.id)
       }
-      localStorage.removeItem(TIMER_KEY)
+      // 先刪再立墓碑：配額滿時墓碑存不進去、計時卻刪掉了，排隊中的舊寫入（B 的暫停）會把
+      // 剛放棄的段寫回剛釋出的空間，磁碟空白、沒墓碑、版本沒對象，守衛全放行（Codex 第 20 輪）。
+      // 刪掉計時騰出空間後再立；還是不行就把墓碑縮成只剩這幾個 id（比一段計時小得多）。
+      if (removeDisk) localStorage.removeItem(TIMER_KEY)
+      if (!toMark.every(markEnded)) {
+        try {
+          localStorage.setItem(ENDED_KEY, JSON.stringify(toMark))
+        } catch {
+          /* 連幾十 bytes 都塞不進去：這台裝置的儲存空間已經壞到什麼都存不了 */
+        }
+      }
     }
   } catch {
     /* 配額滿：計時照跑，只是被殺後救不回來 */
@@ -247,11 +258,12 @@ export const shouldAdoptDiskTimer = (
   }
   return !oldId || oldId === local.id
 }
-const markEnded = (id: string) => {
+const markEnded = (id: string): boolean => {
   try {
     localStorage.setItem(ENDED_KEY, JSON.stringify([...endedIds(), id].slice(-20)))
+    return true
   } catch {
-    /* 存不進去就算了 */
+    return false // 配額滿：呼叫端決定要不要用更小的形式再試
   }
 }
 
