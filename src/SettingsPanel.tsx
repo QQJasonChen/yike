@@ -27,6 +27,7 @@ import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
 import IapPanel from './IapPanel'
 import { notify } from './notify'
+import { clearWidgetSnapshot } from './widgetSync'
 import { PlantLegend } from './plantGlyphs'
 import {
   BackupMeta,
@@ -338,6 +339,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                             await signOut()
                             stopAutoSync()
                             clearForLogout()
+                            await clearWidgetSnapshot() // 主畫面 widget 也是出口，不能留上一個人的任務
                             location.reload() // 回到全空白狀態
                           })
                         }}
@@ -838,7 +840,10 @@ async function syncAfterLogin(email: string): Promise<SyncResult> {
     )
     if (await currentUserId() !== uid || getDataOwner() !== beforeOwner) throw new Error('帳號已變更，請重新登入確認')
     if (merge) claimDeviceFor(uid)
-    else discardLocalForNewOwner(uid)
+    else {
+      discardLocalForNewOwner(uid)
+      await clearWidgetSnapshot() // 同登出：主畫面 widget 不能留上一個人的任務
+    }
     return await syncNow()
   }
 }

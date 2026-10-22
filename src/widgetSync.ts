@@ -78,6 +78,20 @@ export const pushWidgetSnapshot = async (): Promise<void> => {
   }
 }
 
+/** 登出／換帳號時把主畫面 widget 清空。
+ *  快照存在 App Group 裡，跟 localStorage 是兩個地方：clearForLogout 清掉本機資料之後，
+ *  widget 上還是上一個人的最重要任務與整週時間軸，要等下一次 app 進背景才會刷新
+ *  ——而接手的人可能根本不會再進背景一次就直接看主畫面。純 web 下是 no-op。 */
+export const clearWidgetSnapshot = async (): Promise<void> => {
+  if (!Capacitor.isNativePlatform()) return
+  const empty: WidgetSnapshot = { date: toDateKey(new Date()), mit: '', mitDone: false, tasks: [], blocks: [], streak: 0, week: [] }
+  try {
+    await native.update({ snapshot: JSON.stringify(empty) })
+  } catch {
+    /* 原生端沒 plugin：本來就沒有 widget 可清 */
+  }
+}
+
 /** 把單一 widget 動作套到某天的資料上（純函數，可測）。找不到對應任務就原樣回傳。 */
 export const applyWidgetAction = (day: DayEntry, action: WidgetAction): DayEntry => {
   const tasks = day.tasks.map((t) => ({ ...t }))

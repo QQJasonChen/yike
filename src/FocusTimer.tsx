@@ -14,7 +14,14 @@ declare global {
 }
 
 export interface TimerState {
+  /** 這段專注屬於哪一天。少了它，完成時只能猜「今天」——跨午夜、或計時中翻到別的日期，
+   *  格數與時間塊就會記到錯的那一天。 */
+  dateKey?: string
   taskIndex: number
+  /** 這段專注屬於哪一件事。index 是畫面位置、text 在同名時分不出來，只有 id 認得出。 */
+  taskId?: string
+  /** 按下開始時的資料主人；完成時不一樣就不寫（另一個分頁換了帳號）。 */
+  owner?: string | null
   taskText: string
   phase: 'focus' | 'break'
   endsAt: number // epoch ms
@@ -90,7 +97,9 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       firedRef.current = true
       chime()
       if (timer.phase === 'focus') {
-        onSessionDone(timer.taskIndex, timer.startedAt, Date.now())
+        // 用 endsAt 不用 Date.now()：App 在 iOS 被睡著、隔一小時才回前景，
+        // 25 分鐘會被記成 84 分鐘
+        onSessionDone(timer.taskIndex, timer.startedAt, timer.endsAt)
         // 自動進入休息
         onUpdate({
           ...timer,

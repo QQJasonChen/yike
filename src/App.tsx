@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
+import { recordAbandon, recordFocusSession } from './focusSession'
+import { resolveTaskForToday } from './focusTask'
 import { watchOwnerChange } from './ownerWatch'
 import { useCloudAuthStatus } from './useCloudAuthStatus'
 import DayView from './DayView'
@@ -22,10 +24,13 @@ import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from '.
 import {
   autoBackup,
   currentStreak,
+  getDataOwner,
+  loadDay,
   loadSettings,
   mondayOf,
   monthOf,
   quarterOf,
+  saveDay,
   saveSettings,
   setOnWriteError,
   toDateKey,
@@ -77,6 +82,30 @@ const highlightMatch = (text: string, q: string): React.ReactNode => {
   return out
 }
 
+const TIMER_KEY = 'ppl:timer' // 裝置本機、不同步、不匯出（ppl: 前綴結構性排除）
+const loadTimer = (): TimerState | null => {
+  try {
+    const raw = localStorage.getItem(TIMER_KEY)
+    if (!raw) return null
+    const t = JSON.parse(raw) as TimerState
+    if (typeof t?.endsAt !== 'number' || typeof t?.startedAt !== 'number') return null
+    if (!t.dateKey) t.dateKey = toDateKey(new Date(t.startedAt)) // 舊版存的沒有這個欄位
+    // 暫停中的計時原樣還原；跑著的如果已經過期超過一小時，當作那次沒收尾，丟掉。
+    if (t.pausedRemaining === null && Date.now() - t.endsAt > 3_600_000) return null
+    return t
+  } catch {
+    return null
+  }
+}
+const saveTimer = (t: TimerState | null) => {
+  try {
+    if (t) localStorage.setItem(TIMER_KEY, JSON.stringify(t))
+    else localStorage.removeItem(TIMER_KEY)
+  } catch {
+    /* 配額滿：計時照跑，只是被殺後救不回來 */
+  }
+}
+
 export default function App() {
   const todayKey = toDateKey(new Date())
   const [tab, setTab] = useState<Tab>(tabFromHash)
@@ -89,7 +118,7 @@ export default function App() {
   const [writeFailed, setWriteFailed] = useState(false)
   const [ownerChanged, setOwnerChanged] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
-  const [timer, setTimer] = useState<TimerState | null>(null)
+  const [timer, setTimer] = useState<TimerState | null>(loadTimer)
   const [showSettings, setShowSettings] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -229,11 +258,13 @@ export default function App() {
     localStorage.setItem('pp:onboarded', '1')
     setShowOnboarding(false)
   }
-  const sessionSink = useRef<((taskIndex: number, startMs: number, endMs: number) => void) | null>(null)
 
   // 浮窗讀「目前計時狀態」的即時來源（用 ref 避免每次 render 重註冊）
   const timerRef = useRef<TimerState | null>(timer)
   timerRef.current = timer
+  // 計時狀態落地：App 被殺（iOS 清記憶體、使用者滑掉）再開，計時器原本就消失了。
+  // 只存絕對時間戳，重開用現在時間重算。
+  useEffect(() => saveTimer(timer), [timer])
   useEffect(() => setPipTimerSource(() => timerRef.current), [])
   // 安全網：每次開 App 若沒有進行中的計時，確保專注鎖已解除（避免殘留鎖死）
   useEffect(() => {
@@ -245,12 +276,35 @@ export default function App() {
     editSettings((base) => ({ ...base, ...patch }))
   }
 
-  const startFocus = (taskIndex: number, taskText: string) => {
-    // 計時永遠記在「今天」的頁面上
+  const startFocus = (taskIndex: number, taskText: string, taskId?: string) => {
+    // 計時中又按播放：原本直接蓋掉，已經跑掉的時間無聲消失。要問過本人。
+    const running = timerRef.current
+    if (running) {
+      const same = running.taskIndex === taskIndex && running.taskText === taskText
+      const mins = Math.max(0, Math.round((Date.now() - running.startedAt) / 60_000))
+      if (
+        !confirm(
+          same
+            ? `這個任務正在計時（已過 ${mins} 分鐘）。重新開始會放棄這段時間，確定嗎？`
+            : `「${running.taskText}」正在計時（已過 ${mins} 分鐘）。改成計時「${taskText}」會放棄那一段，確定嗎？`
+        )
+      )
+        return
+    }
+    // 計時永遠記在「今天」的頁面上——所以任務也必須在「今天」定位一次。
+    // 原本直接把畫面上的 index 帶進今天：在昨天的第 3 列按 ▶，完成後那 25 分鐘會塗到
+    // 今天的第 3 列（可能是完全不同的任務或空白列）。
+    const today = loadDay(todayKey)
+    const r = resolveTaskForToday(today, taskIndex, taskText, taskId)
+    if (r.changed) saveDay(todayKey, { ...today, tasks: r.tasks })
+    taskIndex = r.index
     setDateKey(todayKey)
     const ms = settings.focusMinutes * 60_000
     setTimer({
+      dateKey: todayKey,
       taskIndex,
+      taskId: r.taskId,
+      owner: getDataOwner(),
       taskText,
       phase: 'focus',
       totalMs: ms,
@@ -262,15 +316,6 @@ export default function App() {
     if (pipSupported() && pipAutoEnabled()) openFloating()
   }
 
-  const registerSessionSink = useCallback((fn: (taskIndex: number, startMs: number, endMs: number) => void) => {
-    sessionSink.current = fn
-  }, [])
-
-  // 計時中放棄（✕）→ 種樹主題記一棵枯樹（管線同 sessionSink）
-  const abandonSink = useRef<((taskIndex: number) => void) | null>(null)
-  const registerAbandonSink = useCallback((fn: (taskIndex: number) => void) => {
-    abandonSink.current = fn
-  }, [])
 
   // 雲端登入狀態（頂欄 badge 用）
   const cloudIn = useCloudAuthStatus()
@@ -385,8 +430,6 @@ export default function App() {
           onStartFocus={startFocus}
           settings={settings}
           onSettingsChange={updateSettings}
-          registerSessionSink={registerSessionSink}
-          registerAbandonSink={registerAbandonSink}
           focusMitSignal={focusMitSignal}
         />
       )}
@@ -505,10 +548,26 @@ export default function App() {
           autoLoop={settings.autoLoop}
           lockApps={settings.focusLock}
           onSessionDone={(ti, s, e) => {
-            sessionSink.current?.(ti, s, e)
-            celebrate(settings.focusStyle === 'tree' ? '🌲 種下一棵樹，繼續加油！' : '✓ 完成一段專注！')
+            // 直接寫進「這段計時所屬的那一天」，不經由 DayView 註冊的 callback。
+            // 使用者切到週/月分頁時 DayView 沒 mount，那個 callback 是 null——
+            // 鈴響了、慶祝了，一格都沒記到。
+            const ok = recordFocusSession({
+              dateKey: timer.dateKey ?? todayKey,
+              taskIndex: ti,
+              taskId: timer.taskId,
+              owner: timer.owner,
+              taskText: timer.taskText,
+              startMs: s,
+              endMs: e,
+              focusMinutes: settings.focusMinutes,
+            })
+            if (!ok) celebrate('⚠ 這段專注沒存進去——請檢查儲存空間或登入狀態')
+            else celebrate(settings.focusStyle === 'tree' ? '🌲 種下一棵樹，繼續加油！' : '✓ 完成一段專注！')
           }}
-          onAbandon={(ti) => abandonSink.current?.(ti)}
+          onAbandon={(ti) => {
+            if (!recordAbandon(timer.dateKey ?? todayKey, ti, timer.taskId, timer.owner))
+              celebrate('⚠ 沒存進去——請檢查儲存空間或登入狀態')
+          }}
           treeStyle={settings.focusStyle === 'tree'}
         />
       )}

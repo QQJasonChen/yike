@@ -1,6 +1,6 @@
 import { useExternalPrefix } from './useExternalKey'
 import { changedFields, rebaseItems, useStoredEntry } from './useStoredEntry'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import MiniCal from './MiniCal'
 import TaskRow from './TaskRow'
 import Timeline from './Timeline'
@@ -13,9 +13,9 @@ import { ink } from './ink'
 import InkCanvas from './InkCanvas'
 import { addDays, fromDateKey, loadDay, loadWeek, mondayOf, saveDay, toDateKey } from './storage'
 import { notifyAvailable, syncBlockReminders } from './notify'
-import { syncGrove, treeTier } from './plantCells'
+import { treeTier } from './plantCells'
 import { TIER_NAME } from './plantGlyphs'
-import { DayEntry, Settings, Task } from './types'
+import { DayEntry, Settings, Task, newTaskId } from './types'
 
 const fmtMin = (m: number) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
@@ -41,13 +41,11 @@ interface Props {
   dateKey: string
   onDateChange: (key: string) => void
   timer: TimerState | null
-  onStartFocus: (taskIndex: number, taskText: string) => void
+  onStartFocus: (taskIndex: number, taskText: string, taskId?: string) => void
   settings: Settings
   onSettingsChange: (s: Settings) => void
   /** 計時器完成一個時段時，由 App 呼叫塗圈 */
-  registerSessionSink: (fn: (taskIndex: number, startMs: number, endMs: number) => void) => void
   /** 計時中按 ✕ 放棄時，由 App 呼叫記枯樹 */
-  registerAbandonSink: (fn: (taskIndex: number) => void) => void
   /** widget「✏️ 寫下」進來時遞增；用來聚焦最重要任務輸入框 */
   focusMitSignal?: number
 }
@@ -59,13 +57,11 @@ export default function DayView({
   onStartFocus,
   settings,
   onSettingsChange,
-  registerSessionSink,
-  registerAbandonSink,
   focusMitSignal,
 }: Props) {
   const externalDays = useExternalPrefix('pp:day:')
   const externalWeeks = useExternalPrefix('pp:week:')
-  const { entry, edit: editEntry, reload, canWrite } = useStoredEntry<DayEntry>(`pp:day:${dateKey}`, () => loadDay(dateKey), (value) => saveDay(dateKey, value))
+  const { entry, edit: editEntry, reload } = useStoredEntry<DayEntry>(`pp:day:${dateKey}`, () => loadDay(dateKey), (value) => saveDay(dateKey, value))
   const [copied, setCopied] = useState(false)
   const [inkNative, setInkNative] = useState(false) // iPad 原生 PencilKit
   const [inkTarget, setInkTarget] = useState<string | null>(null) // web 畫布正在編輯的 key（'note' 或 'q:m0'）
@@ -126,7 +122,8 @@ export default function DayView({
       for (let i = 0; i < tasks.length && qi < yesterdayUnfinished.length; i++) {
         if (!tasks[i].text.trim()) {
           const src = yesterdayUnfinished[qi++]
-          tasks[i] = { text: src.text, target: src.target, done: 0, actual: null, completed: false }
+          // 昨天沒做完的搬過來＝今天的一件新事，要有自己的 id（不能沿用昨天那顆）
+          tasks[i] = { id: newTaskId(), text: src.text, target: src.target, done: 0, actual: null, completed: false }
         }
       }
       const next = { ...prev, tasks }
@@ -267,65 +264,10 @@ export default function DayView({
     2: '一個小實驗：例「最難的事排第一段專注」「先錄影再回訊息」',
   }
 
-  const editToday = useCallback((change: (base: DayEntry) => DayEntry) => {
-    if (!canWrite()) return
-    if (dateKey === todayKey) { editEntry(change); return }
-    if (saveDay(todayKey, change(loadDay(todayKey))))
-      window.dispatchEvent(new CustomEvent('yike:external-key-change', { detail: { key: `pp:day:${todayKey}` } }))
-  }, [dateKey, todayKey, editEntry, canWrite])
 
-  // Focus Timer 完成時段 → 塗圈 ＋ 把真實時段自動寫進右邊時間軸
-  useEffect(() => {
-    registerSessionSink((taskIndex, startMs, endMs) => {
-      editToday((prev) => {
-        const tasks = prev.tasks.slice()
-        const t = tasks[taskIndex]
-        if (t) {
-          const done = Math.min(t.done + 1, 16)
-          // 這段完成 → 依當下選定時長種一棵樹（記進 grove 決定樹種）
-          tasks[taskIndex] = { ...t, done, actual: done, grove: syncGrove(t.grove, done, settings.focusMinutes) }
-        }
-        // 真實起訖 → 分鐘（夾在時間軸 06:00–23:00 範圍內，最短 15 分鐘）
-        const toMin = (ms: number) => {
-          const dd = new Date(ms)
-          return dd.getHours() * 60 + dd.getMinutes()
-        }
-        const bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, toMin(startMs)))
-        const bEnd = Math.max(bStart + 15, Math.min(23 * 60, toMin(endMs)))
-        const blocks = prev.blocks.slice()
-        // 同任務、上一塊結尾相距 ≤6 分鐘 → 直接接長（連續番茄變一條）
-        const tail = blocks
-          .filter((b) => b.taskIndex === taskIndex)
-          .sort((x, y) => y.end - x.end)[0]
-        if (tail && Math.abs(bStart - tail.end) <= 6) {
-          tail.end = bEnd
-        } else {
-          blocks.push({
-            id: `f${Date.now().toString(36)}`,
-            start: bStart,
-            end: bEnd,
-            text: t?.text ?? '專注',
-            taskIndex,
-          })
-        }
-        const next = { ...prev, tasks, blocks }
-        return next
-      })
-    })
-  }, [registerSessionSink, editToday, settings.focusMinutes])
-
-  // 計時中放棄（✕）→ 該任務記一棵枯樹（計時永遠記在今天，同 startFocus 慣例）
-  useEffect(() => {
-    registerAbandonSink((taskIndex) => {
-      editToday((prev) => {
-        const tasks = prev.tasks.slice()
-        const t = tasks[taskIndex]
-        if (t) tasks[taskIndex] = { ...t, withered: (t.withered ?? 0) + 1 }
-        const next = { ...prev, tasks }
-        return next
-      })
-    })
-  }, [registerAbandonSink, editToday])
+  // Focus Timer 完成／放棄的記錄已移到 src/focusSession.ts，由 App 直接寫進
+  // 「這段計時所屬的那一天」。原本掛在這裡的 callback 在使用者切到週/月分頁時
+  // 根本不存在（DayView 沒 mount）——鈴響了、慶祝了，一格都沒記到。
 
   const d = new Date(
     Number(dateKey.slice(0, 4)),
@@ -459,11 +401,16 @@ export default function DayView({
                   index={i}
                   task={t}
                   onChange={(nt) => updateTask(i, nt)}
-                  isRunning={timer?.phase === 'focus' && timer.taskIndex === i && isToday}
+                  isRunning={
+                    timer?.phase === 'focus' &&
+                    isToday &&
+                    // id 優先：同名任務時用 index 會讓兩列都亮起「正在計時」
+                    (timer.taskId && t.id ? timer.taskId === t.id : timer.taskIndex === i)
+                  }
                   focusStyle={settings.focusStyle}
                   focusMinutes={settings.focusMinutes}
                   isPast={dateKey < todayKey}
-                  onStartFocus={() => onStartFocus(i, t.text)}
+                  onStartFocus={() => onStartFocus(i, t.text, t.id)}
                   onEnterKey={() => focusNextTask(i)}
                   onDropToTimeline={(x, y) => {
                     const landed = dropRef.current?.(x, y, t.text, i)
@@ -497,7 +444,7 @@ export default function DayView({
                   <div className="mit-focus-row">
                     <button
                       className={`mit-focus ${settings.focusStyle === 'tree' ? 'water' : ''}`}
-                      onClick={() => onStartFocus(0, t.text)}
+                      onClick={() => onStartFocus(0, t.text, t.id)}
                       title={settings.focusStyle === 'tree' ? '開始澆水（一段專注）' : '開始專注（番茄鐘）'}
                       aria-label="開始專注"
                     >

@@ -1,4 +1,8 @@
 export interface Task {
+  /** 這件事的身分。舊資料沒有（undefined），所以一切邏輯都要能在沒有 id 時退回文字比對。
+   *  為什麼需要：番茄鐘一律記在「今天」，在昨天的第 3 列按 ▶ 之後，完成時得在今天這一頁
+   *  重新找到同一件事。index 是畫面位置、文字在同名任務時分不出來——只有 id 認得出。 */
+  id?: string
   text: string
   target: number | null // 預估 Focus Time 格數
   done: number // 已完成的 30 分鐘時段數（塗圈）
@@ -177,6 +181,18 @@ export type BizModel = Record<BizBlockKey, BizItem[]> & {
   tags: BizTag[] // 顏色標籤盤（可自訂）
 }
 
+/** 任務 id。用 crypto.randomUUID（jsdom/Safari/iOS 都有），沒有就退回時間+隨機。 */
+export const newTaskId = (): string => {
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+  }
+}
+
+// 刻意**不**在這裡給 id：id 只在第一次為那一列計時時才補（focusTask.ts 的 withId）。
+// 一開始就隨機給，會讓「兩個 emptyTask() 深度相等」不再成立——衝突副本的內容去重、
+// 一整批既有測試都靠這個；而同名任務要分得出來，只需要「按下的那一列」有 id 就夠了。
 export const emptyTask = (): Task => ({
   text: '',
   target: null,
