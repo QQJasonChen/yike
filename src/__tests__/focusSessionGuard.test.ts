@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it } from 'vitest'
-import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from '../focusSession'
+import { claimTimerCompletion, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
@@ -322,5 +322,32 @@ describe('同一段的版本：落盤只准較新的贏；從沒落盤過就不�
     saveTimer(seg4('bob', 1))
     saveTimer(null, undefined)
     expect(localStorage.getItem('ppl:timer')).not.toBeNull()
+  })
+})
+
+describe('舊格式計時（沒有 id）', () => {
+  it('載入時給一個由 startedAt 決定的 id，之後清得掉、認領得了', async () => {
+    const NOW5 = Date.now()
+    localStorage.setItem('ppl:timer', JSON.stringify({
+      taskIndex: 0, taskText: 'x', phase: 'focus', endsAt: NOW5 + 60_000, pausedRemaining: 30_000, totalMs: 1, startedAt: NOW5 - 60_000,
+    }))
+    const t = loadTimer()!
+    expect(t.id).toBe(`legacy-${NOW5 - 60_000}`)
+    expect(loadTimer()!.id).toBe(t.id) // 另一個分頁算出來一樣
+    saveTimer(null, t.id)
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+    expect(await claimTimerCompletion(t.id)).toBe(true)
+    expect(await claimTimerCompletion(t.id)).toBe(false)
+  })
+})
+
+describe('被別的分頁結束的段不能復活', () => {
+  it('B 放棄（刪掉）T1 → A 暫停的舊 effect 再寫 T1 → 磁碟仍空', () => {
+    const NOW6 = Date.now()
+    const t = { id: 'T1', owner: BOB, rev: 1, startedAt: NOW6 - 60_000, phase: 'focus' as const, taskIndex: 0, taskText: 'x', endsAt: NOW6 + 20 * 60_000, pausedRemaining: null, totalMs: 1 }
+    saveTimer(t)
+    saveTimer(null, 'T1') // B 放棄
+    saveTimer({ ...t, rev: 2, pausedRemaining: 999 }) // A 的舊 effect
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
   })
 })

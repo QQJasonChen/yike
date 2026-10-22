@@ -90,6 +90,9 @@ export const loadTimer = (): PersistedTimer | null => {
     const t = JSON.parse(raw) as PersistedTimer
     if (typeof t?.endsAt !== 'number' || typeof t?.startedAt !== 'number') return null
     if (!t.dateKey) t.dateKey = toDateKey(new Date(t.startedAt)) // 舊版存的沒有這個欄位
+    // 舊版存的沒有 id：給一個由 startedAt 決定的（同一段在每個分頁算出來都一樣），
+    // 否則 prevId 永遠是 undefined、清不掉，claim(undefined) 又永遠成功 → 同段放棄兩次（Codex 第 11 輪 #1）
+    if (!t.id) t.id = `legacy-${t.startedAt}`
     // 暫停中的計時原樣還原；跑著的如果已經過期超過一小時，當作那次沒收尾，丟掉。
     if (t.pausedRemaining === null && Date.now() - t.endsAt > 3_600_000) return null
     return t
@@ -106,6 +109,7 @@ export const saveTimer = (t: PersistedTimer | null, prevId?: string) => {
       // A 的舊 effect 再寫就把 T2 蓋回 T1，B 收到 storage 事件後 T2 消失（Codex 第 9 輪）。
       // 磁碟上是更新的一段就不寫；A 隨後會從 storage 事件拿到 T2。
       if (supersededOnDisk(t)) return
+      if (t.id && endedIds().includes(t.id)) return // 這段已經被別的分頁結束了，不准復活
       // 同一段：版本較舊的不准寫（暫停 vs 恢復這種同段交錯）
       const disk = loadTimer()
       if (disk && disk.id && disk.id === t.id && (disk.rev ?? 0) > (t.rev ?? 0)) return
@@ -120,6 +124,7 @@ export const saveTimer = (t: PersistedTimer | null, prevId?: string) => {
       const disk = loadTimer()
       if (disk && disk.id && disk.id !== prevId) return
       localStorage.removeItem(TIMER_KEY)
+      markEnded(prevId)
     }
   } catch {
     /* 配額滿：計時照跑，只是被殺後救不回來 */
@@ -138,6 +143,25 @@ export const supersededOnDisk = (mine: { id?: string; startedAt: number; phase: 
   // 磁碟還停在 focus 而我已經在 break，是存失敗留下的殘影，不算（Codex 第 8 輪 #2）
   if (disk.id === mine.id) return mine.phase === 'focus' && disk.phase === 'break'
   return disk.startedAt > mine.startedAt // 別的分頁開了更新的一段；比我舊的是存失敗留下的殘影
+}
+
+/** 已結束（被清掉）的段。磁碟空了之後 supersededOnDisk／rev 都沒有比較對象，
+ *  A 暫停的舊 effect 會把 B 剛放棄的 T1 復活（Codex 第 11 輪 #2）。 */
+const ENDED_KEY = 'ppl:timerEnded'
+const endedIds = (): string[] => {
+  try {
+    const raw = localStorage.getItem(ENDED_KEY)
+    return raw ? (JSON.parse(raw) as string[]) : []
+  } catch {
+    return []
+  }
+}
+const markEnded = (id: string) => {
+  try {
+    localStorage.setItem(ENDED_KEY, JSON.stringify([...endedIds(), id].slice(-20)))
+  } catch {
+    /* 存不進去就算了 */
+  }
 }
 
 const DONE_KEY = 'ppl:timerDone'

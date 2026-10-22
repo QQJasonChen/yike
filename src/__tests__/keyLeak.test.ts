@@ -4,7 +4,7 @@ import {
   getOpenAIKey, listBackups, saveDay, setDataOwner, setOpenAIKey,
 } from '../storage'
 
-const SECRET = 'sk-proj-THISMUSTNEVERLEAK1234567890'
+const SECRET = 'sk-fake-THISMUSTNEVERLEAK1234567890'
 
 beforeEach(() => {
   localStorage.clear()
