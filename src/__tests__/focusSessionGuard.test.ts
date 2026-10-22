@@ -443,3 +443,51 @@ describe('Codex 第 15 輪', () => {
     expect(isTimerEnded('OLD')).toBe(true)
   })
 })
+
+describe('Codex 第 16 輪：落盤與還原都要核對主人', () => {
+  const NOW = Date.now()
+  const mk = (id: string, owner: string | null | undefined, offset = 0) => {
+    const t: ReturnType<typeof loadTimer> & object = {
+      id, startedAt: NOW + offset, phase: 'focus' as const, taskIndex: 0, taskText: '私人任務',
+      endsAt: NOW + offset + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+    }
+    if (owner !== undefined) t.owner = owner
+    return t
+  }
+  it('#1 A 暫停的落盤排在換帳號之後才拿到鎖 → 不寫回：磁碟留空、B 開新頁看不到 A 的任務', () => {
+    setDataOwner(ALICE)
+    const tA = { ...mk('A-1', ALICE), pausedRemaining: 600_000 }
+    // 另一分頁換成 Bob、清掉 ppl:timer（磁碟空白、沒有墓碑）
+    setDataOwner(BOB)
+    localStorage.removeItem('ppl:timer')
+    saveTimer(tA) // A 的 callback 這時才拿到鎖
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+    expect(loadTimer()).toBeNull()
+  })
+  it('#1 還原入口也看主人：磁碟上是 A 的段，現在主人是 B → loadTimer 回 null', () => {
+    localStorage.setItem('ppl:timer', JSON.stringify(mk('A-2', ALICE)))
+    expect(loadTimer()).toBeNull()
+    setDataOwner(ALICE)
+    expect(loadTimer()?.id).toBe('A-2')
+  })
+  it('舊版沒有 owner 欄的計時照常還原（相容）', () => {
+    localStorage.setItem('ppl:timer', JSON.stringify(mk('old', undefined)))
+    expect(loadTimer()?.id).toBe('old')
+    saveTimer({ ...mk('old', undefined), pausedRemaining: 1 })
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).pausedRemaining).toBe(1)
+  })
+  it('#2 時鐘回撥：Bob 新開的段比 Alice 的舊 → 清 Alice 的殘影時不能把 Bob 當殘影刪掉', () => {
+    saveTimer(mk('bob-new', BOB, -3_600_000)) // 系統時間回撥一小時後 Bob 開的
+    setDataOwner(ALICE)
+    saveTimer(null, mk('alice-old', ALICE, 0)) // Alice 分頁喚醒、owner-change 清空本地 timer
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('bob-new')
+    expect(isTimerEnded('bob-new')).toBe(false)
+    expect(isTimerEnded('alice-old')).toBe(true)
+  })
+  it('#2 同一個主人、比我舊的殘影才一起清（第 15 輪行為保留）', () => {
+    saveTimer(mk('T1', BOB, -60_000))
+    saveTimer(null, mk('T2', BOB, 0))
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+    expect(isTimerEnded('T1')).toBe(true)
+  })
+})

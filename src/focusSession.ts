@@ -87,7 +87,12 @@ export interface PersistedTimer {
   startedAt: number
 }
 export const TIMER_KEY = 'ppl:timer' // 裝置本機、不同步、不匯出（ppl: 前綴結構性排除）
-export const loadTimer = (): PersistedTimer | null => {
+/** 這段計時是不是這台裝置「現在的主人」的？舊版存的沒有 owner 欄 → 當成現在的主人（相容）。
+ *  有欄位就逐字比：A 按下開始、另一分頁換成 B 之後，A 的段對 B 來說是別人的（Codex 第 16 輪 #1）。 */
+const ownedByCurrent = (t: { owner?: string | null }): boolean =>
+  t.owner === undefined || (t.owner ?? null) === (getDataOwner() ?? null)
+/** 磁碟上現在放著哪一段（不管是誰的）。內部比較用：決定「碰不碰它」要看到別人的段才行。 */
+const readDiskTimer = (): PersistedTimer | null => {
   try {
     const raw = localStorage.getItem(TIMER_KEY)
     if (!raw) return null
@@ -104,6 +109,12 @@ export const loadTimer = (): PersistedTimer | null => {
     return null
   }
 }
+/** 還原給畫面用的：只還原現在這個主人的段。A 暫停的段還留在磁碟、B 換帳號後開新頁，
+ *  不能把 A 的任務文字亮給 B 看（Codex 第 16 輪 #1）。 */
+export const loadTimer = (): PersistedTimer | null => {
+  const t = readDiskTimer()
+  return t && ownedByCurrent(t) ? t : null
+}
 /** 真正寫磁碟的那段：檢查＋寫入要在同一把跨分頁鎖裡（見下）。 */
 const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) => {
   const prevId = prev?.id
@@ -116,8 +127,12 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // 磁碟上是更新的一段就不寫；A 隨後會從 storage 事件拿到 T2。
       if (supersededOnDisk(t)) return
       if (t.id && endedIds().includes(t.id)) return // 這段已經被別的分頁結束了，不准復活
+      // 寫入當下再核對一次主人：A 暫停的落盤排在鎖後面，等它拿到鎖時另一分頁已經換成 B、
+      // 把 ppl:timer 刪了，磁碟空白又沒墓碑，前面的檢查全放行 → A 的任務文字寫回 B 的裝置
+      //（Codex 第 16 輪 #1）。主人換了就不寫。
+      if (!ownedByCurrent(t)) return
       // 同一段：版本較舊的不准寫（暫停 vs 恢復這種同段交錯）
-      const disk = loadTimer()
+      const disk = readDiskTimer()
       if (disk && disk.id && disk.id === t.id && (disk.rev ?? 0) > (t.rev ?? 0)) return
       localStorage.setItem(TIMER_KEY, next)
     } else {
@@ -125,12 +140,15 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // B 已經開了新段存進去，A 的 saveTimer(null, undefined) 不能把它刪掉（Codex 第 10 輪 #1）
       if (!prevId) return
       markEnded(prevId) // 不管磁碟上是誰，我這段結束了就留墓碑，不准復活
-      const disk = loadTimer()
+      const disk = readDiskTimer()
       // 磁碟上是別人更新的一段 → 不碰。是比我舊的殘影（我這段從來沒存成功，例如配額滿）
-      // → 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）
+      // → 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。
+      // 「殘影」只限同一個主人的段：別的帳號的段再舊也不碰——系統時鐘回撥時 Bob 新開的段
+      // 會比 Alice 的舊，比時間就會把 Bob 合法的計時當殘影刪掉（Codex 第 16 輪 #2）
       if (disk && disk.id && disk.id !== prevId) {
-        if (prev && disk.startedAt >= prev.startedAt) return
-        if (disk.id) markEnded(disk.id)
+        if (!prev || disk.startedAt >= prev.startedAt) return
+        if ((disk.owner ?? null) !== (prev.owner ?? null)) return
+        markEnded(disk.id)
       }
       localStorage.removeItem(TIMER_KEY)
     }
@@ -158,7 +176,7 @@ export const saveTimer = (t: PersistedTimer | null, prev?: PersistedTimer | null
  *  磁碟上沒有、或是比閉包那段還舊（配額滿時 saveTimer 存不進去，留著上一段）→ 不算：
  *  否則儲存空間一滿，開始的專注就再也放棄不了（Codex 第 7 輪 #1）。 */
 export const supersededOnDisk = (mine: { id?: string; startedAt: number; phase: string }): boolean => {
-  const disk = loadTimer()
+  const disk = readDiskTimer() // 別人的段也算「被取代」：不能蓋掉它
   if (!disk || !disk.id || !mine.id) return false
   // 同一段：只有磁碟已經走到後面的階段（focus → break，另一分頁完成了它）才算。
   // 磁碟還停在 focus 而我已經在 break，是存失敗留下的殘影，不算（Codex 第 8 輪 #2）
