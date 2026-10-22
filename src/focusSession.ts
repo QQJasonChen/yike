@@ -98,8 +98,11 @@ export const renewSegmentForToday = <T extends { dateKey?: string; taskIndex: nu
   todayKey: string
 ): T => {
   if (t.dateKey === todayKey) return t
+  // 換帳號途中：維持原樣，完成時 owner 守衛會擋。這要在這裡先分出來——
+  // 下面存失敗也會回 false，但那時今天的草稿已經在 map 裡、新段仍該指向今天（Codex 第 4 輪 #2）
+  if (getDataOwner() !== expected(t.owner)) return t
   const box: { at: number; id?: string } = { at: t.taskIndex, id: t.taskId }
-  const ok = editStoredKey<ReturnType<typeof loadDay>>(
+  editStoredKey<ReturnType<typeof loadDay>>(
     `pp:day:${todayKey}`,
     () => loadDay(todayKey),
     (v) => saveDay(todayKey, v),
@@ -122,7 +125,7 @@ export const renewSegmentForToday = <T extends { dateKey?: string; taskIndex: nu
     },
     expected(t.owner)
   )
-  if (!ok) return t // 換帳號途中或存不下：維持原樣，完成時 owner 守衛會擋
+  // 存失敗也要換日：change 回呼已經跑過（今天的草稿含那一列，在 map 裡），box 是對的
   return { ...t, dateKey: todayKey, taskIndex: box.at, taskId: box.id }
 }
 

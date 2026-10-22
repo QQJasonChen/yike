@@ -311,6 +311,9 @@ export default function App() {
       window.dispatchEvent(new Event('yike:owner-change-blocked'))
       return
     }
+    // 日期要用「按下的當下」算：App 的 todayKey 是 render 時算的，23:59 開著不動、00:01 按 ▶，
+    // 閉包裡還是昨天，整段會記到昨天（Codex 第 4 輪 #1）
+    const todayKey = toDateKey(new Date())
     // 計時永遠記在「今天」的頁面上——所以任務也必須在「今天」定位一次。
     // 原本直接把畫面上的 index 帶進今天：在昨天的第 3 列按 ▶，完成後那 25 分鐘會塗到
     // 今天的第 3 列（可能是完全不同的任務或空白列）。
@@ -589,7 +592,7 @@ export default function App() {
             void (async () => {
             if (!(await claimTimerCompletion(timer.id))) return // 另一個分頁已經記過這一段
             const ok = recordFocusSession({
-              dateKey: timer.dateKey ?? todayKey,
+              dateKey: timer.dateKey ?? toDateKey(new Date(timer.startedAt)),
               taskIndex: ti,
               taskId: timer.taskId,
               owner: timer.owner,
@@ -603,7 +606,7 @@ export default function App() {
             })()
           }}
           onAbandon={(ti) => {
-            if (!recordAbandon(timer.dateKey ?? todayKey, ti, timer.taskId, timer.owner))
+            if (!recordAbandon(timer.dateKey ?? toDateKey(new Date(timer.startedAt)), ti, timer.taskId, timer.owner))
               celebrate('⚠ 沒存進去——請檢查儲存空間或登入狀態')
           }}
           treeStyle={settings.focusStyle === 'tree'}

@@ -95,7 +95,15 @@ const probe = () => page.evaluate(() => {
     if (b.el.tagName === 'A' && getComputedStyle(b.el).display === 'inline') continue
     const w = b.right - b.left
     const h = b.bottom - b.top
-    if (Math.round(Math.max(w, h)) < 44 || Math.round(Math.min(w, h)) < 30) small.push(`${b.id} ${Math.round(w)}×${Math.round(h)}`)
+    const W = Math.round(w), H = Math.round(h)
+    // 一般：至少一維 44、另一維 ≥30。密集格（同 class 的鄰居中心距兩軸都 <44，例如種樹格）：
+    // 44 根本放不下又不能重疊，接受 36×30（寬到中心距、高到列距）
+    const cls = (b.el.className || '').toString().split(' ')[0]
+    const cx = (b.left + b.right) / 2, cy = (b.top + b.bottom) / 2
+    const dense = tapBoxes.some((o) => o !== b && (o.el.className || '').toString().split(' ')[0] === cls &&
+      Math.abs((o.left + o.right) / 2 - cx) < 44 && Math.abs((o.top + o.bottom) / 2 - cy) < 44)
+    const okSize = (Math.max(W, H) >= 44 && Math.min(W, H) >= 30) || (dense && W >= 36 && H >= 30)
+    if (!okSize) small.push(`${b.id} ${W}×${H}`)
   }
   if (small.length) fails.push(`命中區太小（${small.length} 個）：${small.join('；')}`)
   for (let i = 0; i < tapBoxes.length; i++)

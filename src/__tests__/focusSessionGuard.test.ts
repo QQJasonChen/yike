@@ -189,3 +189,28 @@ describe('跨午夜的連續番茄鐘', () => {
     expect(renewSegmentForToday(t, '2026-09-03')).toBe(t)
   })
 })
+
+describe('跨午夜續段：存失敗也要換日', () => {
+  it('今天的草稿已在 map 裡，新段指向今天，不能還帶昨天', () => {
+    saveDay('2026-09-03', { ...emptyDay(), tasks: [{ ...emptyTask(), id: 'y', text: '昨晚的事' }] })
+    const t = { dateKey: '2026-09-03', taskIndex: 0, taskId: 'y', taskText: '昨晚的事', owner: BOB }
+    const orig = Storage.prototype.setItem
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (k === 'pp:day:2026-09-04') throw new DOMException('quota', 'QuotaExceededError')
+      return orig.call(this, k, v)
+    }
+    let n: typeof t
+    try {
+      n = renewSegmentForToday(t, '2026-09-04')
+    } finally {
+      Storage.prototype.setItem = orig
+    }
+    expect(n!.dateKey).toBe('2026-09-04')
+    expect(hasUnsavedDrafts()).toBe(true) // 今天的草稿（含那一列）在 map 裡等下次成功
+    clearUnsavedDrafts()
+  })
+  it('換帳號途中 → 原樣（完成時守衛會擋）', () => {
+    const t = { dateKey: '2026-09-03', taskIndex: 0, taskId: 'y', taskText: 'x', owner: 'someone-else' }
+    expect(renewSegmentForToday(t, '2026-09-04')).toBe(t)
+  })
+})
