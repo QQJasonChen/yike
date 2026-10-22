@@ -491,3 +491,36 @@ describe('Codex 第 16 輪：落盤與還原都要核對主人', () => {
     expect(isTimerEnded('T1')).toBe(true)
   })
 })
+
+describe('Codex 第 17 輪：時鐘回撥後重新開始', () => {
+  const NOW = Date.now()
+  const mk = (id: string, offset: number, extra: Partial<{ pausedRemaining: number | null }> = {}) => ({
+    id, owner: BOB, startedAt: NOW + offset, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + offset + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000, ...extra,
+  })
+  it('T1 暫停中 → 時鐘回撥 5 分鐘 → 確認重新開始 T2（prev=T1）→ 磁碟是 T2、T1 進墓碑', () => {
+    saveTimer(mk('T1', 0, { pausedRemaining: 600_000 }))
+    saveTimer(mk('T2', -5 * 60_000), mk('T1', 0, { pausedRemaining: 600_000 }))
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('T2')
+    expect(isTimerEnded('T1')).toBe(true)
+    saveTimer(null, mk('T2', -5 * 60_000)) // 放棄 T2 也要能清
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+  })
+  it('磁碟上是別的分頁開的更新段（不是 prev）→ 照舊不准蓋', () => {
+    saveTimer(mk('T3', 1000))
+    saveTimer(mk('T2', -5 * 60_000), mk('T1', 0))
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('T3')
+  })
+  it('T2 存失敗、磁碟留著進了墓碑的 T1 → 不算被取代、重開不還原 T1、放棄 T2 能清', () => {
+    localStorage.setItem('ppl:timer', JSON.stringify(mk('T1', 0)))
+    localStorage.setItem('ppl:timerEnded', JSON.stringify(['T1']))
+    expect(supersededOnDisk(mk('T2', -5 * 60_000))).toBe(false)
+    expect(loadTimer()).toBeNull()
+    saveTimer(null, mk('T2', -5 * 60_000))
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+  })
+  it('另一分頁收到 T2 事件：本地 T1 已在墓碑 → 就算 T2 的 startedAt 比較小也採用', () => {
+    localStorage.setItem('ppl:timerEnded', JSON.stringify(['T1']))
+    expect(shouldAdoptDiskTimer(mk('T2', -5 * 60_000), null, mk('T1', 0), undefined)).toBe(true)
+  })
+})
