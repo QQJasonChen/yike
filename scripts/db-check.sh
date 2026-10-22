@@ -77,9 +77,15 @@ check "沒有 seed_at_insert 為 NULL 的列（會讓合法的第三次兌換被
 
 echo ""
 echo "③ RPC 只給 service_role"
-for fn in license_redeem license_force_record rate_limit_bump ai_usage_bump; do
+# repo 的 migrations 建的 RPC：一定要在、而且不能給 anon/authenticated
+for fn in license_redeem license_activate_grant rate_limit_bump ai_usage_bump; do
   check "${fn} 沒有給 public/anon/authenticated" \
     "select case when has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute') then 'leaked' else 'ok' end from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='${fn}'" "ok"
+done
+# 舊 RPC（prod 還留著、repo 沒有 migration）：有就不能外露，沒有也算過（第 23 輪 #4：用 migrations 建的新環境會沒有它）
+for fn in license_force_record; do
+  check "${fn}（舊 RPC）不存在或沒有給 anon/authenticated" \
+    "select coalesce((select case when has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute') then 'leaked' else 'ok' end from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='${fn}'), 'ok')" "ok"
 done
 
 echo ""

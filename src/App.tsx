@@ -285,7 +285,17 @@ export default function App() {
   // 磁碟上若已是別人（另一帳號／另一分頁）的新計時就不碰它。
   const prevTimer = useRef<TimerState | null>(timer)
   useEffect(() => {
-    void saveTimer(timer, prevTimer.current)
+    const attempted = timer
+    void saveTimer(timer, prevTimer.current).then((r) => {
+      if (r !== 'rejected') return
+      // 鎖內判定磁碟上的狀態贏了（別的分頁提前完成、換了段、換了主人）：畫面不能繼續跑沒落盤的那段，
+      // 重開會還原磁碟上的。只在畫面還是當初那份時才改採磁碟，別蓋掉使用者之後的操作（Codex 第 23 輪 #2）
+      const cur = timerRef.current
+      const untouched = attempted ? cur?.id === attempted.id && (cur?.rev ?? 0) === (attempted.rev ?? 0) : cur === null
+      if (!untouched) return
+      const disk = loadTimer()
+      if (JSON.stringify(disk) !== JSON.stringify(cur)) setTimer(disk)
+    })
     prevTimer.current = timer
   }, [timer])
   useEffect(() => setPipTimerSource(() => timerRef.current), [])

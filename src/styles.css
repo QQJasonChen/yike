@@ -3106,6 +3106,11 @@ button.wk-head:hover {
 .celebrate {
   animation: celebrate 0.5s ease;
 }
+/* 動畫把按鈕放大 1.35 倍又旋轉，手機上補出來的 40×44 透明命中區會跟著放大、蓋到隔壁按鈕的邊緣——
+   點完「3」0.2 秒內再點「2」會命中「3」把分數清掉（Codex 第 23 輪 #3）。動畫期間關掉命中區，本體照常可點 */
+.celebrate::after {
+  pointer-events: none;
+}
 
 @media (max-width: 600px) {
   /* 任務列改兩行：文字+按鈕 / 把手+塗圈，避免擠出畫面 */

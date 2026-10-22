@@ -655,3 +655,44 @@ describe('Codex 第 22 輪', () => {
     expect(await claimTimerCompletion('T9', { unlessEnded: true })).toBe(true)
   })
 })
+
+describe('Codex 第 23 輪', () => {
+  const NOW = Date.now()
+  const mk = (id: string, phase: 'focus' | 'break', rev: number, offset = -60_000) => ({
+    id, owner: BOB, rev, startedAt: NOW + offset, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('#1 等鎖期間被立了墓碑 → 鎖內再查，不准認領', async () => {
+    const nav = navigator as Navigator & { locks?: unknown }
+    const orig = nav.locks
+    Object.defineProperty(nav, 'locks', {
+      configurable: true,
+      value: {
+        request: async (_n: string, cb: () => unknown) => {
+          localStorage.setItem('ppl:timerEnded', JSON.stringify(['T1'])) // B 在我等鎖時把 T1 立墓碑
+          return cb()
+        },
+      },
+    })
+    try {
+      expect(await claimTimerCompletion('T1', { unlessEnded: true })).toBe(false)
+    } finally {
+      Object.defineProperty(nav, 'locks', { configurable: true, value: orig })
+    }
+  })
+  it('#2 saveTimer 回報結果：被磁碟上的休息狀態擋下 → rejected；正常 → written；同一份 → noop', async () => {
+    saveTimer(mk('T1', 'focus', 1))
+    saveTimer(mk('T1', 'break', 2))
+    expect(await saveTimer(mk('T2', 'focus', 1, 0), mk('T1', 'focus', 1))).toBe('rejected')
+    localStorage.clear()
+    setDataOwner(BOB) // clear 連 ppl:owner 一起清了；主人不同本來就該 rejected
+    expect(await saveTimer(mk('T1', 'focus', 1))).toBe('written')
+    expect(await saveTimer(mk('T1', 'focus', 1))).toBe('noop')
+    expect(await saveTimer(null, mk('T1', 'focus', 1))).toBe('written')
+    // 過期放棄：磁碟是已進休息的同一段 → rejected（上面放棄過的 T1 已進墓碑，重來一組）
+    localStorage.clear()
+    setDataOwner(BOB)
+    saveTimer(mk('T1', 'break', 2))
+    expect(await saveTimer(null, mk('T1', 'focus', 1))).toBe('rejected')
+  })
+})

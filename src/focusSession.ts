@@ -118,12 +118,17 @@ export const loadTimer = (): PersistedTimer | null => {
   if (isTimerEnded(t.id)) return null
   return t
 }
+/** 落盤的結果：written＝寫了；noop＝磁碟本來就一樣或沒東西好刪；
+ *  rejected＝磁碟上的狀態贏了（更新的段、同段後面的階段、已進墓碑、主人換了）——畫面要改採磁碟
+ *  （Codex 第 23 輪 #2：鎖內拒寫但畫面還跑著沒落盤的新段，重開就還原舊的）；
+ *  failed＝配額滿，計時照跑。 */
+export type SaveResult = 'written' | 'noop' | 'rejected' | 'failed'
 /** 真正寫磁碟的那段：檢查＋寫入要在同一把跨分頁鎖裡（見下）。 */
-const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) => {
+const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null): SaveResult => {
   const prevId = prev?.id
   try {
     const next = t ? JSON.stringify(t) : null
-    if (localStorage.getItem(TIMER_KEY) === next) return // 另一個分頁寫的同一份：不要再寫回去（乒乓）
+    if (localStorage.getItem(TIMER_KEY) === next) return 'noop' // 另一個分頁寫的同一份：不要再寫回去（乒乓）
     if (next && t) {
       // 非空寫入也要看磁碟：A 暫停 T1 的落盤 effect 還沒跑，B 已經開了 T2 存進去，
       // A 的舊 effect 再寫就把 T2 蓋回 T1，B 收到 storage 事件後 T2 消失（Codex 第 9 輪）。
@@ -135,7 +140,7 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       const replacingOwn = !!prev?.id && prev.id !== t.id && disk0?.id === prev.id
       // 要換掉的那段磁碟上已經走到休息（另一分頁在我確認的空檔提前完成了它）：過期的確認
       // 不准中斷它的休息——跟清除分支同一條鎖內規則（Codex 第 22 輪 #1）
-      if (replacingOwn && prev!.phase === 'focus' && disk0!.phase === 'break') return
+      if (replacingOwn && prev!.phase === 'focus' && disk0!.phase === 'break') return 'rejected'
       if (replacingOwn) {
         // 墓碑立不起來（配額滿）就先把要換掉的那段刪了騰空間再立：否則 T2 寫進去、T1 沒墓碑，
         // 別的分頁對 T1 的過期放棄會把較舊的 T2 當殘影刪掉（Codex 第 21 輪）
@@ -143,20 +148,21 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
           localStorage.removeItem(TIMER_KEY)
           ensureEnded([prev.id!])
         }
-      } else if (supersededOnDisk(t)) return
-      if (t.id && endedIds().includes(t.id)) return // 這段已經被別的分頁結束了，不准復活
+      } else if (supersededOnDisk(t)) return 'rejected'
+      if (t.id && endedIds().includes(t.id)) return 'rejected' // 這段已經被別的分頁結束了，不准復活
       // 寫入當下再核對一次主人：A 暫停的落盤排在鎖後面，等它拿到鎖時另一分頁已經換成 B、
       // 把 ppl:timer 刪了，磁碟空白又沒墓碑，前面的檢查全放行 → A 的任務文字寫回 B 的裝置
       //（Codex 第 16 輪 #1）。主人換了就不寫。
-      if (!ownedByCurrent(t)) return
+      if (!ownedByCurrent(t)) return 'rejected'
       // 同一段：版本較舊的不准寫（暫停 vs 恢復這種同段交錯）
       const disk = readDiskTimer()
-      if (disk && disk.id && disk.id === t.id && (disk.rev ?? 0) > (t.rev ?? 0)) return
+      if (disk && disk.id && disk.id === t.id && (disk.rev ?? 0) > (t.rev ?? 0)) return 'rejected'
       localStorage.setItem(TIMER_KEY, next)
+      return 'written'
     } else {
       // 從來沒落盤過自己的計時（prevId 沒值）就什麼都不刪：A 開啟時沒計時、首次 effect 還沒跑，
       // B 已經開了新段存進去，A 的 saveTimer(null, undefined) 不能把它刪掉（Codex 第 10 輪 #1）
-      if (!prevId) return
+      if (!prevId) return 'noop'
       // 我這段早就被（別的分頁的重新開始）送進墓碑了 → 這是過期的放棄確認：只准刪「還是我這段」
       // 的磁碟，別碰其他段——否則時鐘回撥後 A 重新開始的 T2 比 T1 舊，會被當殘影清掉（Codex 第 18 輪）
       const alreadyEnded = isTimerEnded(prevId)
@@ -164,8 +170,8 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // 同一段但磁碟已經走到休息（另一分頁在我確認放棄的空檔提前完成了它）：這段已經記過一格、
       // 正在休息倒數，過期的放棄不准刪也不准立墓碑——立了 B 後續的寫入全被擋（Codex 第 19 輪）。
       // 跟 supersededOnDisk 同一條規則，只是搬進鎖內。
-      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'break') return
-      if (alreadyEnded && disk && disk.id !== prevId) return
+      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'break') return 'rejected'
+      if (alreadyEnded && disk && disk.id !== prevId) return 'rejected'
       // 磁碟上是別人更新的一段 → 不碰（自己仍留墓碑）。是比我舊的殘影（我這段從來沒存成功，
       // 例如配額滿）→ 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。
       // 「殘影」只限同一個主人的段：別的帳號的段再舊也不碰——系統時鐘回撥時 Bob 新開的段
@@ -182,9 +188,10 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // 刪掉計時騰出空間後再立；還是不行就把墓碑縮成只剩這幾個 id（比一段計時小得多）。
       if (removeDisk) localStorage.removeItem(TIMER_KEY)
       ensureEnded(toMark)
+      return removeDisk ? 'written' : 'rejected'
     }
   } catch {
-    /* 配額滿：計時照跑，只是被殺後救不回來 */
+    return 'failed' /* 配額滿：計時照跑，只是被殺後救不回來 */
   }
 }
 
@@ -192,13 +199,15 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
  *  A 再寫就把 T2 蓋掉（Codex 第 12 輪）。跨分頁唯一的真鎖是 Web Locks；沒有的環境
  *  （jsdom、很舊的瀏覽器）退回同步版——同一個分頁裡 JS 本來就是序列的。
  *  回傳 Promise 但呼叫端不必等它。 */
-export const saveTimer = (t: PersistedTimer | null, prev?: PersistedTimer | null): Promise<void> => {
+export const saveTimer = (t: PersistedTimer | null, prev?: PersistedTimer | null): Promise<SaveResult> => {
   const locks = (navigator as Navigator & { locks?: LockManager }).locks
   if (locks?.request) {
-    return locks.request('yike:timer', () => writeTimerSync(t, prev)).catch(() => writeTimerSync(t, prev))
+    return locks
+      .request('yike:timer', () => writeTimerSync(t, prev))
+      .then((r) => r as SaveResult)
+      .catch(() => writeTimerSync(t, prev))
   }
-  writeTimerSync(t, prev)
-  return Promise.resolve()
+  return Promise.resolve(writeTimerSync(t, prev))
 }
 
 
@@ -310,7 +319,11 @@ export const claimTimerCompletion = async (
   const locks = (navigator as Navigator & { locks?: LockManager }).locks
   if (locks?.request) {
     try {
-      return await locks.request('yike:timer-done', () => claimSync(timerId))
+      // 鎖內再查一次墓碑：等鎖的這段時間別的分頁可能剛用另一把鎖（yike:timer）把我這段立了墓碑
+      //（Codex 第 23 輪 #1）
+      return await locks.request('yike:timer-done', () =>
+        opts.unlessEnded && isTimerEnded(timerId) ? false : claimSync(timerId)
+      )
     } catch {
       /* 鎖不可用：退回 */
     }
