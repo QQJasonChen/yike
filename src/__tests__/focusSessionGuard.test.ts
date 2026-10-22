@@ -127,6 +127,7 @@ describe('跨分頁只記一次', () => {
     expect(await claimTimerCompletion('t1')).toBe(true)
     expect(await claimTimerCompletion('t1')).toBe(false)
     expect(await claimTimerCompletion('t2')).toBe(true)
+    expect(await claimTimerCompletion('t1')).toBe(false) // 完成歷史不是只記最後一段：T1 過期的放棄不能再認領
     expect(await claimTimerCompletion(undefined)).toBe(true) // 舊計時狀態沒 id：照舊
   })
   it('連續番茄鐘每一段都要有新的 id，否則第二段被當成已記過', () => {

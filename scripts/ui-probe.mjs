@@ -36,7 +36,11 @@ const { chromium, devices } = pw
 
 const url = process.argv[2] ?? 'http://localhost:4180/'
 const browser = await chromium.launch()
-const ctx = await browser.newContext({ ...devices['iPhone 13'] })
+// 兩種寬度：iPhone 13（390）跟窄機（360）。色票八顆在 360 會換行，
+// 命中盒的垂直重疊只有在這裡才看得到（Codex 第 6 輪 #2）
+const ctx = await browser.newContext(
+  process.env.PROBE_NARROW ? { ...devices['iPhone 13'], viewport: { width: 360, height: 780 } } : { ...devices['iPhone 13'] }
+)
 // 先跳過新手導覽，不然量到的是那層浮層
 await ctx.addInitScript(() => {
   try {

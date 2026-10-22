@@ -15,4 +15,6 @@ PID=$!
 trap 'kill "$PID" 2>/dev/null || true' EXIT
 for _ in $(seq 1 30); do curl -sf "http://localhost:$PORT/" >/dev/null && break; sleep 1; done
 kill -0 "$PID" 2>/dev/null || { echo "這一台 preview 沒有活著（port 被搶走？），不驗"; exit 1; }
-node scripts/ui-probe.mjs "http://localhost:$PORT/"
+node scripts/ui-probe.mjs "http://localhost:$PORT/" || exit 1
+echo "── 窄機 360px ──"
+PROBE_NARROW=1 node scripts/ui-probe.mjs "http://localhost:$PORT/"

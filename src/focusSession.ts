@@ -13,7 +13,7 @@
 // ②配額滿時畫面留著的草稿，下次存檔整頁寫回會把剛記的格數抹掉（Codex 第 1 輪 #1/#2）。
 import { syncGrove } from './plantCells'
 import { type Task, emptyTask, newTaskId } from './types'
-import { getDataOwner, loadDay, saveDay } from './storage'
+import { getDataOwner, loadDay, saveDay, toDateKey } from './storage'
 import { editStoredKey } from './useStoredEntry'
 
 export interface FocusSession {
@@ -64,13 +64,58 @@ const ensureRow = (tasks: Task[], at: number, taskId: string | undefined, text: 
 
 /** 同一段計時只准記一次。兩個分頁都還原了同一個 ppl:timer，各自到點各自呼叫記錄，
  *  同一段時間就會累加兩格（Codex 第 1 輪 #3）。先搶到 ppl:timerDone 的才記。 */
+/** 計時狀態（跟 FocusTimer 的 TimerState 同形狀；放這裡避免 FocusTimer ↔ focusSession 互相 import） */
+export interface PersistedTimer {
+  id?: string
+  dateKey?: string
+  taskIndex: number
+  taskId?: string
+  owner?: string | null
+  taskText: string
+  phase: 'focus' | 'break'
+  endsAt: number
+  pausedRemaining: number | null
+  totalMs: number
+  startedAt: number
+}
+export const TIMER_KEY = 'ppl:timer' // 裝置本機、不同步、不匯出（ppl: 前綴結構性排除）
+export const loadTimer = (): PersistedTimer | null => {
+  try {
+    const raw = localStorage.getItem(TIMER_KEY)
+    if (!raw) return null
+    const t = JSON.parse(raw) as PersistedTimer
+    if (typeof t?.endsAt !== 'number' || typeof t?.startedAt !== 'number') return null
+    if (!t.dateKey) t.dateKey = toDateKey(new Date(t.startedAt)) // 舊版存的沒有這個欄位
+    // 暫停中的計時原樣還原；跑著的如果已經過期超過一小時，當作那次沒收尾，丟掉。
+    if (t.pausedRemaining === null && Date.now() - t.endsAt > 3_600_000) return null
+    return t
+  } catch {
+    return null
+  }
+}
+export const saveTimer = (t: PersistedTimer | null) => {
+  try {
+    const next = t ? JSON.stringify(t) : null
+    if (localStorage.getItem(TIMER_KEY) === next) return // 另一個分頁寫的同一份：不要再寫回去（乒乓）
+    if (next) localStorage.setItem(TIMER_KEY, next)
+    else localStorage.removeItem(TIMER_KEY)
+  } catch {
+    /* 配額滿：計時照跑，只是被殺後救不回來 */
+  }
+}
+
+
 const DONE_KEY = 'ppl:timerDone'
 export const newTimerId = (): string => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
 
 const claimSync = (timerId: string): boolean => {
   try {
-    if (localStorage.getItem(DONE_KEY) === timerId) return false
-    localStorage.setItem(DONE_KEY, timerId)
+    // 記最近 20 段，不是只記最後一段：T1 完成 → T2 完成 → T1 那個過期的放棄確認又能認領
+    //（Codex 第 6 輪 #1）
+    const raw = localStorage.getItem(DONE_KEY)
+    const done: string[] = raw ? (raw.startsWith('[') ? (JSON.parse(raw) as string[]) : [raw]) : []
+    if (done.includes(timerId)) return false
+    localStorage.setItem(DONE_KEY, JSON.stringify([...done, timerId].slice(-20)))
     return true
   } catch {
     return true // 存不進去就寧可記（重複總比不記好）

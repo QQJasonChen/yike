@@ -1,4 +1,4 @@
-import { newTimerId } from './focusSession'
+import { loadTimer, newTimerId } from './focusSession'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { focusLock } from './focusLock'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
@@ -197,8 +197,6 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
   // 最新的 timer prop：confirm 框開著的期間，另一個分頁可能已經把這段完成、甚至開了新的一段。
   // 閉包裡的 timer 是舊的——確認後要重新核對是不是同一段，不然會把別人的新計時清掉
   //（Codex 第 5 輪 #2）。
-  const latestTimer = useRef(timer)
-  latestTimer.current = timer
   const stopTimer = () => {
     const target = timer
     if (target.phase === 'focus') {
@@ -206,8 +204,10 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
         ? '確定要放棄嗎？這段專注的小樹會枯掉。'
         : '確定要放棄這段專注嗎？會記下一次放棄。'
       if (!confirm(msg)) return
-      const now = latestTimer.current
-      if (now.id !== target.id || now.phase !== 'focus') return // 這段已經不是當初要放棄的那段
+      // 原生 confirm 阻塞期間這個分頁的 storage 事件還沒處理，連 React prop 都是舊的——
+      // 要讀磁碟上的 ppl:timer 當真相（Codex 第 6 輪 #1）
+      const now = loadTimer()
+      if (!now || now.id !== target.id || now.phase !== 'focus') return // 這段已經不是當初要放棄的那段
       onAbandon(target.taskIndex)
     }
     onUpdate(null)

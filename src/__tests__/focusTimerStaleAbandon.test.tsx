@@ -1,7 +1,6 @@
 // 放棄的 confirm 框開著時，另一個分頁可能已把這段完成、開了新的一段。
 // 確認後必須重新核對是不是同一段，不然會把別人的新計時清掉（Codex 第 5 輪 #2）。
 import { act } from 'react'
-import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import FocusTimer, { type TimerState } from '../FocusTimer'
@@ -20,6 +19,7 @@ const base = (id: string): TimerState => ({
 let root: Root | null = null
 let el: HTMLDivElement
 beforeEach(() => {
+  localStorage.clear()
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   el = document.createElement('div')
   document.body.appendChild(el)
@@ -51,13 +51,9 @@ describe('FocusTimer 放棄', () => {
     const btn = stopButton()
     expect(btn, '找不到 ✕/放棄按鈕').toBeTruthy()
     vi.spyOn(window, 'confirm').mockImplementation(() => {
-      // 另一個分頁：T1 完成、開了 T2 → 這邊的 timer prop 換掉（confirm 是同步的，用 flushSync 逼 React 當場重繪）
-      flushSync(() =>
-        root!.render(
-          <FocusTimer timer={base('T2')} onUpdate={onUpdate} onSessionDone={vi.fn()} onAbandon={onAbandon}
-            treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
-        )
-      )
+      // 另一個分頁：T1 完成、開了 T3 → 寫進 ppl:timer。這個分頁的 React prop 還是 T1
+      //（原生 confirm 阻塞期間 storage 事件沒處理），所以只能靠讀磁碟
+      localStorage.setItem('ppl:timer', JSON.stringify(base('T3')))
       return true
     })
     act(() => btn!.click())
@@ -68,6 +64,7 @@ describe('FocusTimer 放棄', () => {
   it('沒被換掉 → 照常放棄', () => {
     const onUpdate = vi.fn()
     const onAbandon = vi.fn()
+    localStorage.setItem('ppl:timer', JSON.stringify(base('T1')))
     render(base('T1'), onUpdate, onAbandon)
     vi.spyOn(window, 'confirm').mockImplementation(() => true)
     act(() => stopButton()!.click())

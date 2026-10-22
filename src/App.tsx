@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday } from './focusSession'
+import { TIMER_KEY, claimTimerCompletion, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -81,32 +81,6 @@ const highlightMatch = (text: string, q: string): React.ReactNode => {
   }
   out.push(text.slice(i))
   return out
-}
-
-const TIMER_KEY = 'ppl:timer' // 裝置本機、不同步、不匯出（ppl: 前綴結構性排除）
-const loadTimer = (): TimerState | null => {
-  try {
-    const raw = localStorage.getItem(TIMER_KEY)
-    if (!raw) return null
-    const t = JSON.parse(raw) as TimerState
-    if (typeof t?.endsAt !== 'number' || typeof t?.startedAt !== 'number') return null
-    if (!t.dateKey) t.dateKey = toDateKey(new Date(t.startedAt)) // 舊版存的沒有這個欄位
-    // 暫停中的計時原樣還原；跑著的如果已經過期超過一小時，當作那次沒收尾，丟掉。
-    if (t.pausedRemaining === null && Date.now() - t.endsAt > 3_600_000) return null
-    return t
-  } catch {
-    return null
-  }
-}
-const saveTimer = (t: TimerState | null) => {
-  try {
-    const next = t ? JSON.stringify(t) : null
-    if (localStorage.getItem(TIMER_KEY) === next) return // 另一個分頁寫的同一份：不要再寫回去（乒乓）
-    if (next) localStorage.setItem(TIMER_KEY, next)
-    else localStorage.removeItem(TIMER_KEY)
-  } catch {
-    /* 配額滿：計時照跑，只是被殺後救不回來 */
-  }
 }
 
 export default function App() {

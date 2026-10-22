@@ -5301,7 +5301,7 @@ button.mc-month:disabled { cursor: default; }
     left: 50%;
     transform: translate(-50%, -50%);
     width: 36px;
-    height: 44px;
+    height: 34px; /* 窄手機八色會換行，列距 26+10=36；44 高會蓋到下一列（Codex 第 6 輪 #2） */
   }
 
   /* ▶ 與 ✓ 相鄰（32 + gap 10 + 30 ＝ 中心距 41），兩個 44 的命中盒會重疊 3px */
