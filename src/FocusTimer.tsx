@@ -1,4 +1,4 @@
-import { loadTimer, newTimerId } from './focusSession'
+import { newTimerId, supersededOnDisk } from './focusSession'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { focusLock } from './focusLock'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
@@ -205,9 +205,9 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
         : '確定要放棄這段專注嗎？會記下一次放棄。'
       if (!confirm(msg)) return
       // 原生 confirm 阻塞期間這個分頁的 storage 事件還沒處理，連 React prop 都是舊的——
-      // 要讀磁碟上的 ppl:timer 當真相（Codex 第 6 輪 #1）
-      const now = loadTimer()
-      if (!now || now.id !== target.id || now.phase !== 'focus') return // 這段已經不是當初要放棄的那段
+      // 要讀磁碟上的 ppl:timer 當真相（Codex 第 6 輪 #1）。但磁碟上沒有／比較舊不算被取代，
+      // 否則配額滿時開始的專注再也放棄不了（第 7 輪 #1）
+      if (supersededOnDisk(target)) return // 這段已經不是當初要放棄的那段
       onAbandon(target.taskIndex)
     }
     onUpdate(null)

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { TIMER_KEY, claimTimerCompletion, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer } from './focusSession'
+import { TIMER_KEY, claimTimerCompletion, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -289,6 +289,9 @@ export default function App() {
         )
       )
         return
+      // 確認框開著時另一個分頁可能已經完成這段、開了新的一段——接受那個過期的確認會把
+      // 別人的新計時換掉（Codex 第 7 輪 #2）。磁碟上有更新的一段就不開始。
+      if (supersededOnDisk(running)) return
     }
     // 換帳號途中不准開始：畫面上的任務還是上一個人的
     if (getDataOwner() !== ownerRef.current) {

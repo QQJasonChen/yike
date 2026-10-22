@@ -53,12 +53,22 @@ describe('FocusTimer 放棄', () => {
     vi.spyOn(window, 'confirm').mockImplementation(() => {
       // 另一個分頁：T1 完成、開了 T3 → 寫進 ppl:timer。這個分頁的 React prop 還是 T1
       //（原生 confirm 阻塞期間 storage 事件沒處理），所以只能靠讀磁碟
-      localStorage.setItem('ppl:timer', JSON.stringify(base('T3')))
+      localStorage.setItem('ppl:timer', JSON.stringify({ ...base('T3'), startedAt: Date.now() }))
       return true
     })
     act(() => btn!.click())
     expect(onAbandon).not.toHaveBeenCalled()
     expect(onUpdate).not.toHaveBeenCalledWith(null)
+  })
+
+  it('配額滿、ppl:timer 根本沒存成 → 還是能放棄（第 7 輪 #1）', () => {
+    const onUpdate = vi.fn()
+    const onAbandon = vi.fn()
+    render(base('T1'), onUpdate, onAbandon) // 不寫 ppl:timer
+    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+    act(() => stopButton()!.click())
+    expect(onAbandon).toHaveBeenCalledWith(0)
+    expect(onUpdate).toHaveBeenCalledWith(null)
   })
 
   it('沒被換掉 → 照常放棄', () => {

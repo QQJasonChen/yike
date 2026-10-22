@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it } from 'vitest'
-import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday } from '../focusSession'
+import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
@@ -233,5 +233,29 @@ describe('換帳號時上一個人還有草稿', () => {
     expect(hasUnsavedDrafts()).toBe(false) // 現在的主人沒有
     expect(hasUnsavedDraftsFor(BOB)).toBe(true) // 上一個人有 → App 不能把 ownerRef 換成 Alice
     clearUnsavedDrafts()
+  })
+})
+
+describe('確認框回來之後，閉包裡那段還算數嗎（supersededOnDisk）', () => {
+  // loadTimer 會把「到點超過一小時」的計時當作沒收尾丟掉，所以 fixture 要用現在附近的時間
+  const NOW = Date.now()
+  const seg = (id: string, offsetMs: number, phase: 'focus' | 'break' = 'focus') => ({
+    id, startedAt: NOW + offsetMs, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + offsetMs + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('磁碟上沒有（配額滿存不進去）→ 不算被取代，還能放棄', () => {
+    expect(supersededOnDisk(seg('T1', -1000))).toBe(false)
+  })
+  it('磁碟上是比我舊的殘影 → 不算', () => {
+    localStorage.setItem('ppl:timer', JSON.stringify(seg('T0', -5000)))
+    expect(supersededOnDisk(seg('T1', -1000))).toBe(false)
+  })
+  it('另一分頁開了更新的一段 → 被取代', () => {
+    localStorage.setItem('ppl:timer', JSON.stringify(seg('T2', 0)))
+    expect(supersededOnDisk(seg('T1', -1000))).toBe(true)
+  })
+  it('同一段但另一分頁已把它完成（進入休息）→ 被取代', () => {
+    localStorage.setItem('ppl:timer', JSON.stringify(seg('T1', -1000, 'break')))
+    expect(supersededOnDisk(seg('T1', -1000))).toBe(true)
   })
 })

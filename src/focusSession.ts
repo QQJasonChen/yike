@@ -105,6 +105,17 @@ export const saveTimer = (t: PersistedTimer | null) => {
 }
 
 
+/** 確認框（放棄／重新開始）回來之後，閉包裡的那段還算數嗎？
+ *  只有當磁碟上有一份**更新**的計時（另一個分頁開了新段，或同一段已經進入別的階段）才算被取代。
+ *  磁碟上沒有、或是比閉包那段還舊（配額滿時 saveTimer 存不進去，留著上一段）→ 不算：
+ *  否則儲存空間一滿，開始的專注就再也放棄不了（Codex 第 7 輪 #1）。 */
+export const supersededOnDisk = (mine: { id?: string; startedAt: number; phase: string }): boolean => {
+  const disk = loadTimer()
+  if (!disk || !disk.id || !mine.id) return false
+  if (disk.id === mine.id) return disk.phase !== mine.phase // 同一段但階段變了（另一分頁完成了它）
+  return disk.startedAt > mine.startedAt // 別的分頁開了更新的一段；比我舊的是存失敗留下的殘影
+}
+
 const DONE_KEY = 'ppl:timerDone'
 export const newTimerId = (): string => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
 
