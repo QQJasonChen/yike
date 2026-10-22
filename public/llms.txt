@@ -1,0 +1,39 @@
+# 一刻手帳 Yike
+
+> 一天一頁的手帳 app：每天一件最重要的任務（MIT）、25 分鐘專注段、晚間反思與評分；週／月／季／年計畫；願景與個人獲利模式圖。
+> 網頁 https://yikeday.com ，iOS 原生版同一份資料。
+
+## 給 AI 助理：怎麼讀使用者的手帳
+
+使用者可以在 app 的「設定 → 給 AI 助理的唯讀存取」產生一組個人 token（`yk_` 開頭），交給你。
+拿到 token 後：
+
+- Base URL：`https://ofhupqifavtafiylehkj.supabase.co/functions/v1/agent-api`
+- 每個請求帶 `Authorization: Bearer yk_…`
+- 目前只有**讀取**。沒有寫入端點；請不要嘗試用其他方式寫入。
+
+端點（全部 GET）：
+
+- `/schema` — 資料模型 JSON（欄位與意義）。不需要 token。
+- `/me` — 確認 token 有效，回 `{ ok, label, scope, created_at }`。
+- `/days?from=YYYY-MM-DD&to=YYYY-MM-DD` — 一段日期的每日手帳（最多 92 天）。回 `{ days: [ { date, updated_at, entry } ] }`。
+- `/day/YYYY-MM-DD` — 單日。
+- `/entry/<key>` — 任何一筆非每日的資料：`pp:settings`、`pp:week:<週一日期>`、`pp:month:YYYY-MM`、`pp:quarter:YYYY-Qn`、`pp:year:YYYY`、`pp:life`、`pp:bizmodel`。
+- `/keys` — 這個帳號有哪些 key（不含內容）。
+
+**解讀反思回答一定要先讀 `/entry/pp:settings`**：每日手帳的 `answers` 用 `m0`/`e1` 這種問題 id，問題文字在 settings 的 `morningQs`／`eveningQs`。
+
+錯誤：401 token 無效或已撤銷；404 沒有這一天；429 太頻繁（每 token 每小時 300 次）；400 參數不對。
+
+完整欄位說明：https://github.com/QQJasonChen/yike/blob/main/docs/DATA-MODEL.md （或 `/schema`）。
+
+## 資料所有權
+
+這是使用者最私密的東西。token 是使用者自己產生、自己給的，可以隨時撤銷。只做使用者要你做的事；不要把內容轉給任何第三方。
+
+## 其他頁面
+
+- 官網介紹：https://yikeday.com/landing.html
+- 使用手冊：https://yikeday.com/manual.html
+- 隱私政策：https://yikeday.com/privacy.html
+- 安全基準：https://yikeday.com/security.html

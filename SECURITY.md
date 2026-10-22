@@ -53,6 +53,17 @@ quota tables／functions 不允許一般使用者修改；journal accepted rows 
 
 備份包含 journal、entitlements、license ledger 與指定 Auth 身分 metadata；**不含 Auth 密碼、OAuth／MFA 設定、登入 sessions 或整套 Supabase 系統資料**。現有帳號的 UID／Email 必須核對；跨專案還原需獨立身分證據，不可只憑相同 Email 猜歸屬。尚未同步的純本機資料，伺服器備份不到。
 
+## 給 AI 助理的唯讀 API（2026-10-22 新增的攻擊面）
+
+- 端點 `functions/v1/agent-api`，`verify_jwt=false`，自己驗 `yk_` token（只存 sha256 hash）。
+- **只有 GET**。寫入沒開：寫入必須走同步協定（client_id／base_updated_at），否則會蓋掉手機上剛打的字。
+- 每一條查詢都帶 `user_id=eq.<token 主人>`；RLS 保證使用者只看得到自己的 token 列。
+- 讀取是**白名單**（`logic.ts` 的 `isReadableKey`）：`pp:day/week/month/quarter/year/life/bizmodel/settings`。
+  `pp:sync`、`pp:integrations`、`pp:bk:*`、`pp:meta`、`ppl:*` 一律拿不到，`deno test` 釘住。
+- 節流：每 token 300/h、每 IP 600/h，fail-closed。
+- 不變條件 12：**agent API 回應裡絕不能出現不在白名單的 key**。
+- 使用者視角：token 自己產生、明文只顯示一次、隨時可撤銷；隱私政策六之一明講內容會送去第三方。
+
 ## 已知限制與發版閘門
 
 - **不是 E2EE。** 雲端 journal 可由具有適當權限的營運者讀取；TLS 與備份加密不能改稱「只有本人能看」。本機匯出通常是明文，使用者須自行保管。
