@@ -96,6 +96,9 @@ export default function App() {
   const [ownerChanged, setOwnerChanged] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
   const [timer, setTimer] = useState<TimerState | null>(loadTimer)
+  // 本地操作（開始／暫停／恢復／進休息／結束）走這個：版本 +1，讓同一段的落盤只准較新的贏。
+  // 從 storage 事件收進來的、owner 變更的清空走原本的 setTimer，不加版本。
+  const setTimerLocal = (t: TimerState | null) => setTimer(t ? { ...t, rev: (t.rev ?? 0) + 1 } : null)
   const [showSettings, setShowSettings] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -328,7 +331,7 @@ export default function App() {
     taskIndex = r.index
     setDateKey(todayKey)
     const ms = settings.focusMinutes * 60_000
-    setTimer({
+    setTimerLocal({
       id: newTimerId(),
       dateKey: todayKey,
       taskIndex,
@@ -571,7 +574,7 @@ export default function App() {
       {timer && (
         <FocusTimer
           timer={timer}
-          onUpdate={setTimer}
+          onUpdate={setTimerLocal}
           breakMinutes={settings.breakMinutes}
           focusMinutes={settings.focusMinutes}
           autoLoop={settings.autoLoop}

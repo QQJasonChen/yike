@@ -301,3 +301,26 @@ describe('落盤的舊 effect 不能把別人的新計時蓋回去', () => {
     expect(JSON.parse(localStorage.getItem('ppl:timer')!).pausedRemaining).toBe(999)
   })
 })
+
+describe('同一段的版本：落盤只准較新的贏；從沒落盤過就不刪', () => {
+  const NOW4 = Date.now()
+  const seg4 = (id: string, rev: number, extra: Partial<{ pausedRemaining: number | null }> = {}) => ({
+    id, owner: BOB, rev, startedAt: NOW4 - 60_000, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW4 + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000, ...extra,
+  })
+  it('B 恢復（rev 3）已落盤 → A 的舊 effect 寫暫停（rev 2）→ 磁碟仍是恢復', () => {
+    saveTimer(seg4('T1', 3))
+    saveTimer(seg4('T1', 2, { pausedRemaining: 999 }))
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).pausedRemaining).toBeNull()
+  })
+  it('較新的版本照寫', () => {
+    saveTimer(seg4('T1', 2))
+    saveTimer(seg4('T1', 3, { pausedRemaining: 999 }))
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).pausedRemaining).toBe(999)
+  })
+  it('A 開啟時沒計時（prevId undefined）→ saveTimer(null) 不會刪掉 B 剛開的', () => {
+    saveTimer(seg4('bob', 1))
+    saveTimer(null, undefined)
+    expect(localStorage.getItem('ppl:timer')).not.toBeNull()
+  })
+})

@@ -17,6 +17,8 @@ declare global {
 export interface TimerState {
   /** 這一段計時的身分：跨分頁去重用（兩個分頁各自到點各自記 → 記兩次） */
   id?: string
+  /** 版本：本地每次操作 +1；同一段的落盤只准較新的贏（見 focusSession.saveTimer） */
+  rev?: number
   /** 這段專注屬於哪一天。少了它，完成時只能猜「今天」——跨午夜、或計時中翻到別的日期，
    *  格數與時間塊就會記到錯的那一天。 */
   dateKey?: string

@@ -67,6 +67,10 @@ const ensureRow = (tasks: Task[], at: number, taskId: string | undefined, text: 
 /** 計時狀態（跟 FocusTimer 的 TimerState 同形狀；放這裡避免 FocusTimer ↔ focusSession 互相 import） */
 export interface PersistedTimer {
   id?: string
+  /** 這一段的版本：本地每一次操作（暫停／恢復／進休息）+1，從 storage 事件收進來的不加。
+   *  同一段的落盤只准版本較新的贏——A 收到「暫停」還沒落盤、B 已「恢復」存進去，
+   *  A 的舊 effect 不能再把暫停寫回去（Codex 第 10 輪 #2）。 */
+  rev?: number
   dateKey?: string
   taskIndex: number
   taskId?: string
@@ -102,13 +106,19 @@ export const saveTimer = (t: PersistedTimer | null, prevId?: string) => {
       // A 的舊 effect 再寫就把 T2 蓋回 T1，B 收到 storage 事件後 T2 消失（Codex 第 9 輪）。
       // 磁碟上是更新的一段就不寫；A 隨後會從 storage 事件拿到 T2。
       if (supersededOnDisk(t)) return
+      // 同一段：版本較舊的不准寫（暫停 vs 恢復這種同段交錯）
+      const disk = loadTimer()
+      if (disk && disk.id && disk.id === t.id && (disk.rev ?? 0) > (t.rev ?? 0)) return
       localStorage.setItem(TIMER_KEY, next)
     } else {
       // 清掉磁碟上的計時只准清「自己剛才那一段」。舊帳號的分頁被 owner-change-blocked 擋下時
       // 會把本地 timer 設成 null；這時磁碟上可能已經是新帳號在另一分頁開的計時，
       // 不比對 id 就把人家的整段刪掉（Codex 第 8 輪 #1）。
+      // 從來沒落盤過自己的計時（prevId 沒值）就什麼都不刪：A 開啟時沒計時、首次 effect 還沒跑，
+      // B 已經開了新段存進去，A 的 saveTimer(null, undefined) 不能把它刪掉（Codex 第 10 輪 #1）
+      if (!prevId) return
       const disk = loadTimer()
-      if (disk && disk.id && prevId && disk.id !== prevId) return
+      if (disk && disk.id && disk.id !== prevId) return
       localStorage.removeItem(TIMER_KEY)
     }
   } catch {
