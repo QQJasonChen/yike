@@ -696,3 +696,20 @@ describe('Codex 第 23 輪', () => {
     expect(await saveTimer(null, mk('T1', 'focus', 1))).toBe('rejected')
   })
 })
+
+describe('Codex 第 24 輪：蓋掉別的分頁的舊段也要留墓碑', () => {
+  const NOW = Date.now()
+  const mk = (id: string, offset: number) => ({
+    id, owner: BOB, startedAt: NOW + offset, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + offset + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('autoLoop 兩頁各生一段：T2A 先落盤、較新的 T2B（prev=T1）蓋掉它 → T2A 進墓碑，A 的過期放棄被擋', async () => {
+    saveTimer(mk('T2A', 0))
+    expect(await saveTimer(mk('T2B', 1000), mk('T1', -30 * 60_000))).toBe('written')
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('T2B')
+    expect(isTimerEnded('T2A')).toBe(true)
+    // B 提前完成、結束休息、清空磁碟；A 的確認框這時才回來
+    saveTimer(null, mk('T2B', 1000))
+    expect(supersededOnDisk(mk('T2A', 0))).toBe(true)
+  })
+})

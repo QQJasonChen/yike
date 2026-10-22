@@ -141,22 +141,24 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null):
       // 要換掉的那段磁碟上已經走到休息（另一分頁在我確認的空檔提前完成了它）：過期的確認
       // 不准中斷它的休息——跟清除分支同一條鎖內規則（Codex 第 22 輪 #1）
       if (replacingOwn && prev!.phase === 'focus' && disk0!.phase === 'break') return 'rejected'
-      if (replacingOwn) {
-        // 墓碑立不起來（配額滿）就先把要換掉的那段刪了騰空間再立：否則 T2 寫進去、T1 沒墓碑，
-        // 別的分頁對 T1 的過期放棄會把較舊的 T2 當殘影刪掉（Codex 第 21 輪）
-        if (!markEnded(prev.id!)) {
-          localStorage.removeItem(TIMER_KEY)
-          ensureEnded([prev.id!])
-        }
-      } else if (supersededOnDisk(t)) return 'rejected'
+      if (!replacingOwn && supersededOnDisk(t)) return 'rejected'
       if (t.id && endedIds().includes(t.id)) return 'rejected' // 這段已經被別的分頁結束了，不准復活
       // 寫入當下再核對一次主人：A 暫停的落盤排在鎖後面，等它拿到鎖時另一分頁已經換成 B、
       // 把 ppl:timer 刪了，磁碟空白又沒墓碑，前面的檢查全放行 → A 的任務文字寫回 B 的裝置
       //（Codex 第 16 輪 #1）。主人換了就不寫。
       if (!ownedByCurrent(t)) return 'rejected'
       // 同一段：版本較舊的不准寫（暫停 vs 恢復這種同段交錯）
-      const disk = readDiskTimer()
-      if (disk && disk.id && disk.id === t.id && (disk.rev ?? 0) > (t.rev ?? 0)) return 'rejected'
+      if (disk0 && disk0.id && disk0.id === t.id && (disk0.rev ?? 0) > (t.rev ?? 0)) return 'rejected'
+      // 蓋掉磁碟上另一段——不管是我確認要換的 prev，還是別的分頁留下的較舊段（autoLoop 兩頁各生一段、
+      // 我的較新）——都先替它留墓碑：否則那段的分頁等確認框回來時磁碟已空、它沒進墓碑，
+      // supersededOnDisk 放行，多記一次放棄（Codex 第 24 輪）。
+      // 墓碑立不起來（配額滿）就先把要換掉的那段刪了騰空間再立（Codex 第 21 輪）
+      if (disk0?.id && disk0.id !== t.id) {
+        if (!markEnded(disk0.id)) {
+          localStorage.removeItem(TIMER_KEY)
+          ensureEnded([disk0.id])
+        }
+      }
       localStorage.setItem(TIMER_KEY, next)
       return 'written'
     } else {
