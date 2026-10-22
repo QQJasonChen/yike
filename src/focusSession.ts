@@ -8,10 +8,12 @@
 //      84 分鐘。改用計時器自己的 endsAt（由 App 傳入）。
 // 一段專注屬於「按下開始的那一天」，跟畫面上正在看哪一天無關。
 //
-// owner 守衛對齊 useStoredEntry 的 canWrite：按下開始時記下資料主人，完成時不一樣
-//（另一個分頁換了帳號）就不寫，否則上一個人的任務會被記進新帳號的今天。
+// 寫入走 useStoredEntry 的 editStoredKey：跟畫面上的編輯同一套 owner 守衛與草稿機制。
+// 直接 saveDay 會繞過兩件事——①另一個分頁換了帳號後替上一個人寫進新帳號的今天；
+// ②配額滿時畫面留著的草稿，下次存檔整頁寫回會把剛記的格數抹掉（Codex 第 1 輪 #1/#2）。
 import { syncGrove } from './plantCells'
 import { getDataOwner, loadDay, saveDay } from './storage'
+import { editStoredKey } from './useStoredEntry'
 
 export interface FocusSession {
   dateKey: string
@@ -19,7 +21,7 @@ export interface FocusSession {
   /** 有 id 就以 id 為準：計時中如果使用者插入/刪除了一列，index 已經指到別人身上；
    *  今天有兩列同名任務時，文字也分不出來。 */
   taskId?: string
-  /** 按下開始時這台裝置的資料主人（undefined＝不檢查，給舊的計時狀態用） */
+  /** 按下開始時這台裝置的資料主人。舊的計時狀態沒有這欄 → 當成「現在的主人」。 */
   owner?: string | null
   taskText: string
   startMs: number
@@ -32,8 +34,8 @@ const toMin = (ms: number) => {
   return d.getHours() * 60 + d.getMinutes()
 }
 
-const ownerStillSame = (owner: string | null | undefined): boolean =>
-  owner === undefined || getDataOwner() === owner
+const expected = (owner: string | null | undefined): string | null =>
+  owner === undefined ? getDataOwner() : owner
 
 /** 這段專注／放棄要記在哪一列？id 優先，退回 index。 */
 const locate = (tasks: { id?: string }[], taskId: string | undefined, index: number): number => {
@@ -44,42 +46,60 @@ const locate = (tasks: { id?: string }[], taskId: string | undefined, index: num
   return index
 }
 
-const announce = (dateKey: string) => {
-  // DayView 聽 external-day-change（date）；週/月等期間檢視與 useStoredEntry 聽 external-key-change（key）
-  window.dispatchEvent(new CustomEvent('yike:external-day-change', { detail: { date: dateKey } }))
-  window.dispatchEvent(new CustomEvent('yike:external-key-change', { detail: { key: `pp:day:${dateKey}` } }))
+/** 同一段計時只准記一次。兩個分頁都還原了同一個 ppl:timer，各自到點各自呼叫記錄，
+ *  同一段時間就會累加兩格（Codex 第 1 輪 #3）。先搶到 ppl:timerDone 的才記。 */
+const DONE_KEY = 'ppl:timerDone'
+export const claimTimerCompletion = (timerId: string | undefined): boolean => {
+  if (!timerId) return true // 舊的計時狀態沒有 id：照舊
+  try {
+    if (localStorage.getItem(DONE_KEY) === timerId) return false
+    localStorage.setItem(DONE_KEY, timerId)
+    return true
+  } catch {
+    return true // 存不進去就寧可記（重複總比不記好）
+  }
 }
 
+/** editStoredKey 成功時已發 external-key-change；DayView 另外聽 external-day-change（date） */
+const announceDay = (dateKey: string) =>
+  window.dispatchEvent(new CustomEvent('yike:external-day-change', { detail: { date: dateKey } }))
+
 export const recordFocusSession = (s: FocusSession): boolean => {
-  if (!ownerStillSame(s.owner)) return false
-  const prev = loadDay(s.dateKey)
-  const tasks = prev.tasks.slice()
-  const at = locate(tasks, s.taskId, s.taskIndex)
-  const t = tasks[at]
-  if (t) {
-    const done = Math.min(t.done + 1, 16)
-    tasks[at] = { ...t, done, actual: done, grove: syncGrove(t.grove, done, s.focusMinutes) }
-  }
-  // 真實起訖 → 分鐘（夾在時間軸 06:00–23:00 範圍內，最短 15 分鐘）
-  const bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, toMin(s.startMs)))
-  const bEnd = Math.max(bStart + 15, Math.min(23 * 60, toMin(s.endMs)))
-  const blocks = prev.blocks.slice()
-  // 同任務、上一塊結尾相距 ≤6 分鐘 → 直接接長（連續番茄變一條）
-  const tail = blocks.filter((b) => b.taskIndex === at).sort((x, y) => y.end - x.end)[0]
-  if (tail && Math.abs(bStart - tail.end) <= 6) {
-    tail.end = bEnd
-  } else {
-    blocks.push({
-      id: `f${Date.now().toString(36)}`,
-      start: bStart,
-      end: bEnd,
-      text: t?.text ?? s.taskText ?? '專注',
-      taskIndex: at,
-    })
-  }
-  // 存不下就不要慶祝：配額滿時原本鈴響、動畫跑、進入休息，那 25 分鐘一格都沒記
-  const ok = saveDay(s.dateKey, { ...prev, tasks, blocks })
-  announce(s.dateKey)
+  const key = `pp:day:${s.dateKey}`
+  const ok = editStoredKey<ReturnType<typeof loadDay>>(
+    key,
+    () => loadDay(s.dateKey),
+    (v) => saveDay(s.dateKey, v),
+    (prev) => {
+      const tasks = prev.tasks.slice()
+      const at = locate(tasks, s.taskId, s.taskIndex)
+      const t = tasks[at]
+      if (t) {
+        const done = Math.min(t.done + 1, 16)
+        tasks[at] = { ...t, done, actual: done, grove: syncGrove(t.grove, done, s.focusMinutes) }
+      }
+      // 真實起訖 → 分鐘（夾在時間軸 06:00–23:00 範圍內，最短 15 分鐘）
+      const bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, toMin(s.startMs)))
+      const bEnd = Math.max(bStart + 15, Math.min(23 * 60, toMin(s.endMs)))
+      const blocks = prev.blocks.slice()
+      // 同任務、上一塊結尾相距 ≤6 分鐘 → 直接接長（連續番茄變一條）
+      const tail = blocks.filter((b) => b.taskIndex === at).sort((x, y) => y.end - x.end)[0]
+      if (tail && Math.abs(bStart - tail.end) <= 6) {
+        tail.end = bEnd
+      } else {
+        blocks.push({
+          id: `f${Date.now().toString(36)}`,
+          start: bStart,
+          end: bEnd,
+          text: t?.text ?? s.taskText ?? '專注',
+          taskIndex: at,
+        })
+      }
+      return { ...prev, tasks, blocks }
+    },
+    expected(s.owner)
+  )
+  announceDay(s.dateKey)
   return ok
 }
 
@@ -90,14 +110,20 @@ export const recordAbandon = (
   taskId?: string,
   owner?: string | null
 ): boolean => {
-  if (!ownerStillSame(owner)) return false
-  const prev = loadDay(dateKey)
-  const tasks = prev.tasks.slice()
-  const at = locate(tasks, taskId, taskIndex)
-  const t = tasks[at]
-  if (!t) return true
-  tasks[at] = { ...t, withered: (t.withered ?? 0) + 1 }
-  const ok = saveDay(dateKey, { ...prev, tasks })
-  announce(dateKey)
+  const ok = editStoredKey<ReturnType<typeof loadDay>>(
+    `pp:day:${dateKey}`,
+    () => loadDay(dateKey),
+    (v) => saveDay(dateKey, v),
+    (prev) => {
+      const tasks = prev.tasks.slice()
+      const at = locate(tasks, taskId, taskIndex)
+      const t = tasks[at]
+      if (!t) return prev
+      tasks[at] = { ...t, withered: (t.withered ?? 0) + 1 }
+      return { ...prev, tasks }
+    },
+    expected(owner)
+  )
+  announceDay(dateKey)
   return ok
 }

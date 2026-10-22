@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { recordAbandon, recordFocusSession } from './focusSession'
+import { claimTimerCompletion, recordAbandon, recordFocusSession } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
+import { editStoredKey } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
 import { useCloudAuthStatus } from './useCloudAuthStatus'
 import DayView from './DayView'
@@ -99,7 +100,9 @@ const loadTimer = (): TimerState | null => {
 }
 const saveTimer = (t: TimerState | null) => {
   try {
-    if (t) localStorage.setItem(TIMER_KEY, JSON.stringify(t))
+    const next = t ? JSON.stringify(t) : null
+    if (localStorage.getItem(TIMER_KEY) === next) return // 另一個分頁寫的同一份：不要再寫回去（乒乓）
+    if (next) localStorage.setItem(TIMER_KEY, next)
     else localStorage.removeItem(TIMER_KEY)
   } catch {
     /* 配額滿：計時照跑，只是被殺後救不回來 */
@@ -137,6 +140,10 @@ export default function App() {
     window.addEventListener('yike:sync-status', onStatus)
     return () => window.removeEventListener('yike:sync-status', onStatus)
   }, [])
+  // startFocus 用的 owner 基準：跟 useStoredEntry 一樣在 mount 時記下、只在本地登入流程
+  // 發 local-owner-ready 時更新。換帳號途中（owner 已改、畫面還是上一個人的）按 ▶，
+  // 原本會把 A 的任務文字寫進 B 的今天、而且 timer.owner 記成 B 讓後面的守衛也放行（Codex #1）。
+  const ownerRef = useRef<string | null>(getDataOwner())
   useEffect(() => {
     const stop = () => {
       stopAutoSync()
@@ -145,7 +152,7 @@ export default function App() {
       setOwnerChanged(true)
     }
     const unwatch = watchOwnerChange(stop)
-    const ready = () => { setTimer(null); focusLock.stop() }
+    const ready = () => { ownerRef.current = getDataOwner(); setTimer(null); focusLock.stop() }
     window.addEventListener('yike:owner-change-blocked', stop)
     window.addEventListener('yike:local-owner-ready', ready)
     return () => {
@@ -153,6 +160,14 @@ export default function App() {
       window.removeEventListener('yike:owner-change-blocked', stop)
       window.removeEventListener('yike:local-owner-ready', ready)
     }
+  }, [])
+  // 另一個分頁改了計時狀態（提前完成、暫停、放棄）→ 這邊跟著換，不要各算各的到點各記一次
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === TIMER_KEY || e.key === null) setTimer(loadTimer())
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
   // widget 桌面「✏️ 寫下」→ 開到今天並聚焦最重要任務輸入框
@@ -291,20 +306,35 @@ export default function App() {
       )
         return
     }
+    // 換帳號途中不准開始：畫面上的任務還是上一個人的
+    if (getDataOwner() !== ownerRef.current) {
+      window.dispatchEvent(new Event('yike:owner-change-blocked'))
+      return
+    }
     // 計時永遠記在「今天」的頁面上——所以任務也必須在「今天」定位一次。
     // 原本直接把畫面上的 index 帶進今天：在昨天的第 3 列按 ▶，完成後那 25 分鐘會塗到
     // 今天的第 3 列（可能是完全不同的任務或空白列）。
-    const today = loadDay(todayKey)
-    const r = resolveTaskForToday(today, taskIndex, taskText, taskId)
-    if (r.changed) saveDay(todayKey, { ...today, tasks: r.tasks })
+    // 寫入走 editStoredKey：跟畫面編輯同一套 owner 守衛與草稿基準。
+    const r = resolveTaskForToday(loadDay(todayKey), taskIndex, taskText, taskId)
+    if (r.changed) {
+      const written = editStoredKey(
+        `pp:day:${todayKey}`,
+        () => loadDay(todayKey),
+        (v) => saveDay(todayKey, v),
+        (base) => ({ ...base, tasks: r.tasks }),
+        ownerRef.current
+      )
+      if (!written) return
+    }
     taskIndex = r.index
     setDateKey(todayKey)
     const ms = settings.focusMinutes * 60_000
     setTimer({
+      id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
       dateKey: todayKey,
       taskIndex,
       taskId: r.taskId,
-      owner: getDataOwner(),
+      owner: ownerRef.current,
       taskText,
       phase: 'focus',
       totalMs: ms,
@@ -551,6 +581,7 @@ export default function App() {
             // 直接寫進「這段計時所屬的那一天」，不經由 DayView 註冊的 callback。
             // 使用者切到週/月分頁時 DayView 沒 mount，那個 callback 是 null——
             // 鈴響了、慶祝了，一格都沒記到。
+            if (!claimTimerCompletion(timer.id)) return // 另一個分頁已經記過這一段
             const ok = recordFocusSession({
               dateKey: timer.dateKey ?? todayKey,
               taskIndex: ti,

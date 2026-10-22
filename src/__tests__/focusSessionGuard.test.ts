@@ -1,6 +1,7 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it } from 'vitest'
-import { recordAbandon, recordFocusSession } from '../focusSession'
+import { claimTimerCompletion, recordAbandon, recordFocusSession } from '../focusSession'
+import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
 
@@ -22,6 +23,7 @@ const session = (extra: Partial<Parameters<typeof recordFocusSession>[0]> = {}) 
 
 beforeEach(() => {
   localStorage.clear()
+  clearUnsavedDrafts()
   setDataOwner(BOB)
 })
 
@@ -65,5 +67,66 @@ describe('owner 守衛（對齊 useStoredEntry.canWrite）', () => {
     saveDay('2026-09-03', day('x'))
     expect(session({ owner: undefined })).toBe(true)
     expect(loadDay('2026-09-03').tasks[0].done).toBe(1)
+  })
+})
+
+describe('跟畫面編輯同一套草稿機制（editStoredKey）', () => {
+  it('畫面有存不進去的草稿 → 專注結果疊在草稿上，不把草稿蓋掉', () => {
+    saveDay('2026-09-03', day('原本的'))
+    // 模擬畫面編輯存失敗（配額滿）→ 草稿留在記憶體
+    const orig = Storage.prototype.setItem
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (k === 'pp:day:2026-09-03') throw new DOMException('quota', 'QuotaExceededError')
+      return orig.call(this, k, v)
+    }
+    let okDraft: boolean
+    try {
+      okDraft = editStoredKey(
+        'pp:day:2026-09-03',
+        () => loadDay('2026-09-03'),
+        (v) => saveDay('2026-09-03', v),
+        (b) => ({ ...b, tasks: [{ ...b.tasks[0], text: '草稿改的名字' }] }),
+        BOB
+      )
+    } finally {
+      Storage.prototype.setItem = orig
+    }
+    expect(okDraft).toBe(false)
+    expect(hasUnsavedDrafts()).toBe(true)
+    // 空間釋放後計時完成：結果要包含草稿的內容，而不是用 storage 的舊版當基準
+    expect(session()).toBe(true)
+    const after = loadDay('2026-09-03')
+    expect(after.tasks[0].text).toBe('草稿改的名字')
+    expect(after.tasks[0].done).toBe(1)
+    expect(hasUnsavedDrafts()).toBe(false)
+    clearUnsavedDrafts()
+  })
+
+  it('專注結果存不下 → 進草稿等下次成功存檔一起帶上，不是鈴響了一格都沒記', () => {
+    saveDay('2026-09-03', day('x'))
+    const orig = Storage.prototype.setItem
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (k === 'pp:day:2026-09-03') throw new DOMException('quota', 'QuotaExceededError')
+      return orig.call(this, k, v)
+    }
+    try {
+      expect(session()).toBe(false)
+    } finally {
+      Storage.prototype.setItem = orig
+    }
+    expect(hasUnsavedDrafts()).toBe(true)
+    // 下一次任何成功的編輯會把草稿（含那一格）寫回去
+    editStoredKey('pp:day:2026-09-03', () => loadDay('2026-09-03'), (v) => saveDay('2026-09-03', v), (b) => b, BOB)
+    expect(loadDay('2026-09-03').tasks[0].done).toBe(1)
+    clearUnsavedDrafts()
+  })
+})
+
+describe('跨分頁只記一次', () => {
+  it('同一個 timer id 第二次認領失敗；不同 id 各自可以', () => {
+    expect(claimTimerCompletion('t1')).toBe(true)
+    expect(claimTimerCompletion('t1')).toBe(false)
+    expect(claimTimerCompletion('t2')).toBe(true)
+    expect(claimTimerCompletion(undefined)).toBe(true) // 舊計時狀態沒 id：照舊
   })
 })

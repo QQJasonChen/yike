@@ -178,6 +178,11 @@ textarea::placeholder {
     inset: 0;
     z-index: 63; /* 必須高於 .timer-bar(62)，否則「更多」選單被計時器蓋住 */
   }
+  /* .tab-more 是 .tab-bar 的子孫，困在 tab-bar 的 stacking context（60）裡——自己寫 64 也翻不過
+     外面 62 的計時器。選單開著時把整個 tab-bar 抬到計時器上面（Codex：疊層巢狀）。 */
+  .tab-bar:has(.tab-more) {
+    z-index: 66;
+  }
   .tab-more {
     position: fixed;
     right: 8px;
@@ -5246,6 +5251,7 @@ button.mc-month:disabled { cursor: default; }
   }
   .plant-cell::after {
     width: 36px; /* 小苗右邊緊接「−」（中心距約 40），44 會咬到它 4px */
+    height: 30px; /* 種樹換行時列距只有 26+3；44 高會讓第二行蓋住第一行可見區的下緣 */
   }
   .cloud-badge::after,
   .habit-chip::after {

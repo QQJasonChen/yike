@@ -95,7 +95,7 @@ const probe = () => page.evaluate(() => {
     if (b.el.tagName === 'A' && getComputedStyle(b.el).display === 'inline') continue
     const w = b.right - b.left
     const h = b.bottom - b.top
-    if (Math.max(w, h) < 44 || Math.min(w, h) < 34) small.push(`${b.id} ${Math.round(w)}×${Math.round(h)}`)
+    if (Math.max(w, h) < 44 || Math.min(w, h) < 30) small.push(`${b.id} ${Math.round(w)}×${Math.round(h)}`)
   }
   if (small.length) fails.push(`命中區太小（${small.length} 個）：${small.join('；')}`)
   for (let i = 0; i < tapBoxes.length; i++)
@@ -140,6 +140,30 @@ const probe = () => page.evaluate(() => {
   above('tabMore', 'timerBar', '「更多」選單跟計時器的 bottom 幾乎相同，一定會重疊')
   above('tabMoreBackdrop', 'timerBar', '同上')
   above('settings', 'timerBar', '計時中打開設定，計時器會浮在面板上面')
+  // 數字比完還要量真的：.tab-more 是 .tab-bar 的子孫，困在 tab-bar 的 stacking context 裡，
+  // 自己的數字再大也翻不過外面的計時器。注入一個假計時器，開「更多」，看重疊處誰接到點擊。
+  const moreBtn = document.querySelector('.tab-bar > button:nth-child(5)')
+  if (moreBtn) {
+    const fake = document.createElement('div')
+    fake.className = 'timer-bar'
+    fake.setAttribute('data-probe-fake', '1')
+    fake.style.cssText = 'position:fixed;left:0;right:0;height:60px;background:red;'
+    document.body.appendChild(fake)
+    ;moreBtn.click()
+    const menu = document.querySelector('.tab-more')
+    if (menu) {
+      const m = menu.getBoundingClientRect()
+      const f = fake.getBoundingClientRect()
+      const ox = Math.min(m.right, f.right) - Math.max(m.left, f.left)
+      const oy = Math.min(m.bottom, f.bottom) - Math.max(m.top, f.top)
+      if (ox > 2 && oy > 2) {
+        const hit = document.elementFromPoint(Math.max(m.left, f.left) + ox / 2, Math.max(m.top, f.top) + oy / 2)
+        if (!menu.contains(hit)) fails.push('「更多」選單跟計時器重疊處，點到的是計時器——選單困在 tab-bar 的 stacking context 裡')
+      }
+    } else fails.push('按了「更多」但 .tab-more 沒出現，疊層實測跳過')
+    fake.remove()
+    document.querySelector('.tab-more-backdrop')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  }
   above('focusToast', 'timerBar', '慶祝提示不能被計時器蓋掉')
   above('saveFailed', 'settings', '「沒存進去」是資料要不見的通知，必須在最上面')
 

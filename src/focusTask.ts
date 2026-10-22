@@ -64,7 +64,8 @@ export const resolveTaskForToday = (
     tasks[blank] = { ...tasks[blank], id, text }
     return { tasks, index: blank, taskId: id, changed: true }
   }
-  const fresh = { ...emptyTask(), text }
+  // emptyTask() 刻意不給 id（見 types.ts），這裡追加的列一定要有，否則 timer 還原後只能靠 index
+  const fresh = { ...emptyTask(), id: newTaskId(), text }
   tasks.push(fresh)
-  return { tasks, index: tasks.length - 1, taskId: fresh.id!, changed: true }
+  return { tasks, index: tasks.length - 1, taskId: fresh.id, changed: true }
 }

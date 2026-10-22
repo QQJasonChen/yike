@@ -32,6 +32,32 @@ export const rebaseItems = <T extends { id: string }>(current: T[], before: T[],
   return result
 }
 
+/** 跟 hook 裡的 edit 同一套規則，但不綁 React state——給「畫面上那個元件可能沒 mount」的寫入用
+ *  （番茄鐘完成時使用者可能在週/月分頁）。
+ *  - 以同一個 failedDrafts 為基準：有存不進去的草稿就疊在草稿上，不會把它蓋掉；
+ *    存失敗時結果進草稿，下次成功存檔會一起帶上，不是鈴響了一格都沒記。
+ *  - owner 守衛同 canWrite：expectedOwner 是按下開始時的主人，現在不一樣就擋。 */
+export const editStoredKey = <T,>(
+  key: string,
+  load: () => T,
+  save: (value: T) => boolean,
+  change: (current: T) => T,
+  expectedOwner: string | null
+): boolean => {
+  if (getDataOwner() !== expectedOwner) {
+    window.dispatchEvent(new Event('yike:owner-change-blocked'))
+    return false
+  }
+  const id = draftId(key, expectedOwner)
+  const pending = failedDrafts.get(id) as T | undefined
+  const next = change(pending !== undefined ? pending : load())
+  const ok = save(next)
+  if (ok) failedDrafts.delete(id)
+  else failedDrafts.set(id, next)
+  if (ok) window.dispatchEvent(new CustomEvent(EXTERNAL_KEY_EVENT, { detail: { key } }))
+  return ok
+}
+
 /** Only this edit is applied to current storage; a failed local save keeps its draft. */
 export const useStoredEntry = <T,>(key: string, load: () => T, save: (value: T) => boolean) => {
   const [entry, setEntry] = useState<T>(() => (failedDrafts.get(draftId(key, getDataOwner())) as T | undefined) ?? load())
