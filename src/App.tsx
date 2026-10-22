@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { claimTimerCompletion, recordAbandon, recordFocusSession } from './focusSession'
+import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -315,22 +315,26 @@ export default function App() {
     // 原本直接把畫面上的 index 帶進今天：在昨天的第 3 列按 ▶，完成後那 25 分鐘會塗到
     // 今天的第 3 列（可能是完全不同的任務或空白列）。
     // 寫入走 editStoredKey：跟畫面編輯同一套 owner 守衛與草稿基準。
-    const r = resolveTaskForToday(loadDay(todayKey), taskIndex, taskText, taskId)
-    if (r.changed) {
-      const written = editStoredKey(
-        `pp:day:${todayKey}`,
-        () => loadDay(todayKey),
-        (v) => saveDay(todayKey, v),
-        (base) => ({ ...base, tasks: r.tasks }),
-        ownerRef.current
-      )
-      if (!written) return
-    }
+    // 解析要在 change 回呼裡依 base 做：base 可能是存不進去的草稿，先用 storage 舊版算好
+    // 再整個 tasks 覆蓋上去，會把別列的草稿丟掉（Codex 第 2 輪 #2）
+    const box: { r: ReturnType<typeof resolveTaskForToday> | null } = { r: null }
+    const written = editStoredKey(
+      `pp:day:${todayKey}`,
+      () => loadDay(todayKey),
+      (v) => saveDay(todayKey, v),
+      (base) => {
+        box.r = resolveTaskForToday(base, taskIndex, taskText, taskId)
+        return box.r.changed ? { ...base, tasks: box.r.tasks } : base
+      },
+      ownerRef.current
+    )
+    const r = box.r
+    if (!written || !r) return
     taskIndex = r.index
     setDateKey(todayKey)
     const ms = settings.focusMinutes * 60_000
     setTimer({
-      id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+      id: newTimerId(),
       dateKey: todayKey,
       taskIndex,
       taskId: r.taskId,
@@ -581,7 +585,8 @@ export default function App() {
             // 直接寫進「這段計時所屬的那一天」，不經由 DayView 註冊的 callback。
             // 使用者切到週/月分頁時 DayView 沒 mount，那個 callback 是 null——
             // 鈴響了、慶祝了，一格都沒記到。
-            if (!claimTimerCompletion(timer.id)) return // 另一個分頁已經記過這一段
+            void (async () => {
+            if (!(await claimTimerCompletion(timer.id))) return // 另一個分頁已經記過這一段
             const ok = recordFocusSession({
               dateKey: timer.dateKey ?? todayKey,
               taskIndex: ti,
@@ -594,6 +599,7 @@ export default function App() {
             })
             if (!ok) celebrate('⚠ 這段專注沒存進去——請檢查儲存空間或登入狀態')
             else celebrate(settings.focusStyle === 'tree' ? '🌲 種下一棵樹，繼續加油！' : '✓ 完成一段專注！')
+            })()
           }}
           onAbandon={(ti) => {
             if (!recordAbandon(timer.dateKey ?? todayKey, ti, timer.taskId, timer.owner))

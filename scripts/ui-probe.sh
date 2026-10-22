@@ -4,7 +4,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 PORT="${PORT:-4180}"
 npm run build >/tmp/ui-probe-build.log 2>&1 || { echo "build 失敗（/tmp/ui-probe-build.log）"; exit 1; }
-npx vite preview --port "$PORT" >/dev/null 2>&1 &
+npx vite preview --port "$PORT" --strictPort >/dev/null 2>&1 &  # 不准改用別的 port，否則探針會去驗舊的那台
 PID=$!
 trap 'kill "$PID" 2>/dev/null || true' EXIT
 for _ in $(seq 1 30); do curl -sf "http://localhost:$PORT/" >/dev/null && break; sleep 1; done

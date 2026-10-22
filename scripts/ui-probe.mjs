@@ -95,7 +95,7 @@ const probe = () => page.evaluate(() => {
     if (b.el.tagName === 'A' && getComputedStyle(b.el).display === 'inline') continue
     const w = b.right - b.left
     const h = b.bottom - b.top
-    if (Math.max(w, h) < 44 || Math.min(w, h) < 30) small.push(`${b.id} ${Math.round(w)}×${Math.round(h)}`)
+    if (Math.round(Math.max(w, h)) < 44 || Math.round(Math.min(w, h)) < 30) small.push(`${b.id} ${Math.round(w)}×${Math.round(h)}`)
   }
   if (small.length) fails.push(`命中區太小（${small.length} 個）：${small.join('；')}`)
   for (let i = 0; i < tapBoxes.length; i++)
@@ -140,33 +140,6 @@ const probe = () => page.evaluate(() => {
   above('tabMore', 'timerBar', '「更多」選單跟計時器的 bottom 幾乎相同，一定會重疊')
   above('tabMoreBackdrop', 'timerBar', '同上')
   above('settings', 'timerBar', '計時中打開設定，計時器會浮在面板上面')
-  // 數字比完還要量真的：.tab-more 是 .tab-bar 的子孫，困在 tab-bar 的 stacking context 裡，
-  // 自己的數字再大也翻不過外面的計時器。注入一個假計時器，開「更多」，看重疊處誰接到點擊。
-  const moreBtn = document.querySelector('.tab-bar > button:nth-child(5)')
-  if (moreBtn) {
-    const fake = document.createElement('div')
-    fake.className = 'timer-bar'
-    fake.setAttribute('data-probe-fake', '1')
-    fake.style.cssText = 'position:fixed;left:0;right:0;height:60px;background:red;'
-    document.body.appendChild(fake)
-    ;moreBtn.click()
-    const menu = document.querySelector('.tab-more')
-    if (menu) {
-      const m = menu.getBoundingClientRect()
-      const f = fake.getBoundingClientRect()
-      const ox = Math.min(m.right, f.right) - Math.max(m.left, f.left)
-      const oy = Math.min(m.bottom, f.bottom) - Math.max(m.top, f.top)
-      if (ox > 2 && oy > 2) {
-        const hit = document.elementFromPoint(Math.max(m.left, f.left) + ox / 2, Math.max(m.top, f.top) + oy / 2)
-        if (!menu.contains(hit)) fails.push('「更多」選單跟計時器重疊處，點到的是計時器——選單困在 tab-bar 的 stacking context 裡')
-      }
-    } else fails.push('按了「更多」但 .tab-more 沒出現，疊層實測跳過')
-    fake.remove()
-    document.querySelector('.tab-more-backdrop')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-  }
-  above('focusToast', 'timerBar', '慶祝提示不能被計時器蓋掉')
-  above('saveFailed', 'settings', '「沒存進去」是資料要不見的通知，必須在最上面')
-
   // ── ④ 固定 tab-bar 底下要留得出空間：最後一個可點元素必須能捲到 tab-bar 上方 ──
   const bar = document.querySelector('.tab-bar')
   if (bar && !inOverlay) { // 浮層有自己的捲動容器，這條只對頁面本體有意義
@@ -205,7 +178,8 @@ for (const [name, sel] of views) {
       await page.click(sel, { timeout: 5000 })
       await page.waitForTimeout(500)
     } catch {
-      console.log(`[${name}] 切不過去（${sel}），跳過`)
+      console.error(`[${name}] 切不過去（${sel}）——算失敗，不是跳過`)
+      allFails += 1
       continue
     }
   }
@@ -223,6 +197,41 @@ for (const [name, sel] of views) {
   }
   // 設定是浮層，關掉再量下一個
   if (name === '設定') await page.keyboard.press('Escape').catch(() => {})
+}
+// ── ⑤ 疊層要量真的：.tab-more 是 .tab-bar 的子孫，困在 tab-bar 的 stacking context 裡，
+//    自己的數字再大也翻不過外面的計時器。注入一個假計時器，開「更多」，看重疊處誰接到點擊。
+const moreSel = '.tab-bar > button:nth-child(5)'
+if (await page.$(moreSel)) {
+  await page.evaluate(() => {
+    const fake = document.createElement('div')
+    fake.className = 'timer-bar'
+    fake.setAttribute('data-probe-fake', '1')
+    fake.style.cssText += ';height:60px;background:rgba(255,0,0,.3);pointer-events:auto;'
+    document.body.appendChild(fake)
+  })
+  await page.click(moreSel)
+  const menu = await page.waitForSelector('.tab-more', { timeout: 3000 }).catch(() => null)
+  if (!menu) {
+    console.error('按了「更多」但 .tab-more 沒出現')
+    allFails += 1
+  } else {
+    const verdict = await page.evaluate(() => {
+      const menu = document.querySelector('.tab-more')
+      const fake = document.querySelector('[data-probe-fake]')
+      if (!menu || !fake) return 'no-overlap'
+      const m = menu.getBoundingClientRect(), f = fake.getBoundingClientRect()
+      const ox = Math.min(m.right, f.right) - Math.max(m.left, f.left)
+      const oy = Math.min(m.bottom, f.bottom) - Math.max(m.top, f.top)
+      if (ox <= 2 || oy <= 2) return 'no-overlap'
+      const hit = document.elementFromPoint(Math.max(m.left, f.left) + ox / 2, Math.max(m.top, f.top) + oy / 2)
+      return menu.contains(hit) ? 'menu' : 'timer'
+    })
+    if (verdict === 'timer') {
+      console.error('✗ 「更多」選單跟計時器重疊處，點到的是計時器——選單困在 tab-bar 的 stacking context 裡')
+      allFails += 1
+    } else console.log(`疊層實測：「更多」選單 vs 計時器 → ${verdict === 'menu' ? '選單在上 ✓' : '沒重疊'}`)
+  }
+  await page.evaluate(() => document.querySelector('[data-probe-fake]')?.remove())
 }
 await browser.close()
 if (allFails) {

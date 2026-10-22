@@ -5282,7 +5282,9 @@ button.mc-month:disabled { cursor: default; }
   /* 色票 18px + gap 5 ＝ 中心距 23，根本按不準。手機放大成 26 + gap 10（中心距 36），
      8 顆一列 278px 放得下；命中盒 36×44。 */
   .re-swatches,
-  .tl-swatches {
+  .tl-swatches,
+  .block-pop .pop-swatches,
+  .tl-edit-card .pop-swatches {
     gap: 10px;
   }
   .tl-swatch {

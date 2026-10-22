@@ -50,7 +50,10 @@ export const editStoredKey = <T,>(
   }
   const id = draftId(key, expectedOwner)
   const pending = failedDrafts.get(id) as T | undefined
-  const next = change(pending !== undefined ? pending : load())
+  const base = pending !== undefined ? pending : load()
+  const next = change(base)
+  // 沒改而且也沒有待存的草稿：不存、不發事件。有草稿的話照存——這次就是它的重試機會
+  if (Object.is(next, base) && pending === undefined) return true
   const ok = save(next)
   if (ok) failedDrafts.delete(id)
   else failedDrafts.set(id, next)
@@ -77,6 +80,9 @@ export const useStoredEntry = <T,>(key: string, load: () => T, save: (value: T) 
       setEntry(pending)
       return
     }
+    // 草稿 map 是唯一真相：別處（editStoredKey，例如番茄鐘完成）已經把草稿連同結果存進去，
+    // 這裡的 failed 旗標就不能再卡住 reload，否則下一次編輯會用舊草稿整頁回存
+    if (draft.current.key === current.key && draft.current.failed) draft.current.failed = false
     // An external update must not silently discard text which never reached storage.
     if (draft.current.key === current.key && draft.current.failed) return
     const value = current.load()

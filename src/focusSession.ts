@@ -49,8 +49,9 @@ const locate = (tasks: { id?: string }[], taskId: string | undefined, index: num
 /** 同一段計時只准記一次。兩個分頁都還原了同一個 ppl:timer，各自到點各自呼叫記錄，
  *  同一段時間就會累加兩格（Codex 第 1 輪 #3）。先搶到 ppl:timerDone 的才記。 */
 const DONE_KEY = 'ppl:timerDone'
-export const claimTimerCompletion = (timerId: string | undefined): boolean => {
-  if (!timerId) return true // 舊的計時狀態沒有 id：照舊
+export const newTimerId = (): string => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+
+const claimSync = (timerId: string): boolean => {
   try {
     if (localStorage.getItem(DONE_KEY) === timerId) return false
     localStorage.setItem(DONE_KEY, timerId)
@@ -58,6 +59,20 @@ export const claimTimerCompletion = (timerId: string | undefined): boolean => {
   } catch {
     return true // 存不進去就寧可記（重複總比不記好）
   }
+}
+export const claimTimerCompletion = async (timerId: string | undefined): Promise<boolean> => {
+  if (!timerId) return true // 舊的計時狀態沒有 id：照舊
+  // localStorage 的 get→set 跨分頁不是原子的：兩個分頁同時到點可以交錯成都通過。
+  // Web Locks（Safari 15.4+／Chrome 69+）才是跨分頁的真鎖；沒有的環境退回同步版。
+  const locks = (navigator as Navigator & { locks?: LockManager }).locks
+  if (locks?.request) {
+    try {
+      return await locks.request('yike:timer-done', () => claimSync(timerId))
+    } catch {
+      /* 鎖不可用：退回 */
+    }
+  }
+  return claimSync(timerId)
 }
 
 /** editStoredKey 成功時已發 external-key-change；DayView 另外聽 external-day-change（date） */

@@ -1,3 +1,4 @@
+import { newTimerId } from './focusSession'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { focusLock } from './focusLock'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
@@ -114,6 +115,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
         // 連續番茄鐘：休息結束自動接下一段專注（保留懸浮窗，省去回網頁按開始）
         onUpdate({
           ...timer,
+          id: newTimerId(), // 新的一段＝新的完成識別，否則第二段被當成「已記過」整段漏記
           phase: 'focus',
           totalMs: focusMinutes * 60_000,
           endsAt: Date.now() + focusMinutes * 60_000,

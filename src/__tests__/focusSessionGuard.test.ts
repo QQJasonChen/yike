@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it } from 'vitest'
-import { claimTimerCompletion, recordAbandon, recordFocusSession } from '../focusSession'
+import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
@@ -123,10 +123,38 @@ describe('跟畫面編輯同一套草稿機制（editStoredKey）', () => {
 })
 
 describe('跨分頁只記一次', () => {
-  it('同一個 timer id 第二次認領失敗；不同 id 各自可以', () => {
-    expect(claimTimerCompletion('t1')).toBe(true)
-    expect(claimTimerCompletion('t1')).toBe(false)
-    expect(claimTimerCompletion('t2')).toBe(true)
-    expect(claimTimerCompletion(undefined)).toBe(true) // 舊計時狀態沒 id：照舊
+  it('同一個 timer id 第二次認領失敗；不同 id 各自可以', async () => {
+    expect(await claimTimerCompletion('t1')).toBe(true)
+    expect(await claimTimerCompletion('t1')).toBe(false)
+    expect(await claimTimerCompletion('t2')).toBe(true)
+    expect(await claimTimerCompletion(undefined)).toBe(true) // 舊計時狀態沒 id：照舊
+  })
+  it('連續番茄鐘每一段都要有新的 id，否則第二段被當成已記過', () => {
+    expect(newTimerId()).not.toBe(newTimerId())
+  })
+})
+
+describe('畫面 hook 的草稿旗標以 map 為準', () => {
+  it('helper 清掉草稿後，hook 的 reload 不能再被舊旗標卡住', async () => {
+    // 這條在 hook 裡面；用 hook 的純邏輯驗：有 pending → 用草稿；pending 被清 → 要讀 storage
+    const { useStoredEntry } = await import('../useStoredEntry')
+    expect(typeof useStoredEntry).toBe('function')
+    // 真正的行為由 viewSyncSafety.test.tsx（渲染測試）與下面這條 helper 測試一起守：
+    saveDay('2026-09-03', day('x'))
+    const orig = Storage.prototype.setItem
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (k === 'pp:day:2026-09-03') throw new DOMException('quota', 'QuotaExceededError')
+      return orig.call(this, k, v)
+    }
+    try {
+      editStoredKey('pp:day:2026-09-03', () => loadDay('2026-09-03'), (v) => saveDay('2026-09-03', v), (b) => ({ ...b, mood: 3 }), BOB)
+    } finally {
+      Storage.prototype.setItem = orig
+    }
+    expect(hasUnsavedDrafts()).toBe(true)
+    expect(session()).toBe(true) // 空間回來，計時完成：草稿＋結果一起落地
+    expect(hasUnsavedDrafts()).toBe(false)
+    expect(loadDay('2026-09-03').mood).toBe(3)
+    expect(loadDay('2026-09-03').tasks[0].done).toBe(1)
   })
 })
