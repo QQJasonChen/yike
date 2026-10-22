@@ -194,13 +194,21 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
   }
 
   // ✕ 結束：focus 階段＝放棄（種樹主題會枯一棵，先 confirm）；休息階段＝正常收工不記
+  // 最新的 timer prop：confirm 框開著的期間，另一個分頁可能已經把這段完成、甚至開了新的一段。
+  // 閉包裡的 timer 是舊的——確認後要重新核對是不是同一段，不然會把別人的新計時清掉
+  //（Codex 第 5 輪 #2）。
+  const latestTimer = useRef(timer)
+  latestTimer.current = timer
   const stopTimer = () => {
-    if (timer.phase === 'focus') {
+    const target = timer
+    if (target.phase === 'focus') {
       const msg = treeStyle
         ? '確定要放棄嗎？這段專注的小樹會枯掉。'
         : '確定要放棄這段專注嗎？會記下一次放棄。'
       if (!confirm(msg)) return
-      onAbandon(timer.taskIndex)
+      const now = latestTimer.current
+      if (now.id !== target.id || now.phase !== 'focus') return // 這段已經不是當初要放棄的那段
+      onAbandon(target.taskIndex)
     }
     onUpdate(null)
   }

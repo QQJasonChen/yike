@@ -4,10 +4,10 @@ import { EXTERNAL_KEY_EVENT, useExternalKey } from './useExternalKey'
 
 const failedDrafts = new Map<string, unknown>()
 const draftId = (key: string, owner: string | null) => JSON.stringify([owner, key])
-export const hasUnsavedDrafts = (): boolean => {
-  const owner = getDataOwner()
-  return [...failedDrafts.keys()].some((key) => (JSON.parse(key) as unknown[])[0] === owner)
-}
+export const hasUnsavedDrafts = (): boolean => hasUnsavedDraftsFor(getDataOwner())
+/** 某個主人名下有沒有存不進去的草稿。換帳號時要問的是「上一個人」的，不是現在的。 */
+export const hasUnsavedDraftsFor = (owner: string | null): boolean =>
+  [...failedDrafts.keys()].some((key) => (JSON.parse(key) as unknown[])[0] === owner)
 /** Only an explicit device wipe clears the in-memory drafts which could not be stored. */
 export const clearUnsavedDrafts = () => failedDrafts.clear()
 

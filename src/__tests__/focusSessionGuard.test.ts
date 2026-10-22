@@ -1,7 +1,7 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it } from 'vitest'
 import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday } from '../focusSession'
-import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts } from '../useStoredEntry'
+import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
 
@@ -212,5 +212,25 @@ describe('跨午夜續段：存失敗也要換日', () => {
   it('換帳號途中 → 原樣（完成時守衛會擋）', () => {
     const t = { dateKey: '2026-09-03', taskIndex: 0, taskId: 'y', taskText: 'x', owner: 'someone-else' }
     expect(renewSegmentForToday(t, '2026-09-04')).toBe(t)
+  })
+})
+
+describe('換帳號時上一個人還有草稿', () => {
+  it('hasUnsavedDraftsFor 問的是指定主人，不是現在的主人', () => {
+    saveDay('2026-09-03', day('x'))
+    const orig = Storage.prototype.setItem
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (k === 'pp:day:2026-09-03') throw new DOMException('quota', 'QuotaExceededError')
+      return orig.call(this, k, v)
+    }
+    try {
+      editStoredKey('pp:day:2026-09-03', () => loadDay('2026-09-03'), (v) => saveDay('2026-09-03', v), (b) => ({ ...b, mood: 1 }), BOB)
+    } finally {
+      Storage.prototype.setItem = orig
+    }
+    setDataOwner(ALICE) // 換人了
+    expect(hasUnsavedDrafts()).toBe(false) // 現在的主人沒有
+    expect(hasUnsavedDraftsFor(BOB)).toBe(true) // 上一個人有 → App 不能把 ownerRef 換成 Alice
+    clearUnsavedDrafts()
   })
 })

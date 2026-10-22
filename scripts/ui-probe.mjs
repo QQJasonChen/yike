@@ -98,9 +98,9 @@ const probe = () => page.evaluate(() => {
     const W = Math.round(w), H = Math.round(h)
     // 一般：至少一維 44、另一維 ≥30。密集格（同 class 的鄰居中心距兩軸都 <44，例如種樹格）：
     // 44 根本放不下又不能重疊，接受 36×30（寬到中心距、高到列距）
-    const cls = (b.el.className || '').toString().split(' ')[0]
     const cx = (b.left + b.right) / 2, cy = (b.top + b.bottom) / 2
-    const dense = tapBoxes.some((o) => o !== b && (o.el.className || '').toString().split(' ')[0] === cls &&
+    // 擁擠：任何別的可點元素中心在 44px 內（例如種樹格右邊 40px 就是「−」）
+    const dense = tapBoxes.some((o) => o !== b &&
       Math.abs((o.left + o.right) / 2 - cx) < 44 && Math.abs((o.top + o.bottom) / 2 - cy) < 44)
     const okSize = (Math.max(W, H) >= 44 && Math.min(W, H) >= 30) || (dense && W >= 36 && H >= 30)
     if (!okSize) small.push(`${b.id} ${W}×${H}`)

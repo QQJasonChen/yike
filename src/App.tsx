@@ -3,7 +3,7 @@ import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
 import { claimTimerCompletion, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
-import { editStoredKey } from './useStoredEntry'
+import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
 import { useCloudAuthStatus } from './useCloudAuthStatus'
 import DayView from './DayView'
@@ -152,7 +152,17 @@ export default function App() {
       setOwnerChanged(true)
     }
     const unwatch = watchOwnerChange(stop)
-    const ready = () => { ownerRef.current = getDataOwner(); setTimer(null); focusLock.stop() }
+    const ready = () => {
+      // 跟 useStoredEntry 同一條規則：上一個人還有存不進去的草稿時，畫面不接受新主人（它會保留舊畫面）。
+      // 這裡若無條件換成新主人，startFocus 的守衛就會放行，把舊畫面上的任務寫進新帳號（Codex 第 5 輪 #1）
+      if (hasUnsavedDraftsFor(ownerRef.current)) {
+        setOwnerChanged(true)
+        return
+      }
+      ownerRef.current = getDataOwner()
+      setTimer(null)
+      focusLock.stop()
+    }
     window.addEventListener('yike:owner-change-blocked', stop)
     window.addEventListener('yike:local-owner-ready', ready)
     return () => {
@@ -606,8 +616,12 @@ export default function App() {
             })()
           }}
           onAbandon={(ti) => {
-            if (!recordAbandon(timer.dateKey ?? toDateKey(new Date(timer.startedAt)), ti, timer.taskId, timer.owner))
-              celebrate('⚠ 沒存進去——請檢查儲存空間或登入狀態')
+            void (async () => {
+              // 放棄也要認領：另一個分頁已經把這段完成（已認領）的話，不能再記一棵枯樹
+              if (!(await claimTimerCompletion(timer.id))) return
+              if (!recordAbandon(timer.dateKey ?? toDateKey(new Date(timer.startedAt)), ti, timer.taskId, timer.owner))
+                celebrate('⚠ 沒存進去——請檢查儲存空間或登入狀態')
+            })()
           }}
           treeStyle={settings.focusStyle === 'tree'}
         />
