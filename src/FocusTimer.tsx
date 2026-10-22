@@ -1,4 +1,4 @@
-import { newTimerId, supersededOnDisk } from './focusSession'
+import { loadTimer, newTimerId, supersededOnDisk } from './focusSession'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { focusLock } from './focusLock'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
@@ -39,7 +39,9 @@ interface Props {
   timer: TimerState
   onUpdate: (t: TimerState | null) => void
   /** 一段專注完成：任務 index ＋ 真實起訖（ms），用來塗圈＋寫進時間軸 */
-  onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void
+  /** 回傳 false＝這段沒認領到（別的分頁已經完成或放棄了它）：不准推進休息，改採磁碟上的狀態。
+   *  回傳 void／true＝照常進休息。 */
+  onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void | boolean | Promise<boolean | void>
   /** 計時中按 ✕ 放棄（focus 階段才算）：種樹主題記一棵枯樹 */
   onAbandon: (taskIndex: number) => void
   /** 種樹主題開著（放棄 confirm 的文案用） */
@@ -99,6 +101,25 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
     return () => clearInterval(t)
   }, [])
 
+  /** 完成這段：先認領（App 那邊跨分頁去重），認領到才進休息。認領失敗＝別的分頁已經完成或放棄了它，
+   *  不能無條件寫入休息——A 放棄成功記了枯樹，B 的休息寫入會把 A 的清除擋掉、畫面採回休息，
+   *  autoLoop 還會自己開下一段（Codex 第 25 輪 #1）。失敗就改採磁碟上的狀態。 */
+  const complete = (endMs: number) => {
+    const me = timer
+    void Promise.resolve(onSessionDone(me.taskIndex, me.startedAt, endMs)).then((ok) => {
+      if (ok === false) {
+        onUpdate(loadTimer() as TimerState | null)
+        return
+      }
+      onUpdate({
+        ...me,
+        phase: 'break',
+        totalMs: breakMinutes * 60_000,
+        endsAt: Date.now() + breakMinutes * 60_000,
+        pausedRemaining: null,
+      })
+    })
+  }
   useEffect(() => {
     if (remaining <= 0 && timer.pausedRemaining === null && !firedRef.current) {
       firedRef.current = true
@@ -106,15 +127,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       if (timer.phase === 'focus') {
         // 用 endsAt 不用 Date.now()：App 在 iOS 被睡著、隔一小時才回前景，
         // 25 分鐘會被記成 84 分鐘
-        onSessionDone(timer.taskIndex, timer.startedAt, timer.endsAt)
-        // 自動進入休息
-        onUpdate({
-          ...timer,
-          phase: 'break',
-          totalMs: breakMinutes * 60_000,
-          endsAt: Date.now() + breakMinutes * 60_000,
-          pausedRemaining: null,
-        })
+        complete(timer.endsAt)
       } else if (autoLoop) {
         // 連續番茄鐘：休息結束自動接下一段專注（保留懸浮窗，省去回網頁按開始）
         const next: TimerState = {
@@ -131,6 +144,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
         onUpdate(null)
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- complete 每次 render 都是新函式；它用到的值都已列在這裡
   }, [remaining, timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, autoLoop, renewSegment])
 
   // 頁面標題倒數，切到別的分頁也看得到
@@ -185,14 +199,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
 
   const finishEarly = () => {
     chime()
-    onSessionDone(timer.taskIndex, timer.startedAt, Date.now())
-    onUpdate({
-      ...timer,
-      phase: 'break',
-      totalMs: breakMinutes * 60_000,
-      endsAt: Date.now() + breakMinutes * 60_000,
-      pausedRemaining: null,
-    })
+    complete(Date.now())
   }
 
   // ✕ 結束：focus 階段＝放棄（種樹主題會枯一棵，先 confirm）；休息階段＝正常收工不記

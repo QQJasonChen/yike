@@ -82,3 +82,40 @@ describe('FocusTimer 放棄', () => {
     expect(onUpdate).toHaveBeenCalledWith(null)
   })
 })
+
+describe('FocusTimer 完成（Codex 第 25 輪 #1）', () => {
+  const finishButton = () => [...el.querySelectorAll('button')].find((b) => /提前完成/.test(b.textContent ?? '') || (b.title ?? '').includes('提前完成'))
+  it('認領失敗（別的分頁已完成／放棄）→ 不進休息，改採磁碟上的狀態', async () => {
+    const onUpdate = vi.fn()
+    const t = base('T1')
+    localStorage.setItem('ppl:owner', 'u1')
+    localStorage.setItem('ppl:timer', JSON.stringify({ ...t, owner: 'u1', phase: 'break', rev: 2 }))
+    act(() =>
+      root!.render(
+        <FocusTimer timer={t} onUpdate={onUpdate} onSessionDone={() => Promise.resolve(false)} onAbandon={vi.fn()}
+          treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+      )
+    )
+    await act(async () => {
+      finishButton()!.click()
+      await Promise.resolve()
+    })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break', rev: 2 })
+  })
+  it('認領成功 → 照常進休息', async () => {
+    const onUpdate = vi.fn()
+    act(() =>
+      root!.render(
+        <FocusTimer timer={base('T1')} onUpdate={onUpdate} onSessionDone={() => Promise.resolve(true)} onAbandon={vi.fn()}
+          treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+      )
+    )
+    await act(async () => {
+      finishButton()!.click()
+      await Promise.resolve()
+    })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break' })
+  })
+})

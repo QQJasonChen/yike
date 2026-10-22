@@ -610,8 +610,8 @@ export default function App() {
             // 直接寫進「這段計時所屬的那一天」，不經由 DayView 註冊的 callback。
             // 使用者切到週/月分頁時 DayView 沒 mount，那個 callback 是 null——
             // 鈴響了、慶祝了，一格都沒記到。
-            void (async () => {
-            if (!(await claimTimerCompletion(timer.id, { unlessEnded: true }))) return // 另一個分頁已經記過／放棄了這一段
+            return (async () => {
+            if (!(await claimTimerCompletion(timer.id, { unlessEnded: true }))) return false // 另一個分頁已經記過／放棄了這一段：FocusTimer 不進休息
             const ok = recordFocusSession({
               dateKey: timer.dateKey ?? toDateKey(new Date(timer.startedAt)),
               taskIndex: ti,
@@ -624,6 +624,7 @@ export default function App() {
             })
             if (!ok) celebrate('⚠ 這段專注沒存進去——請檢查儲存空間或登入狀態')
             else celebrate(settings.focusStyle === 'tree' ? '🌲 種下一棵樹，繼續加油！' : '✓ 完成一段專注！')
+            return true
             })()
           }}
           onAbandon={(ti) => {

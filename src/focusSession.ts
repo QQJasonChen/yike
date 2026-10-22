@@ -102,8 +102,8 @@ const readDiskTimer = (): PersistedTimer | null => {
     // 舊版存的沒有 id：給一個由 startedAt 決定的（同一段在每個分頁算出來都一樣），
     // 否則 prevId 永遠是 undefined、清不掉，claim(undefined) 又永遠成功 → 同段放棄兩次（Codex 第 11 輪 #1）
     if (!t.id) t.id = `legacy-${t.startedAt}`
-    // 暫停中的計時原樣還原；跑著的如果已經過期超過一小時，當作那次沒收尾，丟掉。
-    if (t.pausedRemaining === null && Date.now() - t.endsAt > 3_600_000) return null
+    // 過期（跑著的、endsAt 超過一小時）的段**這裡不過濾**：它還在磁碟上、它的分頁可能還開著確認框，
+    // 蓋掉它時要留得到墓碑；過期只是畫面不還原的理由（見 loadTimer）（Codex 第 25 輪 #2）
     return t
   } catch {
     return null
@@ -114,6 +114,8 @@ const readDiskTimer = (): PersistedTimer | null => {
 export const loadTimer = (): PersistedTimer | null => {
   const t = readDiskTimer()
   if (!t || !ownedByCurrent(t)) return null
+  // 暫停中的計時原樣還原；跑著的如果已經過期超過一小時，當作那次沒收尾，不還原
+  if (t.pausedRemaining === null && Date.now() - t.endsAt > 3_600_000) return null
   // 進了墓碑的段不還原：T2 存失敗（配額滿）時磁碟留著被取代的 T1，重開不能把 T1 復活（Codex 第 17 輪）
   if (isTimerEnded(t.id)) return null
   return t

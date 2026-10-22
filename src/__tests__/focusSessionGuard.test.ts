@@ -713,3 +713,18 @@ describe('Codex 第 24 輪：蓋掉別的分頁的舊段也要留墓碑', () => 
     expect(supersededOnDisk(mk('T2A', 0))).toBe(true)
   })
 })
+
+describe('Codex 第 25 輪 #2：過期的段蓋掉時也要留墓碑', () => {
+  const NOW = Date.now()
+  const stale = { id: 'T1', owner: BOB, startedAt: NOW - 3 * 3_600_000, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW - 2 * 3_600_000, pausedRemaining: null, totalMs: 25 * 60_000 }
+  const fresh = { ...stale, id: 'T2', startedAt: NOW, endsAt: NOW + 25 * 60_000 }
+  it('磁碟上是過期超過一小時的 T1 → 畫面不還原它，但 B 開始 T2 蓋掉它時 T1 進墓碑', async () => {
+    localStorage.setItem('ppl:timer', JSON.stringify(stale))
+    expect(loadTimer()).toBeNull()
+    expect(await saveTimer(fresh)).toBe('written')
+    expect(isTimerEnded('T1')).toBe(true)
+    saveTimer(null, fresh)
+    expect(supersededOnDisk(stale)).toBe(true) // A 的過期確認框回來：被擋
+  })
+})
