@@ -269,7 +269,7 @@ export default function App() {
   // 磁碟上若已是別人（另一帳號／另一分頁）的新計時就不碰它。
   const prevTimerId = useRef<string | undefined>(timer?.id)
   useEffect(() => {
-    saveTimer(timer, prevTimerId.current)
+    void saveTimer(timer, prevTimerId.current)
     prevTimerId.current = timer?.id
   }, [timer])
   useEffect(() => setPipTimerSource(() => timerRef.current), [])

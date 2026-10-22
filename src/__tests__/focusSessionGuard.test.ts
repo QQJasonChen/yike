@@ -1,5 +1,5 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { claimTimerCompletion, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
@@ -349,5 +349,24 @@ describe('被別的分頁結束的段不能復活', () => {
     saveTimer(null, 'T1') // B 放棄
     saveTimer({ ...t, rev: 2, pausedRemaining: 999 }) // A 的舊 effect
     expect(localStorage.getItem('ppl:timer')).toBeNull()
+  })
+})
+
+describe('落盤走跨分頁鎖', () => {
+  it('有 navigator.locks 就在鎖裡做「檢查＋寫入」；沒有就同步寫', async () => {
+    const NOW7 = Date.now()
+    const t = { id: 'T1', owner: BOB, rev: 1, startedAt: NOW7 - 60_000, phase: 'focus' as const, taskIndex: 0, taskText: 'x', endsAt: NOW7 + 20 * 60_000, pausedRemaining: null, totalMs: 1 }
+    const request = vi.fn(async (_name: string, cb: () => unknown) => cb())
+    Object.defineProperty(navigator, 'locks', { value: { request }, configurable: true })
+    try {
+      await saveTimer(t)
+      expect(request).toHaveBeenCalledWith('yike:timer', expect.any(Function))
+      expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('T1')
+    } finally {
+      Object.defineProperty(navigator, 'locks', { value: undefined, configurable: true })
+    }
+    // 沒有鎖的環境：同步寫
+    await saveTimer({ ...t, rev: 2, pausedRemaining: 5 })
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).rev).toBe(2)
   })
 })

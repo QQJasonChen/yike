@@ -100,7 +100,8 @@ export const loadTimer = (): PersistedTimer | null => {
     return null
   }
 }
-export const saveTimer = (t: PersistedTimer | null, prevId?: string) => {
+/** 真正寫磁碟的那段：檢查＋寫入要在同一把跨分頁鎖裡（見下）。 */
+const writeTimerSync = (t: PersistedTimer | null, prevId?: string) => {
   try {
     const next = t ? JSON.stringify(t) : null
     if (localStorage.getItem(TIMER_KEY) === next) return // 另一個分頁寫的同一份：不要再寫回去（乒乓）
@@ -115,9 +116,6 @@ export const saveTimer = (t: PersistedTimer | null, prevId?: string) => {
       if (disk && disk.id && disk.id === t.id && (disk.rev ?? 0) > (t.rev ?? 0)) return
       localStorage.setItem(TIMER_KEY, next)
     } else {
-      // 清掉磁碟上的計時只准清「自己剛才那一段」。舊帳號的分頁被 owner-change-blocked 擋下時
-      // 會把本地 timer 設成 null；這時磁碟上可能已經是新帳號在另一分頁開的計時，
-      // 不比對 id 就把人家的整段刪掉（Codex 第 8 輪 #1）。
       // 從來沒落盤過自己的計時（prevId 沒值）就什麼都不刪：A 開啟時沒計時、首次 effect 還沒跑，
       // B 已經開了新段存進去，A 的 saveTimer(null, undefined) 不能把它刪掉（Codex 第 10 輪 #1）
       if (!prevId) return
@@ -129,6 +127,19 @@ export const saveTimer = (t: PersistedTimer | null, prevId?: string) => {
   } catch {
     /* 配額滿：計時照跑，只是被殺後救不回來 */
   }
+}
+
+/** 計時狀態落地。「檢查磁碟 → 寫入」必須是同一個原子步驟：A 檢查完、還沒寫，B 寫好 T2，
+ *  A 再寫就把 T2 蓋掉（Codex 第 12 輪）。跨分頁唯一的真鎖是 Web Locks；沒有的環境
+ *  （jsdom、很舊的瀏覽器）退回同步版——同一個分頁裡 JS 本來就是序列的。
+ *  回傳 Promise 但呼叫端不必等它。 */
+export const saveTimer = (t: PersistedTimer | null, prevId?: string): Promise<void> => {
+  const locks = (navigator as Navigator & { locks?: LockManager }).locks
+  if (locks?.request) {
+    return locks.request('yike:timer', () => writeTimerSync(t, prevId)).catch(() => writeTimerSync(t, prevId))
+  }
+  writeTimerSync(t, prevId)
+  return Promise.resolve()
 }
 
 

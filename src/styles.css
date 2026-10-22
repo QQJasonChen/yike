@@ -5250,7 +5250,7 @@ button.mc-month:disabled { cursor: default; }
     width: 40px; /* 同列中心距 41 */
   }
   .plant-cell::after {
-    width: 36px; /* 小苗右邊緊接「−」（中心距約 40），44 會咬到它 4px */
+    width: 30px; /* 格寬 26 + 間距 5 ＝ 中心距 31（第 12 輪：36 會跟隔壁格咬 5px）；右邊「−」中心距 40 也放得下 */
     height: 30px; /* 種樹換行時列距只有 26+3；44 高會讓第二行蓋住第一行可見區的下緣 */
   }
   .cloud-badge::after,
