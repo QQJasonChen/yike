@@ -632,3 +632,26 @@ describe('Codex 第 21 輪：重新開始時墓碑立不起來也要立', () => 
     }
   })
 })
+
+describe('Codex 第 22 輪', () => {
+  const NOW = Date.now()
+  const mk = (id: string, phase: 'focus' | 'break', rev: number, offset = -60_000) => ({
+    id, owner: BOB, rev, startedAt: NOW + offset, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('#1 A 確認重新開始 T1 → 拿到鎖前 B 提前完成把 T1 寫成 break → 不換、T1 不進墓碑', () => {
+    saveTimer(mk('T1', 'focus', 1))
+    saveTimer(mk('T1', 'break', 2))
+    saveTimer(mk('T2', 'focus', 1, 0), mk('T1', 'focus', 1))
+    const disk = JSON.parse(localStorage.getItem('ppl:timer')!)
+    expect(disk.id).toBe('T1')
+    expect(disk.phase).toBe('break')
+    expect(isTimerEnded('T1')).toBe(false)
+  })
+  it('#2 到點認領：這段已在墓碑 → 不准記；放棄路徑（沒帶 unlessEnded）照舊能認領', async () => {
+    localStorage.setItem('ppl:timerEnded', JSON.stringify(['T1']))
+    expect(await claimTimerCompletion('T1', { unlessEnded: true })).toBe(false)
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    expect(await claimTimerCompletion('T9', { unlessEnded: true })).toBe(true)
+  })
+})

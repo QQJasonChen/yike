@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { TIMER_KEY, claimTimerCompletion, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
+import { ENDED_KEY, TIMER_KEY, claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -158,6 +158,12 @@ export default function App() {
   // 另一個分頁改了計時狀態（提前完成、暫停、放棄）→ 這邊跟著換，不要各算各的到點各記一次
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
+      // 墓碑多了一筆：我這段被別的分頁放棄／換掉了，就算 ppl:timer 沒有刪除事件（新段存失敗、
+      // 磁碟還留著舊的）也要停下來，不然到點會替已放棄的段塗格（Codex 第 22 輪 #2）
+      if (e.key === ENDED_KEY) {
+        if (timerRef.current?.id && isTimerEnded(timerRef.current.id)) setTimer(null)
+        return
+      }
       if (e.key !== TIMER_KEY && e.key !== null) return
       const disk = loadTimer()
       if (!shouldAdoptDiskTimer(disk, e.oldValue, timerRef.current, endedLocally.current)) return
@@ -595,7 +601,7 @@ export default function App() {
             // 使用者切到週/月分頁時 DayView 沒 mount，那個 callback 是 null——
             // 鈴響了、慶祝了，一格都沒記到。
             void (async () => {
-            if (!(await claimTimerCompletion(timer.id))) return // 另一個分頁已經記過這一段
+            if (!(await claimTimerCompletion(timer.id, { unlessEnded: true }))) return // 另一個分頁已經記過／放棄了這一段
             const ok = recordFocusSession({
               dateKey: timer.dateKey ?? toDateKey(new Date(timer.startedAt)),
               taskIndex: ti,

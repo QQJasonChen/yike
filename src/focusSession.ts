@@ -133,6 +133,9 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // 畫面跑 T2、磁碟留 T1，放棄也被同一判斷擋下（Codex 第 17 輪）。先把 T1 送進墓碑再寫。
       const disk0 = readDiskTimer()
       const replacingOwn = !!prev?.id && prev.id !== t.id && disk0?.id === prev.id
+      // 要換掉的那段磁碟上已經走到休息（另一分頁在我確認的空檔提前完成了它）：過期的確認
+      // 不准中斷它的休息——跟清除分支同一條鎖內規則（Codex 第 22 輪 #1）
+      if (replacingOwn && prev!.phase === 'focus' && disk0!.phase === 'break') return
       if (replacingOwn) {
         // 墓碑立不起來（配額滿）就先把要換掉的那段刪了騰空間再立：否則 T2 寫進去、T1 沒墓碑，
         // 別的分頁對 T1 的過期放棄會把較舊的 T2 當殘影刪掉（Codex 第 21 輪）
@@ -217,7 +220,7 @@ export const supersededOnDisk = (mine: { id?: string; startedAt: number; phase: 
 
 /** 已結束（被清掉）的段。磁碟空了之後 supersededOnDisk／rev 都沒有比較對象，
  *  A 暫停的舊 effect 會把 B 剛放棄的 T1 復活（Codex 第 11 輪 #2）。 */
-const ENDED_KEY = 'ppl:timerEnded'
+export const ENDED_KEY = 'ppl:timerEnded'
 const endedIds = (): string[] => {
   try {
     const raw = localStorage.getItem(ENDED_KEY)
@@ -293,8 +296,15 @@ const claimSync = (timerId: string): boolean => {
     return true // 存不進去就寧可記（重複總比不記好）
   }
 }
-export const claimTimerCompletion = async (timerId: string | undefined): Promise<boolean> => {
+export const claimTimerCompletion = async (
+  timerId: string | undefined,
+  opts: { unlessEnded?: boolean } = {}
+): Promise<boolean> => {
   if (!timerId) return true // 舊的計時狀態沒有 id：照舊
+  // 到點完成時：這段已經被別的分頁放棄／換掉（進了墓碑）就不准記。A 重新開始、T1 的墓碑立成
+  // 功但 T2 存失敗，磁碟還是 T1，B 沒收到刪除事件繼續倒數，到點會替已放棄的段塗格（Codex 第 22 輪 #2）。
+  // 放棄路徑不用這個：自己的 saveTimer(null) 會先立墓碑，再查就永遠認領不到。
+  if (opts.unlessEnded && isTimerEnded(timerId)) return false
   // localStorage 的 get→set 跨分頁不是原子的：兩個分頁同時到點可以交錯成都通過。
   // Web Locks（Safari 15.4+／Chrome 69+）才是跨分頁的真鎖；沒有的環境退回同步版。
   const locks = (navigator as Navigator & { locks?: LockManager }).locks
