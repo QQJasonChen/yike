@@ -151,8 +151,12 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null) 
       // 我這段早就被（別的分頁的重新開始）送進墓碑了 → 這是過期的放棄確認：只准刪「還是我這段」
       // 的磁碟，別碰其他段——否則時鐘回撥後 A 重新開始的 T2 比 T1 舊，會被當殘影清掉（Codex 第 18 輪）
       const alreadyEnded = isTimerEnded(prevId)
-      markEnded(prevId) // 不管磁碟上是誰，我這段結束了就留墓碑，不准復活
       const disk = readDiskTimer()
+      // 同一段但磁碟已經走到休息（另一分頁在我確認放棄的空檔提前完成了它）：這段已經記過一格、
+      // 正在休息倒數，過期的放棄不准刪也不准立墓碑——立了 B 後續的寫入全被擋（Codex 第 19 輪）。
+      // 跟 supersededOnDisk 同一條規則，只是搬進鎖內。
+      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'break') return
+      markEnded(prevId) // 不管磁碟上是誰，我這段結束了就留墓碑，不准復活
       if (alreadyEnded && disk && disk.id !== prevId) return
       // 磁碟上是別人更新的一段 → 不碰。是比我舊的殘影（我這段從來沒存成功，例如配額滿）
       // → 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。

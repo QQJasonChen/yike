@@ -550,3 +550,29 @@ describe('Codex 第 18 輪：舊分頁的過期放棄確認不能刪掉回撥後
     expect(localStorage.getItem('ppl:timer')).toBeNull()
   })
 })
+
+describe('Codex 第 19 輪：過期的放棄不能刪掉同一段已進休息的狀態', () => {
+  const NOW = Date.now()
+  const mk = (phase: 'focus' | 'break', rev: number) => ({
+    id: 'T1', owner: BOB, rev, startedAt: NOW - 60_000, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('B 提前完成（break rev2）先落盤 → A 的舊放棄（prev=focus rev1）→ 不刪、不立墓碑', () => {
+    saveTimer(mk('focus', 1))
+    saveTimer(mk('break', 2))
+    saveTimer(null, mk('focus', 1))
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).phase).toBe('break')
+    expect(isTimerEnded('T1')).toBe(false)
+    saveTimer(mk('break', 3)) // B 後續的寫入還能進
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).rev).toBe(3)
+  })
+  it('磁碟還在 focus → 放棄照刪；休息中放棄休息（prev=break）也照刪', () => {
+    saveTimer(mk('focus', 1))
+    saveTimer(null, mk('focus', 1))
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+    localStorage.clear()
+    saveTimer(mk('break', 2))
+    saveTimer(null, mk('break', 2))
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+  })
+})
