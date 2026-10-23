@@ -152,3 +152,59 @@ describe('FocusTimer 放棄要等認領結果（Codex 第 26 輪）', () => {
     expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'focus', rev: 1 })
   })
 })
+
+describe('Codex 第 27 輪', () => {
+  const renderWith = (timer: TimerState, props: Partial<React.ComponentProps<typeof FocusTimer>>) =>
+    act(() =>
+      root!.render(
+        <FocusTimer timer={timer} onUpdate={vi.fn()} onSessionDone={vi.fn()} onAbandon={vi.fn()}
+          treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} {...props} />
+      )
+    )
+  it('#1 等認領時畫面已換成 T2（B 重新開始）→ 舊放棄回來不清掉 T2', async () => {
+    const onUpdate = vi.fn()
+    let resolve!: (v: boolean) => void
+    const onAbandon = () => new Promise<boolean>((r) => { resolve = r })
+    localStorage.setItem('ppl:timer', JSON.stringify(base('T1')))
+    renderWith(base('T1'), { onUpdate, onAbandon })
+    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+    act(() => stopButton()!.click())
+    renderWith(base('T2'), { onUpdate, onAbandon }) // storage 事件採用了 T2
+    await act(async () => {
+      resolve(true)
+      await Promise.resolve()
+    })
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
+  it('#2 等認領時別的分頁把同段 rev 推高 → 進休息用現在的狀態（rev 跟上）', async () => {
+    const onUpdate = vi.fn()
+    let resolve!: (v: boolean) => void
+    const onSessionDone = () => new Promise<boolean>((r) => { resolve = r })
+    const t1 = { ...base('T1'), rev: 1 }
+    renderWith(t1, { onUpdate, onSessionDone })
+    act(() => [...el.querySelectorAll('button')].find((b) => (b.title ?? '').includes('提前完成') || /提前完成/.test(b.textContent ?? ''))!.click())
+    renderWith({ ...t1, rev: 3 }, { onUpdate, onSessionDone }) // B 暫停又恢復，storage 事件採用 rev3
+    await act(async () => {
+      resolve(true)
+      await Promise.resolve()
+    })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break', rev: 3 })
+  })
+  it('#3 認領失敗改採磁碟走 onAdoptDisk（不加版本），不走 onUpdate', async () => {
+    const onUpdate = vi.fn()
+    const onAdoptDisk = vi.fn()
+    const t = base('T1')
+    localStorage.setItem('ppl:owner', 'u1')
+    localStorage.setItem('ppl:timer', JSON.stringify({ ...t, owner: 'u1', rev: 1 }))
+    renderWith(t, { onUpdate, onAdoptDisk, onAbandon: () => Promise.resolve(false) })
+    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+    await act(async () => {
+      stopButton()!.click()
+      await Promise.resolve()
+    })
+    expect(onUpdate).not.toHaveBeenCalled()
+    expect(onAdoptDisk).toHaveBeenCalledTimes(1)
+    expect(onAdoptDisk.mock.calls[0][0]).toMatchObject({ id: 'T1', rev: 1 })
+  })
+})

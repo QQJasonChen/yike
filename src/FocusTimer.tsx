@@ -53,6 +53,9 @@ interface Props {
   autoLoop: boolean
   /** 新的一段開始前讓 App 重新定位日期與任務（跨午夜時 dateKey/taskId 不能沿用昨天） */
   renewSegment?: (t: TimerState) => TimerState
+  /** 認領失敗改採磁碟狀態時用這個，不走 onUpdate：onUpdate 會當成本地操作加版本，把別的分頁
+   *  更新的暫停用同版本蓋回去（Codex 第 27 輪 #3）。沒給就退回 onUpdate。 */
+  onAdoptDisk?: (t: TimerState | null) => void
   /** 專注時鎖住分心 App（僅原生 iOS 生效，其餘平台 no-op） */
   lockApps: boolean
 }
@@ -85,7 +88,12 @@ const chime = () => {
   navigator.vibrate?.([200, 80, 200])
 }
 
-export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, treeStyle, breakMinutes, focusMinutes, autoLoop, lockApps , renewSegment}: Props) {
+export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, treeStyle, breakMinutes, focusMinutes, autoLoop, lockApps , renewSegment, onAdoptDisk}: Props) {
+  // 等認領（非同步）的這段時間畫面上的段可能已經換了（storage 事件採用了別的分頁的新段）：
+  // 回呼回來要核對還是不是當初那段，不然舊放棄會把新段清掉（Codex 第 27 輪 #1）
+  const latest = useRef(timer)
+  latest.current = timer
+  const adoptDisk = () => (onAdoptDisk ?? onUpdate)(loadTimer() as TimerState | null)
   const [, force] = useState(0)
   const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
@@ -108,12 +116,16 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
   const complete = (endMs: number) => {
     const me = timer
     void Promise.resolve(onSessionDone(me.taskIndex, me.startedAt, endMs)).then((ok) => {
+      const cur = latest.current
+      if (cur.id !== me.id) return // 等認領時這段已經換成別段：那段有自己的流程
       if (ok === false) {
-        onUpdate(loadTimer() as TimerState | null)
+        adoptDisk()
         return
       }
+      // 從「現在」的狀態推進休息，不是認領前捕獲的那份：別的分頁可能暫停／恢復過（rev 更高），
+      // 用舊快照寫會被版本守衛擋下、採回 focus，而這段已認領完成，永遠進不了休息（Codex 第 27 輪 #2）
       onUpdate({
-        ...me,
+        ...cur,
         phase: 'break',
         totalMs: breakMinutes * 60_000,
         endsAt: Date.now() + breakMinutes * 60_000,
@@ -222,7 +234,9 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       // supersededOnDisk 放行，但認領會失敗；無條件清掉會把 A 已完成的段刪了、休息倒數中斷
       //（Codex 第 26 輪）。認領失敗就改採磁碟上的狀態。
       void Promise.resolve(onAbandon(target.taskIndex)).then((ok) => {
-        onUpdate(ok === false ? (loadTimer() as TimerState | null) : null)
+        if (latest.current?.id !== target.id) return // 等認領時已經換成別段（B 重新開始了 T2）：別清
+        if (ok === false) adoptDisk()
+        else onUpdate(null)
       })
       return
     }

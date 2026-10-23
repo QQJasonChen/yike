@@ -149,8 +149,13 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null):
       // 把 ppl:timer 刪了，磁碟空白又沒墓碑，前面的檢查全放行 → A 的任務文字寫回 B 的裝置
       //（Codex 第 16 輪 #1）。主人換了就不寫。
       if (!ownedByCurrent(t)) return 'rejected'
-      // 同一段：版本較舊的不准寫（暫停 vs 恢復這種同段交錯）
-      if (disk0 && disk0.id && disk0.id === t.id && (disk0.rev ?? 0) > (t.rev ?? 0)) return 'rejected'
+      // 同一段：階段只准往前（focus → break）。往前的寫入不看版本——A 認領完成後用舊快照寫休息，
+      // B 中間暫停／恢復過 rev 更高，擋下來這段就永遠進不了休息；往後的（B 排隊中的舊 focus）
+      // 不管版本多高都不准（Codex 第 27 輪 #2）。同階段才比版本（暫停 vs 恢復這種交錯）。
+      if (disk0 && disk0.id && disk0.id === t.id) {
+        if (disk0.phase === 'break' && t.phase === 'focus') return 'rejected'
+        if (disk0.phase === t.phase && (disk0.rev ?? 0) > (t.rev ?? 0)) return 'rejected'
+      }
       // 蓋掉磁碟上另一段——不管是我確認要換的 prev，還是別的分頁留下的較舊段（autoLoop 兩頁各生一段、
       // 我的較新）——都先替它留墓碑：否則那段的分頁等確認框回來時磁碟已空、它沒進墓碑，
       // supersededOnDisk 放行，多記一次放棄（Codex 第 24 輪）。

@@ -728,3 +728,21 @@ describe('Codex 第 25 輪 #2：過期的段蓋掉時也要留墓碑', () => {
     expect(supersededOnDisk(stale)).toBe(true) // A 的過期確認框回來：被擋
   })
 })
+
+describe('Codex 第 27 輪 #2：同一段階段只准往前', () => {
+  const NOW = Date.now()
+  const mk = (phase: 'focus' | 'break', rev: number, extra: Partial<{ pausedRemaining: number | null }> = {}) => ({
+    id: 'T1', owner: BOB, rev, startedAt: NOW - 60_000, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000, ...extra,
+  })
+  it('磁碟 focus rev3（B 暫停又恢復）→ A 用舊快照寫 break rev2 → 照寫（往前）', async () => {
+    saveTimer(mk('focus', 3))
+    expect(await saveTimer(mk('break', 2))).toBe('written')
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).phase).toBe('break')
+  })
+  it('磁碟已是 break → B 排隊中的舊 focus（rev 更高）不准倒回', async () => {
+    saveTimer(mk('break', 2))
+    expect(await saveTimer(mk('focus', 5, { pausedRemaining: 1 }))).toBe('rejected')
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).phase).toBe('break')
+  })
+})

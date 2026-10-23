@@ -601,6 +601,7 @@ export default function App() {
         <FocusTimer
           timer={timer}
           onUpdate={setTimerLocal}
+          onAdoptDisk={setTimer}
           breakMinutes={settings.breakMinutes}
           focusMinutes={settings.focusMinutes}
           autoLoop={settings.autoLoop}
@@ -630,7 +631,9 @@ export default function App() {
           onAbandon={(ti) => {
             return (async () => {
               // 放棄也要認領：另一個分頁已經把這段完成（已認領）的話，不能再記一棵枯樹，也不准清掉它
-              if (!(await claimTimerCompletion(timer.id))) return false
+              // 現在放棄是先認領再清（第 26 輪），自己的墓碑不會搶在前面，所以也能查墓碑：
+              // B 重新開始替 T1 立了墓碑 → 這個過期的放棄不准認領（Codex 第 27 輪 #1）
+              if (!(await claimTimerCompletion(timer.id, { unlessEnded: true }))) return false
               if (!recordAbandon(timer.dateKey ?? toDateKey(new Date(timer.startedAt)), ti, timer.taskId, timer.owner, timer.taskText))
                 celebrate('⚠ 沒存進去——請檢查儲存空間或登入狀態')
               return true
