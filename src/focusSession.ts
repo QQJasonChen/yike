@@ -400,33 +400,40 @@ const doneEntries = (): string[] => {
 }
 const doneIds = (): string[] => doneEntries().map((e) => (e.endsWith(ABANDON_MARK) ? e.slice(0, -ABANDON_MARK.length) : e))
 const completedIds = (): string[] => doneEntries().filter((e) => !e.endsWith(ABANDON_MARK))
-const claimSync = (timerId: string, kind: 'done' | 'abandon'): boolean => {
-  if (doneIds().includes(timerId)) return false
+/** claimed＝認領成功；taken＝別的分頁（或自己之前）已認領；unsaved＝存不進去（配額滿），
+ *  呼叫端要保留重試、給警告，不能當成 taken 靜靜放掉——計時器會無聲停在 00:00（Codex 第 44 輪）。 */
+export type ClaimResult = 'claimed' | 'taken' | 'unsaved'
+const claimSync = (timerId: string, kind: 'done' | 'abandon'): ClaimResult => {
+  if (doneIds().includes(timerId)) return 'taken'
   const entry = kind === 'abandon' ? timerId + ABANDON_MARK : timerId
   try {
     localStorage.setItem(DONE_KEY, JSON.stringify([...doneEntries(), entry].slice(-HISTORY_CAP)))
-    return true
+    return 'claimed'
   } catch {
     // 配額滿：認領沒有持久化就不能說成功——兩頁同時放棄、兩個認領都存失敗卻都回 true，
-    // 同一段枯樹記兩次（Codex 第 43 輪）。先把歷史縮成只剩這一筆（幾十 bytes）再試；還不行就放棄認領
+    // 同一段枯樹記兩次（Codex 第 43 輪）。先把歷史縮成只剩這一筆（幾十 bytes）再試
     try {
       localStorage.setItem(DONE_KEY, JSON.stringify([entry]))
-      return true
+      return 'claimed'
     } catch {
-      return false
+      return 'unsaved'
     }
   }
 }
 export const claimTimerCompletion = async (
   timerId: string | undefined,
   opts: { unlessEnded?: boolean; kind?: 'done' | 'abandon' } = {}
-): Promise<boolean> => {
+): Promise<boolean> => (await claimTimerCompletionDetailed(timerId, opts)) === 'claimed'
+export const claimTimerCompletionDetailed = async (
+  timerId: string | undefined,
+  opts: { unlessEnded?: boolean; kind?: 'done' | 'abandon' } = {}
+): Promise<ClaimResult> => {
   const kind = opts.kind ?? 'done'
-  if (!timerId) return true // 舊的計時狀態沒有 id：照舊
+  if (!timerId) return 'claimed' // 舊的計時狀態沒有 id：照舊
   // 到點完成時：這段已經被別的分頁放棄／換掉（進了墓碑）就不准記。A 重新開始、T1 的墓碑立成
   // 功但 T2 存失敗，磁碟還是 T1，B 沒收到刪除事件繼續倒數，到點會替已放棄的段塗格（Codex 第 22 輪 #2）。
   // 放棄路徑不用這個：自己的 saveTimer(null) 會先立墓碑，再查就永遠認領不到。
-  if (opts.unlessEnded && isTimerEnded(timerId)) return false
+  if (opts.unlessEnded && isTimerEnded(timerId)) return 'taken'
   // localStorage 的 get→set 跨分頁不是原子的：兩個分頁同時到點可以交錯成都通過。
   // Web Locks（Safari 15.4+／Chrome 69+）才是跨分頁的真鎖；沒有的環境退回同步版。
   const locks = (navigator as Navigator & { locks?: LockManager }).locks
@@ -437,7 +444,7 @@ export const claimTimerCompletion = async (
       // 跟 saveTimer 用同一把鎖：認領與替換（立墓碑＋寫新段）要互斥——B 在 yike:timer 鎖內讀到 T1 沒完成，
       // A 同時在另一把鎖認領完成，B 接著立墓碑，A 的休息被拒（Codex 第 31 輪 #1）
       return await locks.request('yike:timer', () =>
-        opts.unlessEnded && isTimerEnded(timerId) ? false : claimSync(timerId, kind)
+        opts.unlessEnded && isTimerEnded(timerId) ? 'taken' : claimSync(timerId, kind)
       )
     } catch {
       /* 鎖不可用：退回 */

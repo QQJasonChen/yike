@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { breakFrom, claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, restoreTimer, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
+import { breakFrom, claimTimerCompletion, claimTimerCompletionDetailed, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, restoreTimer, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner, toDateKey } from '../storage'
@@ -1011,6 +1011,24 @@ describe('Codex 第 43 輪：認領存不進去不能回成功', () => {
       expect(await claimTimerCompletion('T9', { kind: 'abandon' })).toBe(false)
     } finally {
       spy2.mockRestore()
+    }
+  })
+})
+
+describe('Codex 第 44 輪：認領結果分三種', () => {
+  it('claimed／taken／unsaved', async () => {
+    expect(await claimTimerCompletionDetailed('T1')).toBe('claimed')
+    expect(await claimTimerCompletionDetailed('T1')).toBe('taken')
+    const real = Storage.prototype.setItem
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k === 'ppl:timerDone') throw new DOMException('quota', 'QuotaExceededError')
+      return real.call(this, k, v)
+    })
+    try {
+      expect(await claimTimerCompletionDetailed('T2')).toBe('unsaved')
+      expect(await claimTimerCompletion('T2')).toBe(false)
+    } finally {
+      spy.mockRestore()
     }
   })
 })

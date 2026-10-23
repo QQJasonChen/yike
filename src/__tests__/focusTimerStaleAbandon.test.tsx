@@ -3,7 +3,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import FocusTimer, { type TimerState } from '../FocusTimer'
+import FocusTimer, { CLAIM_RETRY_MS, type TimerState } from '../FocusTimer'
 
 const base = (id: string): TimerState => ({
   id,
@@ -309,5 +309,30 @@ describe('Codex 第 38 輪', () => {
       await Promise.resolve()
     })
     expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break', taskId: 'y' })
+  })
+})
+
+describe('Codex 第 44 輪：認領存不進去 → 不進休息、不停在 00:00，過一會兒自動再試', () => {
+  it("onSessionDone 回 'retry' → 不 onUpdate；CLAIM_RETRY_MS 後到點 effect 再跑一次", async () => {
+    vi.useFakeTimers()
+    try {
+      const onUpdate = vi.fn()
+      const onSessionDone = vi.fn((_ti: number, _s: number, _e: number) => Promise.resolve('retry' as const))
+      const t = { ...base('T1'), endsAt: Date.now() - 1 } // 已到點
+      act(() =>
+        root!.render(
+          <FocusTimer timer={t} onUpdate={onUpdate} onSessionDone={onSessionDone} onAbandon={vi.fn()}
+            treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+        )
+      )
+      await act(async () => { await Promise.resolve() })
+      expect(onSessionDone).toHaveBeenCalledTimes(1)
+      expect(onUpdate).not.toHaveBeenCalled()
+      await act(async () => { vi.advanceTimersByTime(CLAIM_RETRY_MS + 600); await Promise.resolve() })
+      expect(onSessionDone).toHaveBeenCalledTimes(2)
+      expect(onSessionDone.mock.calls[1][2]).toBe(t.endsAt) // 重試仍用原本的 endsAt，不把等待時間算進去
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

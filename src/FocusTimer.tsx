@@ -35,8 +35,11 @@ export interface TimerState {
   startedAt: number // 本段專注開始的 epoch ms（時間軸記錄用）
 }
 
-/** false＝沒認領到；{ taskId }＝記到了這一列（匯入備份後 id 可能換了，下一段改帶它）；void／true＝記了。 */
-export type DoneResult = void | boolean | { taskId?: string }
+/** false＝沒認領到（別的分頁記過了）；'retry'＝認領存不進去（配額滿），保留狀態稍後重試；
+ *  { taskId }＝記到了這一列（匯入備份後 id 可能換了，下一段改帶它）；void／true＝記了。 */
+export type DoneResult = void | boolean | 'retry' | { taskId?: string }
+/** 認領存不進去後多久再自動試一次（使用者清空間後不必手動按） */
+export const CLAIM_RETRY_MS = 10_000
 interface Props {
   timer: TimerState
   onUpdate: (t: TimerState | null) => void
@@ -46,7 +49,7 @@ interface Props {
   onSessionDone: (taskIndex: number, startMs: number, endMs: number) => DoneResult | Promise<DoneResult>
   /** 計時中按 ✕ 放棄（focus 階段才算）：種樹主題記一棵枯樹 */
   /** 回傳 false＝這段沒認領到（別的分頁已經完成了它）：不准清掉，改採磁碟上的狀態。 */
-  onAbandon: (taskIndex: number) => void | boolean | Promise<boolean | void>
+  onAbandon: (taskIndex: number) => void | boolean | 'retry' | Promise<boolean | void | 'retry'>
   /** 種樹主題開著（放棄 confirm 的文案用） */
   treeStyle: boolean
   breakMinutes: number
@@ -153,6 +156,16 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       if (inflight.current === me.id) inflight.current = null
       const cur = latest.current
       if (cur.id !== me.id) return // 等認領時這段已經換成別段：那段有自己的流程
+      if (ok === 'retry') {
+        // 認領存不進去：不進休息、不採磁碟（採回同段 firedRef 不會重設，會無聲停在 00:00）。
+        // 過一會兒重設 firedRef 讓到點 effect 再跑一次，仍用原本的 endsAt 記錄（Codex 第 44 輪）
+        window.setTimeout(() => {
+          if (latest.current?.id !== me.id) return
+          firedRef.current = false
+          force((n) => n + 1)
+        }, CLAIM_RETRY_MS)
+        return
+      }
       if (ok === false) {
         adoptDisk()
         return
@@ -268,6 +281,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       void Promise.resolve(onAbandon(target.taskIndex)).then((ok) => {
         if (inflight.current === target.id) inflight.current = null
         if (latest.current?.id !== target.id) return // 等認領時已經換成別段（B 重新開始了 T2）：別清
+        if (ok === 'retry') return // 認領存不進去：計時留著，使用者清空間後再按一次（第 44 輪）
         if (ok === false) adoptDisk()
         else onUpdate(null)
       })
