@@ -60,6 +60,13 @@ const locate = (
   }
   return index
 }
+/** 靠文字回退找到的列（還原舊備份洗掉了 id）要把計時器帶的 id 補回去：否則連續計時的下一段
+ *  還帶著這個 id、而該列中途改了名，id 找不到、文字也對不上 → 新增一列舊名稱，原列少記一段
+ *  （Codex 第 30 輪 #2）。列已經有別的 id 就不動。 */
+const repinId = (tasks: Task[], at: number, taskId: string | undefined) => {
+  const t = tasks[at]
+  if (taskId && t && !t.id) tasks[at] = { ...t, id: taskId }
+}
 const ensureRow = (tasks: Task[], at: number, taskId: string | undefined, text: string): number => {
   if (at >= 0) return at
   tasks.push({ ...emptyTask(), id: taskId ?? newTaskId(), text })
@@ -147,6 +154,9 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null):
       // 要換掉的那段磁碟上已經走到休息（另一分頁在我確認的空檔提前完成了它）：過期的確認
       // 不准中斷它的休息——跟清除分支同一條鎖內規則（Codex 第 22 輪 #1）
       if (replacingOwn && prev!.phase === 'focus' && disk0!.phase === 'break') return 'rejected'
+      // 要換掉的那段已經被認領完成（別的分頁提前完成、記了格、休息還沒落盤）：過期的「重新開始」
+      // 不准立它的墓碑把它的休息擋掉——認領與落盤是兩把鎖，只看磁碟 phase 有空窗（Codex 第 30 輪 #1）
+      if (replacingOwn && prev!.phase === 'focus' && doneIds().includes(prev!.id!)) return 'rejected'
       if (!replacingOwn && supersededOnDisk(t)) return 'rejected'
       if (t.id && endedIds().includes(t.id)) return 'rejected' // 這段已經被別的分頁結束了，不准復活
       // 寫入當下再核對一次主人：A 暫停的落盤排在鎖後面，等它拿到鎖時另一分頁已經換成 B、
@@ -312,12 +322,19 @@ const markEnded = (id: string): boolean => {
 const DONE_KEY = 'ppl:timerDone'
 export const newTimerId = (): string => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
 
+/** 已認領（完成或放棄）的段。記最近 20 段，不是只記最後一段：T1 完成 → T2 完成 → T1 那個
+ *  過期的放棄確認又能認領（Codex 第 6 輪 #1） */
+const doneIds = (): string[] => {
+  try {
+    const raw = localStorage.getItem(DONE_KEY)
+    return raw ? (raw.startsWith('[') ? (JSON.parse(raw) as string[]) : [raw]) : []
+  } catch {
+    return []
+  }
+}
 const claimSync = (timerId: string): boolean => {
   try {
-    // 記最近 20 段，不是只記最後一段：T1 完成 → T2 完成 → T1 那個過期的放棄確認又能認領
-    //（Codex 第 6 輪 #1）
-    const raw = localStorage.getItem(DONE_KEY)
-    const done: string[] = raw ? (raw.startsWith('[') ? (JSON.parse(raw) as string[]) : [raw]) : []
+    const done = doneIds()
     if (done.includes(timerId)) return false
     localStorage.setItem(DONE_KEY, JSON.stringify([...done, timerId].slice(-20)))
     return true
@@ -406,6 +423,7 @@ export const recordFocusSession = (s: FocusSession): boolean => {
       if (t) {
         const done = Math.min(t.done + 1, 16)
         tasks[at] = { ...t, done, actual: done, grove: syncGrove(t.grove, done, s.focusMinutes) }
+        repinId(tasks, at, s.taskId)
       }
       // 真實起訖 → 分鐘（夾在時間軸 06:00–23:00 範圍內，最短 15 分鐘）
       const bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, toMin(s.startMs)))
@@ -450,6 +468,7 @@ export const recordAbandon = (
       const t = tasks[at]
       if (!t) return prev // 放棄＝枯樹，那件事已經不在今天就不追加
       tasks[at] = { ...t, withered: (t.withered ?? 0) + 1 }
+      repinId(tasks, at, taskId)
       return { ...prev, tasks }
     },
     expected(owner)

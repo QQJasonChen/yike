@@ -782,3 +782,30 @@ describe('Codex 第 29 輪：舊格式計時還原時釘死主人', () => {
     expect(loadTimer()!.owner).toBeNull()
   })
 })
+
+describe('Codex 第 30 輪', () => {
+  const NOW = Date.now()
+  const mk = (id: string, phase: 'focus' | 'break', offset = -60_000) => ({
+    id, owner: BOB, startedAt: NOW + offset, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('#1 T1 已被認領完成（休息還沒落盤）→ B 過期的重新開始不准換掉它、不立墓碑', async () => {
+    saveTimer(mk('T1', 'focus'))
+    expect(await claimTimerCompletion('T1')).toBe(true) // A 提前完成
+    expect(await saveTimer(mk('T2', 'focus', 0), mk('T1', 'focus'))).toBe('rejected')
+    expect(JSON.parse(localStorage.getItem('ppl:timer')!).id).toBe('T1')
+    expect(isTimerEnded('T1')).toBe(false)
+    expect(await saveTimer(mk('T1', 'break'))).toBe('written') // A 的休息照常落盤
+  })
+  it('#2 靠文字回退記到的列要補回 id：之後該列改名，下一段仍記在同一列', () => {
+    saveDay('2026-09-03', { ...emptyDay(), tasks: [{ ...emptyTask(), id: undefined, text: 'A' }] })
+    expect(session({ taskId: 'tid-1', taskText: 'A' })).toBe(true)
+    let d = loadDay('2026-09-03')
+    expect(d.tasks[0].id).toBe('tid-1')
+    saveDay('2026-09-03', { ...d, tasks: [{ ...d.tasks[0], text: 'B' }] }) // 休息時改名
+    expect(session({ taskId: 'tid-1', taskText: 'A' })).toBe(true)
+    d = loadDay('2026-09-03')
+    expect(d.tasks).toHaveLength(1)
+    expect(d.tasks[0].done).toBe(2)
+  })
+})
