@@ -937,3 +937,24 @@ describe('Codex 第 39 輪：第二筆本地操作不能繞過「舊段已完成
     expect(await saveTimer(mk('T1', 'break', 2))).toBe('written')
   })
 })
+
+describe('Codex 第 40 輪：休息落盤失敗後，自己的「結束休息」要清得掉', () => {
+  const NOW = Date.now()
+  const mk = (phase: 'focus' | 'break', rev: number) => ({
+    id: 'T1', owner: BOB, rev, startedAt: NOW - 60_000, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('磁碟 focus 已完成、休息沒落盤；畫面已是 break → saveTimer(null, prev=focus, from=break) 照刪', async () => {
+    saveTimer(mk('focus', 9))
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    expect(await saveTimer(null, mk('focus', 9), { from: mk('break', 10) })).toBe('written')
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+    expect(isTimerEnded('T1')).toBe(true)
+  })
+  it('別的分頁畫面還是 focus 的過期清除（from=focus）→ 仍擋', async () => {
+    saveTimer(mk('focus', 9))
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    expect(await saveTimer(null, mk('focus', 9), { from: mk('focus', 9) })).toBe('rejected')
+    expect(await saveTimer(null, mk('focus', 9))).toBe('rejected')
+  })
+})

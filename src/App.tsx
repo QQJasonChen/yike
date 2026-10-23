@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { ENDED_KEY, TIMER_KEY, claimTimerCompletion, isTimerEnded, loadTimer, restoreTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
+import { ENDED_KEY, TIMER_KEY, claimTimerCompletion, isTimerCompleted, isTimerEnded, loadTimer, restoreTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -287,9 +287,12 @@ export default function App() {
   // B 確認重新開始 T2 被拒（T1 已被 A 認領完成），B 再暫停 T2 時第二筆若帶 prev=T2 就繞過了
   // 「要換掉的段已完成」的替換守衛，把 T1 立墓碑、A 的休息被拒（Codex 第 39 輪）。沒落盤就一直帶原本的 prev。
   const prevTimer = useRef<TimerState | null>(timer)
+  const lastLocal = useRef<TimerState | null>(timer) // 清除前畫面上的狀態（給「休息是我們自己的」判斷用）
   useEffect(() => {
     const attempted = timer
-    void saveTimer(timer, prevTimer.current).then((r) => {
+    const from = lastLocal.current
+    lastLocal.current = timer
+    void saveTimer(timer, prevTimer.current, { from }).then((r) => {
       if (r === 'written' || r === 'noop') {
         prevTimer.current = attempted
         return
@@ -301,6 +304,8 @@ export default function App() {
       const untouched = attempted ? cur?.id === attempted.id && (cur?.rev ?? 0) === (attempted.rev ?? 0) : cur === null
       if (!untouched) return
       const disk = loadTimer()
+      // 已認領完成卻還停在 focus 的段不准顯示回來（會卡死）；FocusTimer 的 adoptDisk 會替它推進休息（第 40 輪）
+      if (disk && disk.phase === 'focus' && isTimerCompleted(disk.id)) return
       if (JSON.stringify(disk) !== JSON.stringify(cur)) setTimer(disk)
     })
   }, [timer])

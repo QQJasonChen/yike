@@ -149,7 +149,10 @@ export const restoreTimer = (): PersistedTimer | null => {
  *  failed＝配額滿，計時照跑。 */
 export type SaveResult = 'written' | 'noop' | 'rejected' | 'failed'
 /** 真正寫磁碟的那段：檢查＋寫入要在同一把跨分頁鎖裡（見下）。 */
-const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null): SaveResult => {
+/** opts.from＝呼叫端清除前畫面上的狀態（不一定落盤過）。休息落盤失敗（配額滿）後按「結束」：
+ *  prev 還是磁碟上的 focus、而 focus 已認領完成，「同段 focus 已完成不准清」會把合法的結束擋下、
+ *  把已完成的 focus 顯示回來（Codex 第 40 輪）。畫面上已經是同段的 break＝休息是我們自己的，清得掉。 */
+const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null, opts: { from?: PersistedTimer | null } = {}): SaveResult => {
   const prevId = prev?.id
   try {
     const next = t ? JSON.stringify(t) : null
@@ -212,7 +215,10 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null):
       if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'break') return 'rejected'
       // 同一段、磁碟還是 focus、但已被認領完成：別的分頁剛完成、休息正要落盤，這個清除是過期的
       //（認領失敗的分頁或過期的放棄）——不刪也不立墓碑，否則它的休息被拒（Codex 第 34 輪）
-      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'focus' && completedIds().includes(prevId)) return 'rejected'
+      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'focus' && completedIds().includes(prevId)) {
+        const ownBreak = opts.from?.id === prevId && opts.from?.phase === 'break'
+        if (!ownBreak) return 'rejected'
+      }
       if (alreadyEnded && disk && disk.id !== prevId) return 'rejected'
       // 磁碟上是別人更新的一段 → 不碰（自己仍留墓碑）。是比我舊的殘影（我這段從來沒存成功，
       // 例如配額滿）→ 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。
@@ -241,15 +247,19 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null):
  *  A 再寫就把 T2 蓋掉（Codex 第 12 輪）。跨分頁唯一的真鎖是 Web Locks；沒有的環境
  *  （jsdom、很舊的瀏覽器）退回同步版——同一個分頁裡 JS 本來就是序列的。
  *  回傳 Promise 但呼叫端不必等它。 */
-export const saveTimer = (t: PersistedTimer | null, prev?: PersistedTimer | null): Promise<SaveResult> => {
+export const saveTimer = (
+  t: PersistedTimer | null,
+  prev?: PersistedTimer | null,
+  opts: { from?: PersistedTimer | null } = {}
+): Promise<SaveResult> => {
   const locks = (navigator as Navigator & { locks?: LockManager }).locks
   if (locks?.request) {
     return locks
-      .request('yike:timer', () => writeTimerSync(t, prev))
+      .request('yike:timer', () => writeTimerSync(t, prev, opts))
       .then((r) => r as SaveResult)
-      .catch(() => writeTimerSync(t, prev))
+      .catch(() => writeTimerSync(t, prev, opts))
   }
-  return Promise.resolve(writeTimerSync(t, prev))
+  return Promise.resolve(writeTimerSync(t, prev, opts))
 }
 
 
