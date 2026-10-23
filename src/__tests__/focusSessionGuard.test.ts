@@ -889,3 +889,33 @@ describe('Codex 第 34 輪：認領失敗的分頁不能清掉成功分頁正要
     expect(await saveTimer(mk('break'))).toBe('written')
   })
 })
+
+describe('Codex 第 35 輪：認領要分「完成」與「放棄」', () => {
+  const NOW = Date.now()
+  const mk = (phase: 'focus' | 'break' = 'focus') => ({
+    id: 'T1', owner: BOB, startedAt: NOW - 60_000, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('正常放棄：認領為放棄 → saveTimer(null, T1) 照刪、立墓碑、重開不復活', async () => {
+    saveTimer(mk())
+    expect(await claimTimerCompletion('T1', { unlessEnded: true, kind: 'abandon' })).toBe(true)
+    expect(await saveTimer(null, mk())).toBe('written')
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+    expect(isTimerEnded('T1')).toBe(true)
+    expect(restoreTimer()).toBeNull()
+  })
+  it('認領為完成 → 同段 focus 的清除仍被擋（第 34 輪）；兩種認領互相去重', async () => {
+    saveTimer(mk())
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    expect(await saveTimer(null, mk())).toBe('rejected')
+    expect(await claimTimerCompletion('T1', { kind: 'abandon' })).toBe(false)
+    localStorage.clear(); setDataOwner(BOB)
+    expect(await claimTimerCompletion('T2', { kind: 'abandon' })).toBe(true)
+    expect(await claimTimerCompletion('T2')).toBe(false)
+  })
+  it('放棄認領的段不會被 restoreTimer 當成「已完成卡住」丟掉（磁碟若還留著 focus 就照還原）', async () => {
+    saveTimer(mk())
+    expect(await claimTimerCompletion('T1', { kind: 'abandon' })).toBe(true)
+    expect(restoreTimer()?.id).toBe('T1')
+  })
+})

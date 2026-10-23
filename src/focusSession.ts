@@ -138,7 +138,7 @@ export const loadTimer = (): PersistedTimer | null => {
  *  會提交空狀態 → saveTimer(null, T1) 刪掉 T1 立墓碑 → A 的休息被拒（Codex 第 34 輪）。 */
 export const restoreTimer = (): PersistedTimer | null => {
   const t = loadTimer()
-  if (t && t.phase === 'focus' && t.id && doneIds().includes(t.id)) return null
+  if (t && t.phase === 'focus' && t.id && completedIds().includes(t.id)) return null
   return t
 }
 /** 落盤的結果：written＝寫了；noop＝磁碟本來就一樣或沒東西好刪；
@@ -166,7 +166,7 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null):
       if (replacingOwn && prev!.phase === 'focus' && disk0!.phase === 'break') return 'rejected'
       // 要換掉的那段已經被認領完成（別的分頁提前完成、記了格、休息還沒落盤）：過期的「重新開始」
       // 不准立它的墓碑把它的休息擋掉——認領與落盤是兩把鎖，只看磁碟 phase 有空窗（Codex 第 30 輪 #1）
-      if (replacingOwn && prev!.phase === 'focus' && doneIds().includes(prev!.id!)) return 'rejected'
+      if (replacingOwn && prev!.phase === 'focus' && completedIds().includes(prev!.id!)) return 'rejected'
       if (!replacingOwn && supersededOnDisk(t)) return 'rejected'
       if (t.id && endedIds().includes(t.id)) return 'rejected' // 這段已經被別的分頁結束了，不准復活
       // 寫入當下再核對一次主人：A 暫停的落盤排在鎖後面，等它拿到鎖時另一分頁已經換成 B、
@@ -206,7 +206,7 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null):
       if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'break') return 'rejected'
       // 同一段、磁碟還是 focus、但已被認領完成：別的分頁剛完成、休息正要落盤，這個清除是過期的
       //（認領失敗的分頁或過期的放棄）——不刪也不立墓碑，否則它的休息被拒（Codex 第 34 輪）
-      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'focus' && doneIds().includes(prevId)) return 'rejected'
+      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'focus' && completedIds().includes(prevId)) return 'rejected'
       if (alreadyEnded && disk && disk.id !== prevId) return 'rejected'
       // 磁碟上是別人更新的一段 → 不碰（自己仍留墓碑）。是比我舊的殘影（我這段從來沒存成功，
       // 例如配額滿）→ 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。
@@ -341,7 +341,11 @@ export const newTimerId = (): string => `t${Date.now().toString(36)}${Math.rando
 
 /** 已認領（完成或放棄）的段。記最近 20 段，不是只記最後一段：T1 完成 → T2 完成 → T1 那個
  *  過期的放棄確認又能認領（Codex 第 6 輪 #1） */
-const doneIds = (): string[] => {
+/** 認領歷史的每一筆：`<id>`＝認領為完成、`<id>#a`＝認領為放棄。兩種都算「認領過」（去重），
+ *  但只有「完成」代表這段的格已記、休息正要來——清除／替換／還原的守衛只看完成的
+ *  （Codex 第 35 輪：正常放棄是先認領再清，若把放棄也當成完成，清除會被自己擋下、計時復活卡死）。 */
+const ABANDON_MARK = '#a'
+const doneEntries = (): string[] => {
   try {
     const raw = localStorage.getItem(DONE_KEY)
     return raw ? (raw.startsWith('[') ? (JSON.parse(raw) as string[]) : [raw]) : []
@@ -349,11 +353,13 @@ const doneIds = (): string[] => {
     return []
   }
 }
-const claimSync = (timerId: string): boolean => {
+const doneIds = (): string[] => doneEntries().map((e) => (e.endsWith(ABANDON_MARK) ? e.slice(0, -ABANDON_MARK.length) : e))
+const completedIds = (): string[] => doneEntries().filter((e) => !e.endsWith(ABANDON_MARK))
+const claimSync = (timerId: string, kind: 'done' | 'abandon'): boolean => {
   try {
-    const done = doneIds()
-    if (done.includes(timerId)) return false
-    localStorage.setItem(DONE_KEY, JSON.stringify([...done, timerId].slice(-HISTORY_CAP)))
+    if (doneIds().includes(timerId)) return false
+    const entry = kind === 'abandon' ? timerId + ABANDON_MARK : timerId
+    localStorage.setItem(DONE_KEY, JSON.stringify([...doneEntries(), entry].slice(-HISTORY_CAP)))
     return true
   } catch {
     return true // 存不進去就寧可記（重複總比不記好）
@@ -361,8 +367,9 @@ const claimSync = (timerId: string): boolean => {
 }
 export const claimTimerCompletion = async (
   timerId: string | undefined,
-  opts: { unlessEnded?: boolean } = {}
+  opts: { unlessEnded?: boolean; kind?: 'done' | 'abandon' } = {}
 ): Promise<boolean> => {
+  const kind = opts.kind ?? 'done'
   if (!timerId) return true // 舊的計時狀態沒有 id：照舊
   // 到點完成時：這段已經被別的分頁放棄／換掉（進了墓碑）就不准記。A 重新開始、T1 的墓碑立成
   // 功但 T2 存失敗，磁碟還是 T1，B 沒收到刪除事件繼續倒數，到點會替已放棄的段塗格（Codex 第 22 輪 #2）。
@@ -378,13 +385,13 @@ export const claimTimerCompletion = async (
       // 跟 saveTimer 用同一把鎖：認領與替換（立墓碑＋寫新段）要互斥——B 在 yike:timer 鎖內讀到 T1 沒完成，
       // A 同時在另一把鎖認領完成，B 接著立墓碑，A 的休息被拒（Codex 第 31 輪 #1）
       return await locks.request('yike:timer', () =>
-        opts.unlessEnded && isTimerEnded(timerId) ? false : claimSync(timerId)
+        opts.unlessEnded && isTimerEnded(timerId) ? false : claimSync(timerId, kind)
       )
     } catch {
       /* 鎖不可用：退回 */
     }
   }
-  return claimSync(timerId)
+  return claimSync(timerId, kind)
 }
 
 /** 連續番茄鐘跨午夜：新的一段屬於「新的今天」，dateKey/taskId 不能沿用昨天的（Codex 第 3 輪 #3）。
