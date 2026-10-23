@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, restoreTimer, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
+import { breakFrom, claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, restoreTimer, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
@@ -956,5 +956,32 @@ describe('Codex 第 40 輪：休息落盤失敗後，自己的「結束休息」
     expect(await claimTimerCompletion('T1')).toBe(true)
     expect(await saveTimer(null, mk('focus', 9), { from: mk('focus', 9) })).toBe('rejected')
     expect(await saveTimer(null, mk('focus', 9))).toBe('rejected')
+  })
+})
+
+describe('Codex 第 41 輪', () => {
+  const NOW = Date.now()
+  const mk = (phase: 'focus' | 'break', rev: number) => ({
+    id: 'T1', owner: BOB, rev, startedAt: NOW - 60_000, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('#2 休息寫入排在清除前面、prev 還是 focus：from=break → 結束休息照刪', async () => {
+    saveTimer(mk('focus', 1))
+    saveTimer(mk('break', 2))
+    expect(await saveTimer(null, mk('focus', 1), { from: mk('break', 2) })).toBe('written')
+    expect(localStorage.getItem('ppl:timer')).toBeNull()
+  })
+  it('#2 對照：別的分頁 from 還是 focus → 仍擋（第 19 輪）', async () => {
+    saveTimer(mk('focus', 1))
+    saveTimer(mk('break', 2))
+    expect(await saveTimer(null, mk('focus', 1), { from: mk('focus', 1) })).toBe('rejected')
+  })
+  it('#1 breakFrom：已完成的 focus 推進休息，之後落盤走「同段往前」規則', async () => {
+    saveTimer(mk('focus', 9))
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    const b = breakFrom(loadTimer()!, 5)
+    expect(b.phase).toBe('break')
+    expect(b.totalMs).toBe(5 * 60_000)
+    expect(await saveTimer(b, mk('focus', 9))).toBe('written')
   })
 })

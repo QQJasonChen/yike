@@ -212,13 +212,14 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null, 
       // 同一段但磁碟已經走到休息（另一分頁在我確認放棄的空檔提前完成了它）：這段已經記過一格、
       // 正在休息倒數，過期的放棄不准刪也不准立墓碑——立了 B 後續的寫入全被擋（Codex 第 19 輪）。
       // 跟 supersededOnDisk 同一條規則，只是搬進鎖內。
-      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'break') return 'rejected'
+      // 畫面上清除前已經是同段的 break＝這段休息是我們自己的（或已採用的），兩道「過期清除」守衛都不適用：
+      // ①休息寫入還在排隊、使用者就按了結束，鎖依序先寫 break 再清除，prev 還是 focus（Codex 第 41 輪 #2）
+      // ②休息落盤失敗（配額滿）後按結束（第 40 輪）
+      const ownBreak = opts.from?.id === prevId && opts.from?.phase === 'break'
+      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'break' && !ownBreak) return 'rejected'
       // 同一段、磁碟還是 focus、但已被認領完成：別的分頁剛完成、休息正要落盤，這個清除是過期的
       //（認領失敗的分頁或過期的放棄）——不刪也不立墓碑，否則它的休息被拒（Codex 第 34 輪）
-      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'focus' && completedIds().includes(prevId)) {
-        const ownBreak = opts.from?.id === prevId && opts.from?.phase === 'break'
-        if (!ownBreak) return 'rejected'
-      }
+      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'focus' && completedIds().includes(prevId) && !ownBreak) return 'rejected'
       if (alreadyEnded && disk && disk.id !== prevId) return 'rejected'
       // 磁碟上是別人更新的一段 → 不碰（自己仍留墓碑）。是比我舊的殘影（我這段從來沒存成功，
       // 例如配額滿）→ 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。
@@ -296,6 +297,16 @@ export const isTimerEnded = (id: string | undefined): boolean => !!id && endedId
 export const isTimerCompleted = (id: string | undefined): boolean => !!id && completedIds().includes(id)
 /** 這段已被認領為「放棄」（枯樹已記）。對方放棄後在清除落盤前關掉，還開著的分頁認領都失敗、
  *  loadTimer 又回同段 focus → 要自己清掉，不然結束不了、專注鎖也不解（Codex 第 38 輪 #1）。 */
+/** 把一段（通常是磁碟上已認領完成、卻還停在 focus 的）推進休息。App 的 rejected→採磁碟路徑用：
+ *  B 的 T2 被拒寫（T1 已被 A 認領完成、休息還沒落盤）時，B 不能留著沒落盤的 T2 一直倒數，
+ *  也不能採回會卡死的 focus——改採 T1 並替它進休息（Codex 第 41 輪 #1）。 */
+export const breakFrom = <T extends PersistedTimer>(t: T, breakMinutes: number): T => ({
+  ...t,
+  phase: 'break',
+  totalMs: breakMinutes * 60_000,
+  endsAt: Date.now() + breakMinutes * 60_000,
+  pausedRemaining: null,
+})
 export const isTimerAbandoned = (id: string | undefined): boolean =>
   !!id && doneEntries().includes(id + ABANDON_MARK)
 /** 這段計時「現在」對應今天哪一列的 id：id 找得到就是它；找不到（匯入備份換了 id）就照

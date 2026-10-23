@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { ENDED_KEY, TIMER_KEY, claimTimerCompletion, isTimerCompleted, isTimerEnded, loadTimer, restoreTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
+import { ENDED_KEY, TIMER_KEY, breakFrom, claimTimerCompletion, isTimerCompleted, isTimerEnded, loadTimer, restoreTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -304,8 +304,12 @@ export default function App() {
       const untouched = attempted ? cur?.id === attempted.id && (cur?.rev ?? 0) === (attempted.rev ?? 0) : cur === null
       if (!untouched) return
       const disk = loadTimer()
-      // 已認領完成卻還停在 focus 的段不准顯示回來（會卡死）；FocusTimer 的 adoptDisk 會替它推進休息（第 40 輪）
-      if (disk && disk.phase === 'focus' && isTimerCompleted(disk.id)) return
+      // 已認領完成卻還停在 focus 的段：不能顯示回來（會卡死），也不能留著畫面上沒落盤的新段一直倒數——
+      // 採它並替它推進休息（對方的休息還沒落盤；誰先寫都是同段 break，版本規則會收斂）（第 40／41 輪）
+      if (disk && disk.phase === 'focus' && isTimerCompleted(disk.id)) {
+        setTimer(breakFrom(disk, settings.breakMinutes))
+        return
+      }
       if (JSON.stringify(disk) !== JSON.stringify(cur)) setTimer(disk)
     })
   }, [timer])
