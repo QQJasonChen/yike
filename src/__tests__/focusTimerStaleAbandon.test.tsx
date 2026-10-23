@@ -274,3 +274,40 @@ describe('Codex 第 37 輪 #1：同段 focus 但已認領完成 → 自己推進
     expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break' })
   })
 })
+
+describe('Codex 第 38 輪', () => {
+  const setup = (done: string[], dayTasks?: { id?: string; text: string }[]) => {
+    const onUpdate = vi.fn()
+    const onAdoptDisk = vi.fn()
+    const t = { ...base('T1'), taskId: 'x', taskText: '同名任務', dateKey: '2026-09-03' }
+    localStorage.setItem('ppl:owner', 'u1')
+    localStorage.setItem('ppl:timer', JSON.stringify({ ...t, owner: 'u1', rev: 1 }))
+    localStorage.setItem('ppl:timerDone', JSON.stringify(done))
+    if (dayTasks) localStorage.setItem('pp:day:2026-09-03', JSON.stringify({ tasks: dayTasks.map((x) => ({ done: 0, ...x })), blocks: [] }))
+    act(() =>
+      root!.render(
+        <FocusTimer timer={t} onUpdate={onUpdate} onSessionDone={() => Promise.resolve(false)} onAbandon={() => Promise.resolve(false)} onAdoptDisk={onAdoptDisk}
+          treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+      )
+    )
+    return { onUpdate, onAdoptDisk }
+  }
+  it('#1 對方放棄（T1#a）後在清除落盤前關掉 → B 按結束：自己清掉（onUpdate(null)）', async () => {
+    const { onUpdate, onAdoptDisk } = setup(['T1#a'])
+    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+    await act(async () => {
+      stopButton()!.click()
+      await Promise.resolve()
+    })
+    expect(onAdoptDisk).not.toHaveBeenCalled()
+    expect(onUpdate).toHaveBeenCalledWith(null)
+  })
+  it('#2 對方完成後關掉、同列已換成 id=y → B 推進休息帶 taskId=y', async () => {
+    const { onUpdate } = setup(['T1'], [{ id: 'y', text: '同名任務' }])
+    await act(async () => {
+      ;[...el.querySelectorAll('button')].find((b) => (b.title ?? '').includes('提前完成') || /提前完成/.test(b.textContent ?? ''))!.click()
+      await Promise.resolve()
+    })
+    expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break', taskId: 'y' })
+  })
+})

@@ -1,4 +1,4 @@
-import { isTimerCompleted, loadTimer, newTimerId, supersededOnDisk } from './focusSession'
+import { isTimerAbandoned, isTimerCompleted, loadTimer, newTimerId, resolveTaskId, supersededOnDisk } from './focusSession'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { focusLock } from './focusLock'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
@@ -107,7 +107,13 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
     // 同一段、磁碟還是 focus、但已被認領完成（對方提前完成後在休息落盤前關掉）：採回 focus 會卡死
     //（完成／放棄都認領不到、重新開始被 done 守衛擋）。格已經記了，這裡替它推進休息（Codex 第 37 輪 #1）
     if (d && cur && d.id === cur.id && d.phase === 'focus' && isTimerCompleted(d.id)) {
-      onUpdate(toBreak(cur, cur.taskId))
+      // 下一段要帶「現在」對應的列 id（匯入備份可能把 x 換成 y），跟成功路徑的 resolvedTaskId 同一回事（第 38 輪 #2）
+      onUpdate(toBreak(cur, resolveTaskId(cur)))
+      return
+    }
+    // 同段 focus、但已被認領為放棄（對方放棄後在清除落盤前關掉）：自己清掉，不然結束不了（第 38 輪 #1）
+    if (d && cur && d.id === cur.id && d.phase === 'focus' && isTimerAbandoned(d.id)) {
+      onUpdate(null)
       return
     }
     ;(onAdoptDisk ?? onUpdate)(d)

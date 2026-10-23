@@ -280,6 +280,18 @@ export const isTimerEnded = (id: string | undefined): boolean => !!id && endedId
 /** 這段已被認領為「完成」（格已記）。FocusTimer 認領失敗改採磁碟時用：磁碟還是同段 focus 但已完成
  *  （對方在休息落盤前關掉了）→ 自己推進休息，不要採回 focus 卡死（Codex 第 37 輪 #1）。 */
 export const isTimerCompleted = (id: string | undefined): boolean => !!id && completedIds().includes(id)
+/** 這段已被認領為「放棄」（枯樹已記）。對方放棄後在清除落盤前關掉，還開著的分頁認領都失敗、
+ *  loadTimer 又回同段 focus → 要自己清掉，不然結束不了、專注鎖也不解（Codex 第 38 輪 #1）。 */
+export const isTimerAbandoned = (id: string | undefined): boolean =>
+  !!id && doneEntries().includes(id + ABANDON_MARK)
+/** 這段計時「現在」對應今天哪一列的 id：id 找得到就是它；找不到（匯入備份換了 id）就照
+ *  recordFocusSession 同一套文字回退找。恢復路徑推進休息前用，讓下一段帶正確的列（Codex 第 38 輪 #2）。 */
+export const resolveTaskId = (t: { dateKey?: string; taskId?: string; taskIndex: number; taskText: string; startedAt: number }): string | undefined => {
+  const dateKey = t.dateKey ?? toDateKey(new Date(t.startedAt))
+  const tasks = loadDay(dateKey).tasks
+  const at = locate(tasks, t.taskId, t.taskIndex, t.taskText)
+  return tasks[at]?.id ?? t.taskId
+}
 
 /** storage 事件收到的磁碟狀態要不要採用？
  *  - 磁碟上有一段：不是本地剛結束的、也不在墓碑裡才採用。
