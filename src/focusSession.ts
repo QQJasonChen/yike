@@ -277,6 +277,9 @@ const endedIds = (): string[] => {
   }
 }
 export const isTimerEnded = (id: string | undefined): boolean => !!id && endedIds().includes(id)
+/** 這段已被認領為「完成」（格已記）。FocusTimer 認領失敗改採磁碟時用：磁碟還是同段 focus 但已完成
+ *  （對方在休息落盤前關掉了）→ 自己推進休息，不要採回 focus 卡死（Codex 第 37 輪 #1）。 */
+export const isTimerCompleted = (id: string | undefined): boolean => !!id && completedIds().includes(id)
 
 /** storage 事件收到的磁碟狀態要不要採用？
  *  - 磁碟上有一段：不是本地剛結束的、也不在墓碑裡才採用。

@@ -1,4 +1,4 @@
-import { loadTimer, newTimerId, supersededOnDisk } from './focusSession'
+import { isTimerCompleted, loadTimer, newTimerId, supersededOnDisk } from './focusSession'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { focusLock } from './focusLock'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
@@ -104,8 +104,22 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
     const cur = latest.current
     // 階段不准往回：磁碟還停在 focus、畫面已排入 break（同一段）就不採用
     if (d && cur && d.id === cur.id && d.phase === 'focus' && cur.phase === 'break') return
+    // 同一段、磁碟還是 focus、但已被認領完成（對方提前完成後在休息落盤前關掉）：採回 focus 會卡死
+    //（完成／放棄都認領不到、重新開始被 done 守衛擋）。格已經記了，這裡替它推進休息（Codex 第 37 輪 #1）
+    if (d && cur && d.id === cur.id && d.phase === 'focus' && isTimerCompleted(d.id)) {
+      onUpdate(toBreak(cur, cur.taskId))
+      return
+    }
     ;(onAdoptDisk ?? onUpdate)(d)
   }
+  const toBreak = (cur: TimerState, taskId: string | undefined): TimerState => ({
+    ...cur,
+    taskId,
+    phase: 'break',
+    totalMs: breakMinutes * 60_000,
+    endsAt: Date.now() + breakMinutes * 60_000,
+    pausedRemaining: null,
+  })
   const [, force] = useState(0)
   const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
@@ -140,14 +154,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       // 從「現在」的狀態推進休息，不是認領前捕獲的那份：別的分頁可能暫停／恢復過（rev 更高），
       // 用舊快照寫會被版本守衛擋下、採回 focus，而這段已認領完成，永遠進不了休息（Codex 第 27 輪 #2）
       const resolvedTaskId = ok && typeof ok === 'object' && ok.taskId ? ok.taskId : cur.taskId
-      onUpdate({
-        ...cur,
-        taskId: resolvedTaskId,
-        phase: 'break',
-        totalMs: breakMinutes * 60_000,
-        endsAt: Date.now() + breakMinutes * 60_000,
-        pausedRemaining: null,
-      })
+      onUpdate(toBreak(cur, resolvedTaskId))
     })
   }
   useEffect(() => {

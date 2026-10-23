@@ -249,3 +249,28 @@ describe('Codex 第 32 輪：同一段的完成只准一次 in-flight', () => {
     expect(onUpdate.mock.calls[0][0]).toMatchObject({ phase: 'break' })
   })
 })
+
+describe('Codex 第 37 輪 #1：同段 focus 但已認領完成 → 自己推進休息，不採回 focus', () => {
+  it('B 放棄認領失敗、磁碟是已完成的 T1 focus → onUpdate(break)，不走 onAdoptDisk', async () => {
+    const onUpdate = vi.fn()
+    const onAdoptDisk = vi.fn()
+    const t = base('T1')
+    localStorage.setItem('ppl:owner', 'u1')
+    localStorage.setItem('ppl:timer', JSON.stringify({ ...t, owner: 'u1', rev: 1 }))
+    localStorage.setItem('ppl:timerDone', JSON.stringify(['T1'])) // A 認領完成後關掉，休息沒落盤
+    act(() =>
+      root!.render(
+        <FocusTimer timer={t} onUpdate={onUpdate} onSessionDone={vi.fn()} onAbandon={() => Promise.resolve(false)} onAdoptDisk={onAdoptDisk}
+          treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+      )
+    )
+    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+    await act(async () => {
+      stopButton()!.click()
+      await Promise.resolve()
+    })
+    expect(onAdoptDisk).not.toHaveBeenCalled()
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break' })
+  })
+})
