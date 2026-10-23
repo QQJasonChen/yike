@@ -129,9 +129,16 @@ export const loadTimer = (): PersistedTimer | null => {
   if (t.pausedRemaining === null && Date.now() - t.endsAt > 3_600_000) return null
   // 進了墓碑的段不還原：T2 存失敗（配額滿）時磁碟留著被取代的 T1，重開不能把 T1 復活（Codex 第 17 輪）
   if (isTimerEnded(t.id)) return null
-  // 已認領完成、磁碟卻還停在 focus（提前完成後、休息落盤前 App 被殺）：這段的格已經記了，
-  // 還原成 focus 會卡死——完成／放棄都認領不到、重新開始又被 done 檢查擋（Codex 第 33 輪）。當作沒有。
-  if (t.phase === 'focus' && t.id && doneIds().includes(t.id)) return null
+  return t
+}
+/** 只給 App 啟動還原用。跟 loadTimer 多一條：已認領完成、磁碟卻還停在 focus（提前完成後、
+ *  休息落盤前 App 被殺）的段不還原——格已經記了，還原成 focus 會卡死：完成／放棄都認領不到、
+ *  重新開始又被 done 檢查擋（Codex 第 33 輪）。
+ *  這條**不能**放進 loadTimer：執行中認領失敗改採磁碟時，A 剛認領、休息還沒落盤，B 讀到 null
+ *  會提交空狀態 → saveTimer(null, T1) 刪掉 T1 立墓碑 → A 的休息被拒（Codex 第 34 輪）。 */
+export const restoreTimer = (): PersistedTimer | null => {
+  const t = loadTimer()
+  if (t && t.phase === 'focus' && t.id && doneIds().includes(t.id)) return null
   return t
 }
 /** 落盤的結果：written＝寫了；noop＝磁碟本來就一樣或沒東西好刪；
@@ -197,6 +204,9 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null):
       // 正在休息倒數，過期的放棄不准刪也不准立墓碑——立了 B 後續的寫入全被擋（Codex 第 19 輪）。
       // 跟 supersededOnDisk 同一條規則，只是搬進鎖內。
       if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'break') return 'rejected'
+      // 同一段、磁碟還是 focus、但已被認領完成：別的分頁剛完成、休息正要落盤，這個清除是過期的
+      //（認領失敗的分頁或過期的放棄）——不刪也不立墓碑，否則它的休息被拒（Codex 第 34 輪）
+      if (disk && disk.id === prevId && prev?.phase === 'focus' && disk.phase === 'focus' && doneIds().includes(prevId)) return 'rejected'
       if (alreadyEnded && disk && disk.id !== prevId) return 'rejected'
       // 磁碟上是別人更新的一段 → 不碰（自己仍留墓碑）。是比我舊的殘影（我這段從來沒存成功，
       // 例如配額滿）→ 一起清掉，否則重開會把被取代的舊段復活（Codex 第 15 輪 #2）。

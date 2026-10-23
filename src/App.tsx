@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { ENDED_KEY, TIMER_KEY, claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
+import { ENDED_KEY, TIMER_KEY, claimTimerCompletion, isTimerEnded, loadTimer, restoreTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -95,7 +95,7 @@ export default function App() {
   const [writeFailed, setWriteFailed] = useState(false)
   const [ownerChanged, setOwnerChanged] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
-  const [timer, setTimer] = useState<TimerState | null>(loadTimer)
+  const [timer, setTimer] = useState<TimerState | null>(restoreTimer) // 啟動還原（多一條：已認領的 focus 段不還原）
   // 本地操作（開始／暫停／恢復／進休息／結束）走這個：版本 +1，讓同一段的落盤只准較新的贏。
   // 從 storage 事件收進來的、owner 變更的清空走原本的 setTimer，不加版本。
   // 本地剛結束（放棄／收工）的那段：落盤的刪除是非同步的，在它完成前別的分頁的舊寫入可能

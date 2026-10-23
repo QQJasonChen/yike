@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
+import { claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, restoreTimer, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner } from '../storage'
@@ -858,7 +858,8 @@ describe('Codex 第 33 輪：已認領完成、磁碟還停在 focus 的段不�
   it('暫停中的 T1 提前完成、認領成功、休息沒落盤就被殺 → 重開不還原 T1，可以開新段', async () => {
     saveTimer(mk('T1', { pausedRemaining: 600_000 }))
     expect(await claimTimerCompletion('T1')).toBe(true)
-    expect(loadTimer()).toBeNull()
+    expect(restoreTimer()).toBeNull()
+    expect(loadTimer()?.id).toBe('T1') // 執行中讀磁碟不過濾（第 34 輪）
     expect(await saveTimer(mk('T2'))).toBe('written')
     expect(isTimerEnded('T1')).toBe(true)
   })
@@ -866,5 +867,25 @@ describe('Codex 第 33 輪：已認領完成、磁碟還停在 focus 的段不�
     expect(await claimTimerCompletion('T1')).toBe(true)
     saveTimer(mk('T1', { phase: 'break' }))
     expect(loadTimer()?.phase).toBe('break')
+  })
+})
+
+describe('Codex 第 34 輪：認領失敗的分頁不能清掉成功分頁正要落盤的休息', () => {
+  const NOW = Date.now()
+  const mk = (phase: 'focus' | 'break') => ({
+    id: 'T1', owner: BOB, startedAt: NOW - 60_000, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('A 認領成功、休息還沒落盤；B 認領失敗 adoptDisk → 拿到 T1 focus（不是 null）', async () => {
+    saveTimer(mk('focus'))
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    expect(loadTimer()?.phase).toBe('focus')
+  })
+  it('就算 B 提交了空狀態：同段 focus 且已認領 → saveTimer(null, T1) 不刪不立墓碑，A 的休息照常落盤', async () => {
+    saveTimer(mk('focus'))
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    expect(await saveTimer(null, mk('focus'))).toBe('rejected')
+    expect(isTimerEnded('T1')).toBe(false)
+    expect(await saveTimer(mk('break'))).toBe('written')
   })
 })
