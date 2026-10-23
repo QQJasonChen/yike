@@ -628,6 +628,10 @@ export default function App() {
             // 鈴響了、慶祝了，一格都沒記到。
             return (async () => {
             const claim = await claimTimerCompletionDetailed(timer.id, { unlessEnded: true })
+            // 等認領的這段時間，這段可能已經不在畫面上了（B 清空這台裝置、或別的分頁換了段）：
+            // 認領成功也不准再寫日記——寫回去等於把剛清掉的私人任務文字、格、時間塊復活（Codex 第 49 輪）。
+            // 以 App 當下的計時狀態為準，不是 FocusTimer 事後才看的 alive。
+            if (timerRef.current?.id !== timer.id) return false
             if (claim === 'unsaved') {
               // 認領存不進去（配額滿）：不是別人記過了，是這台存不了。保留重試，別無聲停在 00:00（Codex 第 44 輪）
               celebrate('⚠ 儲存空間滿了，這段專注還沒記下來——清點空間後會自動再試')
@@ -656,6 +660,7 @@ export default function App() {
               // 現在放棄是先認領再清（第 26 輪），自己的墓碑不會搶在前面，所以也能查墓碑：
               // B 重新開始替 T1 立了墓碑 → 這個過期的放棄不准認領（Codex 第 27 輪 #1）
               const claim = await claimTimerCompletionDetailed(timer.id, { unlessEnded: true, kind: 'abandon' }) // 認領為「放棄」：接著的清除不會被「已完成」守衛擋下
+              if (timerRef.current?.id !== timer.id) return false // 等認領時這段已經不在畫面上（清空／換段）：不寫枯樹（第 49 輪）
               if (claim === 'unsaved') {
                 celebrate('⚠ 儲存空間滿了，放棄沒記下來——清點空間後再按一次')
                 return 'retry'
