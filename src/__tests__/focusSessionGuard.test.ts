@@ -1,6 +1,6 @@
 // 一段專注屬於「按下開始的那一天」與「按下開始的那個人」。
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { breakFrom, claimTimerCompletion, claimTimerCompletionDetailed, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, restoreTimer, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
+import { breakFrom, claimTimerCompletion, claimTimerCompletionDetailed, earliestFinish, isTimerEnded, noteFinishRequest, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, restoreTimer, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
 import { loadDay, saveDay, setDataOwner, toDateKey } from '../storage'
@@ -1030,5 +1030,17 @@ describe('Codex 第 44 輪：認領結果分三種', () => {
     } finally {
       spy.mockRestore()
     }
+  })
+})
+
+describe('Codex 第 47 輪：同段最早的完成請求跨分頁共享', () => {
+  it('A 09:20 提前完成記下 → B 09:25 到點記錄時取 09:20；別段不受影響；更晚的不覆蓋更早的', () => {
+    const t0 = Date.parse('2026-09-03T09:00:00')
+    noteFinishRequest('T1', t0 + 20 * 60_000)
+    expect(earliestFinish('T1', t0 + 25 * 60_000)).toBe(t0 + 20 * 60_000)
+    expect(earliestFinish('T2', t0 + 25 * 60_000)).toBe(t0 + 25 * 60_000)
+    noteFinishRequest('T1', t0 + 24 * 60_000)
+    expect(earliestFinish('T1', t0 + 25 * 60_000)).toBe(t0 + 20 * 60_000)
+    expect(earliestFinish('T1', t0 + 10 * 60_000)).toBe(t0 + 10 * 60_000) // 自己更早就用自己的
   })
 })

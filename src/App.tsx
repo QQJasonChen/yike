@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
-import { ENDED_KEY, TIMER_KEY, breakFrom, claimTimerCompletionDetailed, isTimerCompleted, isTimerEnded, loadTimer, restoreTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
+import { ENDED_KEY, TIMER_KEY, breakFrom, claimTimerCompletionDetailed, earliestFinish, isTimerCompleted, isTimerEnded, loadTimer, restoreTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
 import { resolveTaskForToday } from './focusTask'
 import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
@@ -642,7 +642,7 @@ export default function App() {
               owner: timer.owner,
               taskText: timer.taskText,
               startMs: s,
-              endMs: e,
+              endMs: earliestFinish(timer.id, e), // 同段最早的完成請求（可能是別的分頁提前完成那一刻）
               focusMinutes: settings.focusMinutes,
             }, out)
             if (!ok) celebrate('⚠ 這段專注沒存進去——請檢查儲存空間或登入狀態')

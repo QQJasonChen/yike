@@ -310,6 +310,32 @@ export const breakFrom = <T extends PersistedTimer>(t: T, breakMinutes: number):
   endsAt: Date.now() + breakMinutes * 60_000,
   pausedRemaining: null,
 })
+/** 跨分頁共享的「這段最早的完成請求時間」。A 在 09:20 提前完成但認領一直存不進去（配額滿），
+ *  B 在 09:25 到點先認領成功、用 endsAt 記成 25 分鐘——pendingEnd 只在 A 的元件裡（Codex 第 47 輪）。
+ *  第一次完成就把 {id, endMs} 寫進這把小 key（幾十 bytes，best effort），每個分頁記錄前都取同段最早的那個。 */
+const FINISH_KEY = 'ppl:timerFinish'
+const readFinish = (): { id?: string; endMs?: number } => {
+  try {
+    return JSON.parse(localStorage.getItem(FINISH_KEY) ?? '{}') as { id?: string; endMs?: number }
+  } catch {
+    return {}
+  }
+}
+export const noteFinishRequest = (id: string | undefined, endMs: number) => {
+  if (!id) return
+  const cur = readFinish()
+  if (cur.id === id && typeof cur.endMs === 'number' && cur.endMs <= endMs) return
+  try {
+    localStorage.setItem(FINISH_KEY, JSON.stringify({ id, endMs }))
+  } catch {
+    /* 連幾十 bytes 都塞不進去：退回各分頁自己的時間 */
+  }
+}
+export const earliestFinish = (id: string | undefined, endMs: number): number => {
+  if (!id) return endMs
+  const cur = readFinish()
+  return cur.id === id && typeof cur.endMs === 'number' && cur.endMs < endMs ? cur.endMs : endMs
+}
 export const isTimerAbandoned = (id: string | undefined): boolean =>
   !!id && doneEntries().includes(id + ABANDON_MARK)
 /** 這段計時「現在」對應今天哪一列的 id：id 找得到就是它；找不到（匯入備份換了 id）就照

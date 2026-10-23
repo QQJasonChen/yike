@@ -395,3 +395,22 @@ describe('Codex 第 46 輪 #1：第一次完成的時間是這段唯一的待完
     }
   })
 })
+
+describe('Codex 第 47 輪：提前完成會把時間寫進共享的 ppl:timerFinish', () => {
+  it('按提前完成 → ppl:timerFinish = { id, endMs }', async () => {
+    const onSessionDone = vi.fn((_ti: number, _s: number, _e: number) => Promise.resolve('retry' as const))
+    act(() =>
+      root!.render(
+        <FocusTimer timer={base('T1')} onUpdate={vi.fn()} onSessionDone={onSessionDone} onAbandon={vi.fn()}
+          treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+      )
+    )
+    await act(async () => {
+      ;[...el.querySelectorAll('button')].find((b) => (b.title ?? '').includes('提前完成') || /提前完成/.test(b.textContent ?? ''))!.click()
+      await Promise.resolve()
+    })
+    const f = JSON.parse(localStorage.getItem('ppl:timerFinish')!)
+    expect(f.id).toBe('T1')
+    expect(f.endMs).toBe(onSessionDone.mock.calls[0][2])
+  })
+})

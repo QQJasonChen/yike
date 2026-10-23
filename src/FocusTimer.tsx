@@ -1,4 +1,4 @@
-import { isTimerAbandoned, isTimerCompleted, loadTimer, newTimerId, resolveTaskId, supersededOnDisk } from './focusSession'
+import { isTimerAbandoned, isTimerCompleted, loadTimer, newTimerId, noteFinishRequest, resolveTaskId, supersededOnDisk } from './focusSession'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { focusLock } from './focusLock'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
@@ -158,6 +158,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
     const pend = pendingEnd.current
     const fixedEnd = pend && pend.id === me.id ? pend.endMs : endMs
     pendingEnd.current = { id: me.id, endMs: fixedEnd }
+    noteFinishRequest(me.id, fixedEnd) // 跨分頁也固定：別的分頁先認領到也要用這個時間（第 47 輪）
     void Promise.resolve(onSessionDone(me.taskIndex, me.startedAt, fixedEnd)).then((ok) => {
       if (inflight.current === me.id) inflight.current = null
       const cur = latest.current
