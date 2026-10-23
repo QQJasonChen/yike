@@ -102,6 +102,9 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
   // 失敗的回呼會把磁碟上還是 focus 的狀態採回來、跟第一次排入的 break 合併提交，break 從沒落盤，
   // 這段已認領卻永遠停在專注（Codex 第 32 輪）。同一段只准一次 in-flight。
   const inflight = useRef<string | null | undefined>(null)
+  // 這段唯一的「待完成請求」：第一次完成（提前或到點）的 endMs 固定下來，之後同段的任何完成請求
+  // （重試、到點 effect）都用它——否則提前完成一直存不進去、09:25 到點請求搶先成功，20 分鐘記成 25（Codex 第 46 輪 #1）
+  const pendingEnd = useRef<{ id: string | undefined; endMs: number } | null>(null)
   const adoptDisk = () => {
     const d = loadTimer() as TimerState | null
     const cur = latest.current
@@ -152,17 +155,21 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
     const me = timer
     if (inflight.current === me.id) return
     inflight.current = me.id
-    void Promise.resolve(onSessionDone(me.taskIndex, me.startedAt, endMs)).then((ok) => {
+    const pend = pendingEnd.current
+    const fixedEnd = pend && pend.id === me.id ? pend.endMs : endMs
+    pendingEnd.current = { id: me.id, endMs: fixedEnd }
+    void Promise.resolve(onSessionDone(me.taskIndex, me.startedAt, fixedEnd)).then((ok) => {
       if (inflight.current === me.id) inflight.current = null
       const cur = latest.current
       if (cur.id !== me.id) return // 等認領時這段已經換成別段：那段有自己的流程
+      if (ok !== 'retry' && pendingEnd.current?.id === me.id) pendingEnd.current = null
       if (ok === 'retry') {
         // 認領存不進去：不進休息、不採磁碟（採回同段 firedRef 不會重設，會無聲停在 00:00）。
         // 過一會兒**重送同一次完成請求**（同一個 endMs）：提前完成在 09:20 按、重試只重設 firedRef 的話
         // remaining>0 不會再跑，拖到 09:25 用 endsAt 記成 25 分鐘（Codex 第 44／45 輪）
         window.setTimeout(() => {
           if (latest.current?.id !== me.id) return
-          complete(endMs)
+          complete(fixedEnd)
         }, CLAIM_RETRY_MS)
         return
       }

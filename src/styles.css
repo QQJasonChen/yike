@@ -3111,6 +3111,12 @@ button.wk-head:hover {
 .celebrate::after {
   pointer-events: none;
 }
+/* 選中的心情／評分會放大（scale 1.18），手機補出來的 36px 命中區跟著放大到 42px、超過中心距，
+   點隔壁那顆會被選中的這顆攔到、把選擇清空（Codex 第 46 輪 #2）。選中態關掉命中區，本體照常可點 */
+.mood-btn.on::after,
+.score-btn.on::after {
+  pointer-events: none;
+}
 
 @media (max-width: 600px) {
   /* 任務列改兩行：文字+按鈕 / 把手+塗圈，避免擠出畫面 */

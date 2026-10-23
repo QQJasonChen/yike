@@ -366,3 +366,32 @@ describe('Codex 第 45 輪：提前完成的重試要用原本的完成時間', 
     }
   })
 })
+
+describe('Codex 第 46 輪 #1：第一次完成的時間是這段唯一的待完成請求', () => {
+  it('09:20 提前完成一直 retry → 09:25 到點 effect 也用 09:20 的 endMs', async () => {
+    vi.useFakeTimers()
+    try {
+      const onUpdate = vi.fn()
+      const onSessionDone = vi.fn((_ti: number, _s: number, _e: number) => Promise.resolve('retry' as const))
+      const t = { ...base('T1'), endsAt: Date.now() + 15_000 } // 15 秒後到點
+      act(() =>
+        root!.render(
+          <FocusTimer timer={t} onUpdate={onUpdate} onSessionDone={onSessionDone} onAbandon={vi.fn()}
+            treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+        )
+      )
+      const pressedAt = Date.now()
+      await act(async () => {
+        ;[...el.querySelectorAll('button')].find((b) => (b.title ?? '').includes('提前完成') || /提前完成/.test(b.textContent ?? ''))!.click()
+        await Promise.resolve()
+      })
+      // 走過到點（15s）與一次重試（10s）；每個 tick 都 flush microtask
+      for (let i = 0; i < 40; i++) await act(async () => { vi.advanceTimersByTime(500); await Promise.resolve() })
+      expect(onSessionDone.mock.calls.length).toBeGreaterThanOrEqual(2)
+      for (const c of onSessionDone.mock.calls) expect(c[2]).toBe(pressedAt)
+      expect(onUpdate).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
