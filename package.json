@@ -16,7 +16,11 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "test:security:ai-budget": "node scripts/ai-proxy-budget-test.mjs",
-    "test:ops": "node --test scripts/public-health-probe.test.mjs"
+    "test:ops": "node --test scripts/public-health-probe.test.mjs",
+    "ship:gate": "bash scripts/ship-gate.sh",
+    "ship:ack": "bash scripts/ship-gate.sh --ack",
+    "db:check": "bash scripts/db-check.sh",
+    "ui:probe": "bash scripts/ui-probe.sh"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.3",

@@ -21,3 +21,6 @@ ios/App/output
 secrets.*
 *.secret
 supabase/.temp/
+
+# 出貨閘門的本機放行 token（scripts/ship-gate.sh）——刻意不進 git，見該檔檔頭
+.review-ack

@@ -1,3 +1,4 @@
+import { isTimerAbandoned, isTimerCompleted, loadTimer, newTimerId, noteFinishRequest, resolveTaskId, supersededOnDisk } from './focusSession'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { focusLock } from './focusLock'
 import { closeFloating, openFloating, pipSupported, setPipAuto } from './pip'
@@ -14,7 +15,18 @@ declare global {
 }
 
 export interface TimerState {
+  /** 這一段計時的身分：跨分頁去重用（兩個分頁各自到點各自記 → 記兩次） */
+  id?: string
+  /** 版本：本地每次操作 +1；同一段的落盤只准較新的贏（見 focusSession.saveTimer） */
+  rev?: number
+  /** 這段專注屬於哪一天。少了它，完成時只能猜「今天」——跨午夜、或計時中翻到別的日期，
+   *  格數與時間塊就會記到錯的那一天。 */
+  dateKey?: string
   taskIndex: number
+  /** 這段專注屬於哪一件事。index 是畫面位置、text 在同名時分不出來，只有 id 認得出。 */
+  taskId?: string
+  /** 按下開始時的資料主人；完成時不一樣就不寫（另一個分頁換了帳號）。 */
+  owner?: string | null
   taskText: string
   phase: 'focus' | 'break'
   endsAt: number // epoch ms
@@ -23,19 +35,32 @@ export interface TimerState {
   startedAt: number // 本段專注開始的 epoch ms（時間軸記錄用）
 }
 
+/** false＝沒認領到（別的分頁記過了）；'retry'＝認領存不進去（配額滿），保留狀態稍後重試；
+ *  { taskId }＝記到了這一列（匯入備份後 id 可能換了，下一段改帶它）；void／true＝記了。 */
+export type DoneResult = void | boolean | 'retry' | { taskId?: string }
+/** 認領存不進去後多久再自動試一次（使用者清空間後不必手動按） */
+export const CLAIM_RETRY_MS = 10_000
 interface Props {
   timer: TimerState
   onUpdate: (t: TimerState | null) => void
   /** 一段專注完成：任務 index ＋ 真實起訖（ms），用來塗圈＋寫進時間軸 */
-  onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void
+  /** 回傳 false＝這段沒認領到（別的分頁已經完成或放棄了它）：不准推進休息，改採磁碟上的狀態。
+   *  回傳 void／true＝照常進休息。 */
+  onSessionDone: (taskIndex: number, startMs: number, endMs: number) => DoneResult | Promise<DoneResult>
   /** 計時中按 ✕ 放棄（focus 階段才算）：種樹主題記一棵枯樹 */
-  onAbandon: (taskIndex: number) => void
+  /** 回傳 false＝這段沒認領到（別的分頁已經完成了它）：不准清掉，改採磁碟上的狀態。 */
+  onAbandon: (taskIndex: number) => void | boolean | 'retry' | Promise<boolean | void | 'retry'>
   /** 種樹主題開著（放棄 confirm 的文案用） */
   treeStyle: boolean
   breakMinutes: number
   focusMinutes: number
   /** 連續番茄鐘：休息結束自動接下一段（使用者可在設定開關） */
   autoLoop: boolean
+  /** 新的一段開始前讓 App 重新定位日期與任務（跨午夜時 dateKey/taskId 不能沿用昨天） */
+  renewSegment?: (t: TimerState) => TimerState
+  /** 認領失敗改採磁碟狀態時用這個，不走 onUpdate：onUpdate 會當成本地操作加版本，把別的分頁
+   *  更新的暫停用同版本蓋回去（Codex 第 27 輪 #3）。沒給就退回 onUpdate。 */
+  onAdoptDisk?: (t: TimerState | null) => void
   /** 專注時鎖住分心 App（僅原生 iOS 生效，其餘平台 no-op） */
   lockApps: boolean
 }
@@ -68,7 +93,56 @@ const chime = () => {
   navigator.vibrate?.([200, 80, 200])
 }
 
-export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, treeStyle, breakMinutes, focusMinutes, autoLoop, lockApps }: Props) {
+export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, treeStyle, breakMinutes, focusMinutes, autoLoop, lockApps , renewSegment, onAdoptDisk}: Props) {
+  // 等認領（非同步）的這段時間畫面上的段可能已經換了（storage 事件採用了別的分頁的新段）：
+  // 回呼回來要核對還是不是當初那段，不然舊放棄會把新段清掉（Codex 第 27 輪 #1）
+  const latest = useRef(timer)
+  latest.current = timer
+  // 認領進行中的那段：第一次認領還沒回來又按「提前完成」（或手動完成跟到點回呼重疊），第二次認領
+  // 失敗的回呼會把磁碟上還是 focus 的狀態採回來、跟第一次排入的 break 合併提交，break 從沒落盤，
+  // 這段已認領卻永遠停在專注（Codex 第 32 輪）。同一段只准一次 in-flight。
+  const inflight = useRef<string | null | undefined>(null)
+  // 這段唯一的「待完成請求」：第一次完成（提前或到點）的 endMs 固定下來，之後同段的任何完成請求
+  // （重試、到點 effect）都用它——否則提前完成一直存不進去、09:25 到點請求搶先成功，20 分鐘記成 25（Codex 第 46 輪 #1）
+  const pendingEnd = useRef<{ id: string | undefined; endMs: number } | null>(null)
+  // 卸載後舊的完成回呼／重試 timeout 不准再寫：B 清空這台裝置、A 的 FocusTimer 卸載了，10 秒後的重試
+  // 把已刪掉的任務文字、完成紀錄、時間塊整個寫回（Codex 第 48 輪）
+  const alive = useRef(true)
+  const retryTimer = useRef<number | null>(null)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+      if (retryTimer.current !== null) window.clearTimeout(retryTimer.current)
+    }
+  }, [])
+  const adoptDisk = () => {
+    const d = loadTimer() as TimerState | null
+    const cur = latest.current
+    // 階段不准往回：磁碟還停在 focus、畫面已排入 break（同一段）就不採用
+    if (d && cur && d.id === cur.id && d.phase === 'focus' && cur.phase === 'break') return
+    // 同一段、磁碟還是 focus、但已被認領完成（對方提前完成後在休息落盤前關掉）：採回 focus 會卡死
+    //（完成／放棄都認領不到、重新開始被 done 守衛擋）。格已經記了，這裡替它推進休息（Codex 第 37 輪 #1）
+    if (d && cur && d.id === cur.id && d.phase === 'focus' && isTimerCompleted(d.id)) {
+      // 下一段要帶「現在」對應的列 id（匯入備份可能把 x 換成 y），跟成功路徑的 resolvedTaskId 同一回事（第 38 輪 #2）
+      onUpdate(toBreak(cur, resolveTaskId(cur)))
+      return
+    }
+    // 同段 focus、但已被認領為放棄（對方放棄後在清除落盤前關掉）：自己清掉，不然結束不了（第 38 輪 #1）
+    if (d && cur && d.id === cur.id && d.phase === 'focus' && isTimerAbandoned(d.id)) {
+      onUpdate(null)
+      return
+    }
+    ;(onAdoptDisk ?? onUpdate)(d)
+  }
+  const toBreak = (cur: TimerState, taskId: string | undefined): TimerState => ({
+    ...cur,
+    taskId,
+    phase: 'break',
+    totalMs: breakMinutes * 60_000,
+    endsAt: Date.now() + breakMinutes * 60_000,
+    pausedRemaining: null,
+  })
   const [, force] = useState(0)
   const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
@@ -85,35 +159,70 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
     return () => clearInterval(t)
   }, [])
 
+  /** 完成這段：先認領（App 那邊跨分頁去重），認領到才進休息。認領失敗＝別的分頁已經完成或放棄了它，
+   *  不能無條件寫入休息——A 放棄成功記了枯樹，B 的休息寫入會把 A 的清除擋掉、畫面採回休息，
+   *  autoLoop 還會自己開下一段（Codex 第 25 輪 #1）。失敗就改採磁碟上的狀態。 */
+  const complete = (endMs: number) => {
+    const me = timer
+    if (inflight.current === me.id) return
+    inflight.current = me.id
+    const pend = pendingEnd.current
+    const fixedEnd = pend && pend.id === me.id ? pend.endMs : endMs
+    pendingEnd.current = { id: me.id, endMs: fixedEnd }
+    noteFinishRequest(me.id, fixedEnd) // 跨分頁也固定：別的分頁先認領到也要用這個時間（第 47 輪）
+    void Promise.resolve(onSessionDone(me.taskIndex, me.startedAt, fixedEnd)).then((ok) => {
+      if (inflight.current === me.id) inflight.current = null
+      if (!alive.current) return // 已卸載：不准再寫任何東西
+      const cur = latest.current
+      if (cur.id !== me.id) return // 等認領時這段已經換成別段：那段有自己的流程
+      if (ok !== 'retry' && pendingEnd.current?.id === me.id) pendingEnd.current = null
+      if (ok === 'retry') {
+        // 認領存不進去：不進休息、不採磁碟（採回同段 firedRef 不會重設，會無聲停在 00:00）。
+        // 過一會兒**重送同一次完成請求**（同一個 endMs）：提前完成在 09:20 按、重試只重設 firedRef 的話
+        // remaining>0 不會再跑，拖到 09:25 用 endsAt 記成 25 分鐘（Codex 第 44／45 輪）
+        retryTimer.current = window.setTimeout(() => {
+          retryTimer.current = null
+          if (!alive.current || latest.current?.id !== me.id) return
+          complete(fixedEnd)
+        }, CLAIM_RETRY_MS)
+        return
+      }
+      if (ok === false) {
+        adoptDisk()
+        return
+      }
+      // 從「現在」的狀態推進休息，不是認領前捕獲的那份：別的分頁可能暫停／恢復過（rev 更高），
+      // 用舊快照寫會被版本守衛擋下、採回 focus，而這段已認領完成，永遠進不了休息（Codex 第 27 輪 #2）
+      const resolvedTaskId = ok && typeof ok === 'object' && ok.taskId ? ok.taskId : cur.taskId
+      onUpdate(toBreak(cur, resolvedTaskId))
+    })
+  }
   useEffect(() => {
     if (remaining <= 0 && timer.pausedRemaining === null && !firedRef.current) {
       firedRef.current = true
       chime()
       if (timer.phase === 'focus') {
-        onSessionDone(timer.taskIndex, timer.startedAt, Date.now())
-        // 自動進入休息
-        onUpdate({
-          ...timer,
-          phase: 'break',
-          totalMs: breakMinutes * 60_000,
-          endsAt: Date.now() + breakMinutes * 60_000,
-          pausedRemaining: null,
-        })
+        // 用 endsAt 不用 Date.now()：App 在 iOS 被睡著、隔一小時才回前景，
+        // 25 分鐘會被記成 84 分鐘
+        complete(timer.endsAt)
       } else if (autoLoop) {
         // 連續番茄鐘：休息結束自動接下一段專注（保留懸浮窗，省去回網頁按開始）
-        onUpdate({
+        const next: TimerState = {
           ...timer,
+          id: newTimerId(), // 新的一段＝新的完成識別，否則第二段被當成「已記過」整段漏記
           phase: 'focus',
           totalMs: focusMinutes * 60_000,
           endsAt: Date.now() + focusMinutes * 60_000,
           pausedRemaining: null,
           startedAt: Date.now(),
-        })
+        }
+        onUpdate(renewSegment ? renewSegment(next) : next)
       } else {
         onUpdate(null)
       }
     }
-  }, [remaining, timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, autoLoop])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- complete 每次 render 都是新函式；它用到的值都已列在這裡
+  }, [remaining, timer, onUpdate, onSessionDone, breakMinutes, focusMinutes, autoLoop, renewSegment])
 
   // 頁面標題倒數，切到別的分頁也看得到
   useEffect(() => {
@@ -167,24 +276,38 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
 
   const finishEarly = () => {
     chime()
-    onSessionDone(timer.taskIndex, timer.startedAt, Date.now())
-    onUpdate({
-      ...timer,
-      phase: 'break',
-      totalMs: breakMinutes * 60_000,
-      endsAt: Date.now() + breakMinutes * 60_000,
-      pausedRemaining: null,
-    })
+    complete(Date.now())
   }
 
   // ✕ 結束：focus 階段＝放棄（種樹主題會枯一棵，先 confirm）；休息階段＝正常收工不記
+  // 最新的 timer prop：confirm 框開著的期間，另一個分頁可能已經把這段完成、甚至開了新的一段。
+  // 閉包裡的 timer 是舊的——確認後要重新核對是不是同一段，不然會把別人的新計時清掉
+  //（Codex 第 5 輪 #2）。
   const stopTimer = () => {
-    if (timer.phase === 'focus') {
+    const target = timer
+    if (target.phase === 'focus') {
       const msg = treeStyle
         ? '確定要放棄嗎？這段專注的小樹會枯掉。'
         : '確定要放棄這段專注嗎？會記下一次放棄。'
       if (!confirm(msg)) return
-      onAbandon(timer.taskIndex)
+      // 原生 confirm 阻塞期間這個分頁的 storage 事件還沒處理，連 React prop 都是舊的——
+      // 要讀磁碟上的 ppl:timer 當真相（Codex 第 6 輪 #1）。但磁碟上沒有／比較舊不算被取代，
+      // 否則配額滿時開始的專注再也放棄不了（第 7 輪 #1）
+      if (supersededOnDisk(target)) return // 這段已經不是當初要放棄的那段
+      // 放棄也要等認領結果：A 提前完成、認領成功但休息還沒落盤，B 這時確認放棄——磁碟還是 focus，
+      // supersededOnDisk 放行，但認領會失敗；無條件清掉會把 A 已完成的段刪了、休息倒數中斷
+      //（Codex 第 26 輪）。認領失敗就改採磁碟上的狀態。
+      if (inflight.current === target.id) return // 這段的完成／放棄認領還在路上
+      inflight.current = target.id
+      void Promise.resolve(onAbandon(target.taskIndex)).then((ok) => {
+        if (inflight.current === target.id) inflight.current = null
+        if (!alive.current) return // 已卸載
+        if (latest.current?.id !== target.id) return // 等認領時已經換成別段（B 重新開始了 T2）：別清
+        if (ok === 'retry') return // 認領存不進去：計時留著，使用者清空間後再按一次（第 44 輪）
+        if (ok === false) adoptDisk()
+        else onUpdate(null)
+      })
+      return
     }
     onUpdate(null)
   }

@@ -176,13 +176,18 @@ textarea::placeholder {
   .tab-more-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 59;
+    z-index: 63; /* 必須高於 .timer-bar(62)，否則「更多」選單被計時器蓋住 */
+  }
+  /* .tab-more 是 .tab-bar 的子孫，困在 tab-bar 的 stacking context（60）裡——自己寫 64 也翻不過
+     外面 62 的計時器。選單開著時把整個 tab-bar 抬到計時器上面（Codex：疊層巢狀）。 */
+  .tab-bar:has(.tab-more) {
+    z-index: 66;
   }
   .tab-more {
     position: fixed;
     right: 8px;
     bottom: calc(54px + env(safe-area-inset-bottom, 0px));
-    z-index: 61;
+    z-index: 64; /* 同上。它跟 .timer-bar 的 bottom 幾乎相同，一定會重疊 */
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 6px;
@@ -1434,7 +1439,7 @@ textarea.line-area {
 .settings-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 70; /* 高於手機版 .timer-bar(62)，否則計時中打開設定會被計時器蓋住 */
   background: rgba(43, 38, 32, 0.28);
   display: flex;
   justify-content: flex-end;
@@ -3101,6 +3106,17 @@ button.wk-head:hover {
 .celebrate {
   animation: celebrate 0.5s ease;
 }
+/* 動畫把按鈕放大 1.35 倍又旋轉，手機上補出來的 40×44 透明命中區會跟著放大、蓋到隔壁按鈕的邊緣——
+   點完「3」0.2 秒內再點「2」會命中「3」把分數清掉（Codex 第 23 輪 #3）。動畫期間關掉命中區，本體照常可點 */
+.celebrate::after {
+  pointer-events: none;
+}
+/* 選中的心情／評分會放大（scale 1.18），手機補出來的 36px 命中區跟著放大到 42px、超過中心距，
+   點隔壁那顆會被選中的這顆攔到、把選擇清空（Codex 第 46 輪 #2）。選中態關掉命中區，本體照常可點 */
+.mood-btn.on::after,
+.score-btn.on::after {
+  pointer-events: none;
+}
 
 @media (max-width: 600px) {
   /* 任務列改兩行：文字+按鈕 / 把手+塗圈，避免擠出畫面 */
@@ -3974,7 +3990,7 @@ button.wk-head:hover {
   position: fixed;
   top: 78px;
   left: 50%;
-  z-index: 60;
+  z-index: 72; /* 同理：慶祝提示不能被計時器蓋掉 */
   transform: translateX(-50%);
   background: var(--tree);
   color: #fff;
@@ -5143,5 +5159,173 @@ button.mc-month:disabled { cursor: default; }
   }
   .biz-grid.stacked .biz-block {
     grid-area: auto;
+  }
+}
+
+/* ============================================================
+   手機核心 chrome（Codex UI/UX 審查 P1）
+   ① 浮動計時器不能被底部 tab 蓋住
+   ② 關鍵控制的觸控命中區 ≥44px（視覺尺寸不變）
+   ③ 輸入框 ≥16px，否則 iPhone 點進去會自動放大整頁
+   ============================================================ */
+
+:root {
+  /* 底部 tab 的高度：按鈕 padding 9/7 + 一行 14px 字 + 上緣分隔線 */
+  --mobile-tab-h: 44px;
+}
+
+/* ── 疊層順序（改任何 z-index 前先看這裡）──────────────────────────
+   內容/黏頭                   < 50
+   .tab-bar（手機底部）           60
+   .timer-bar（手機浮動計時器）    62   ← 必須高於 tab-bar
+   .tab-more-backdrop / .tab-more 63 / 64  ← 必須高於計時器，否則選單被蓋住
+   .settings-overlay / .focus-toast 70 / 72 ← 必須高於計時器
+   .name-menu / .zen              80
+   .save-failed（存不進去的警示）   90   ← 高於設定面板，它是資料要不見的通知
+   .task-ghost                   100
+   .ob-overlay / .inkc-overlay / .search-overlay / .tl-edit-overlay
+                                 200 / 210 / 220 / 240
+
+   會踩的坑：手機版把 .timer-bar 抬到 62（要蓋過 tab-bar）之後，原本 60 的
+   .settings-overlay 與 61 的 .tab-more 就都被計時器蓋住了——計時中打開設定，
+   底部那條計時器會浮在面板上面（Codex 互審第 6 輪 P2-2）。
+   ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  /* ① 計時器浮在 tab 上面。原本 z-index 50 < tab 的 60、bottom 只避開 home
+     indicator，於是「暫停 / 完成 / 放棄」整排都在 tab 底下按不到。 */
+  .timer-bar {
+    bottom: calc(var(--mobile-tab-h) + env(safe-area-inset-bottom, 0px) + 10px);
+    z-index: 62;
+  }
+
+  /* ② 命中區＝真實排版盒，不用透明 ::after 假造。
+     原本的做法：按鈕視覺只有約 25px 寬，外面貼一個 44×44 的絕對定位 ::after。
+     🔍 與 ⚙ 是相鄰的兩顆，中心距約 25px，兩個 44px 的透明盒重疊將近 19px——
+     重疊區裡「DOM 後面那顆」贏，所以瞄著 🔍 的右半邊按下去會開設定。
+     ‹ › 也一樣（38px + gap 4 ＝ 中心距 42 < 44）。
+     排版盒不會互相重疊，所以把真實尺寸撐到 44 才是結構上擋得住的做法。 */
+  .gear-btn,
+  .settings-close,
+  .tl-remind-toggle,
+  .tab-bar > button {
+    min-height: 44px;
+  }
+  .gear-btn,
+  .settings-close {
+    min-width: 44px;
+  }
+  .day-nav button {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* ②-b 其餘小控制項的命中盒。原則：
+       - 排版盒能撐到 44 的就撐（單獨一顆、旁邊沒鄰居）。
+       - 同一列很密的（心情 5 顆中心距 36、分數 41、少排/多排 36），寬度只能撐到
+         「中心距」——再大就跟鄰居重疊，重疊區裡 DOM 後面那顆贏，等於瞄不準；
+         高度沒有鄰居，一律撐到 44。這是 scripts/ui-probe.mjs 量出來的數字，
+         改任何一個之前先重量。
+       - 用 ::after 外擴時要確定那個偽元素沒被視覺用掉（目前這幾個都沒有）。 */
+  .sq-adj button,
+  .mood-btn,
+  .score-btn,
+  .plant-cell,
+  .reflect-mode,
+  .cloud-badge,
+  .habit-chip,
+  .week-check {
+    position: relative;
+  }
+  .sq-adj button::after,
+  .mood-btn::after,
+  .score-btn::after,
+  .plant-cell::after,
+  .reflect-mode::after,
+  .cloud-badge::after,
+  .habit-chip::after,
+  .week-check::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+  }
+  .sq-adj button::after,
+  .mood-btn::after {
+    width: 36px; /* 同列中心距 36 */
+  }
+  .score-btn::after {
+    width: 40px; /* 同列中心距 41 */
+  }
+  .plant-cell::after {
+    width: 30px; /* 格寬 26 + 間距 5 ＝ 中心距 31（第 12 輪：36 會跟隔壁格咬 5px）；右邊「−」中心距 40 也放得下 */
+    height: 30px; /* 種樹換行時列距只有 26+3；44 高會讓第二行蓋住第一行可見區的下緣 */
+  }
+  .cloud-badge::after,
+  .habit-chip::after {
+    width: 100%; /* 橫向本來就夠寬，只補高度 */
+  }
+  .habit-chip::after {
+    height: 40px; /* chip 會換行，列距不到 44 */
+  }
+  .week-check::after {
+    height: 38px; /* 週勾同欄中心距 39 */
+  }
+  /* 設定面板裡的 */
+  .fl-toggle {
+    min-height: 44px; /* 開啟/關閉 這種 pill，原本 29 高 */
+  }
+  .re-del {
+    position: relative;
+  }
+  .re-del::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+  }
+  /* 色票 18px + gap 5 ＝ 中心距 23，根本按不準。手機放大成 26 + gap 10（中心距 36），
+     8 顆一列 278px 放得下；命中盒 36×44。 */
+  .re-swatches,
+  .tl-swatches,
+  .block-pop .pop-swatches,
+  .tl-edit-card .pop-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; /* 沒有 flex 的容器吃不到 gap；時間塊編輯卡的那排原本只是 inline */
+  }
+  .tl-swatch {
+    width: 26px;
+    height: 26px;
+    position: relative;
+  }
+  .tl-swatch::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 34px; /* 窄手機八色會換行，列距 26+10=36；44 高會蓋到下一列（Codex 第 6 輪 #2） */
+  }
+
+  /* ▶ 與 ✓ 相鄰（32 + gap 10 + 30 ＝ 中心距 41），兩個 44 的命中盒會重疊 3px */
+  .task-play::after,
+  .task-check::after {
+    width: 40px;
+  }
+
+  /* ③ iOS Safari 在 <16px 的輸入框聚焦時會自動放大整頁，放大後不會自己縮回來，
+     使用者得手動雙指縮放才能繼續寫。字級是唯一的解法。 */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
   }
 }

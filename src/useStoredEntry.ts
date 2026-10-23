@@ -4,10 +4,10 @@ import { EXTERNAL_KEY_EVENT, useExternalKey } from './useExternalKey'
 
 const failedDrafts = new Map<string, unknown>()
 const draftId = (key: string, owner: string | null) => JSON.stringify([owner, key])
-export const hasUnsavedDrafts = (): boolean => {
-  const owner = getDataOwner()
-  return [...failedDrafts.keys()].some((key) => (JSON.parse(key) as unknown[])[0] === owner)
-}
+export const hasUnsavedDrafts = (): boolean => hasUnsavedDraftsFor(getDataOwner())
+/** 某個主人名下有沒有存不進去的草稿。換帳號時要問的是「上一個人」的，不是現在的。 */
+export const hasUnsavedDraftsFor = (owner: string | null): boolean =>
+  [...failedDrafts.keys()].some((key) => (JSON.parse(key) as unknown[])[0] === owner)
 /** Only an explicit device wipe clears the in-memory drafts which could not be stored. */
 export const clearUnsavedDrafts = () => failedDrafts.clear()
 
@@ -32,6 +32,37 @@ export const rebaseItems = <T extends { id: string }>(current: T[], before: T[],
   return result
 }
 
+/** 跟 hook 裡的 edit 同一套規則，但不綁 React state——給「畫面上那個元件可能沒 mount」的寫入用
+ *  （番茄鐘完成時使用者可能在週/月分頁）。
+ *  - 以同一個 failedDrafts 為基準：有存不進去的草稿就疊在草稿上，不會把它蓋掉；
+ *    存失敗時結果進草稿，下次成功存檔會一起帶上，不是鈴響了一格都沒記。
+ *  - owner 守衛同 canWrite：expectedOwner 是按下開始時的主人，現在不一樣就擋。 */
+export const editStoredKey = <T,>(
+  key: string,
+  load: () => T,
+  save: (value: T) => boolean,
+  change: (current: T) => T,
+  expectedOwner: string | null
+): boolean => {
+  if (getDataOwner() !== expectedOwner) {
+    window.dispatchEvent(new Event('yike:owner-change-blocked'))
+    return false
+  }
+  const id = draftId(key, expectedOwner)
+  const pending = failedDrafts.get(id) as T | undefined
+  const base = pending !== undefined ? pending : load()
+  const next = change(base)
+  // 沒改而且也沒有待存的草稿：不存、不發事件。有草稿的話照存——這次就是它的重試機會
+  if (Object.is(next, base) && pending === undefined) return true
+  const ok = save(next)
+  if (ok) failedDrafts.delete(id)
+  else failedDrafts.set(id, next)
+  // 失敗也要發：畫面要重讀，才會把 map 裡這份「含結果的草稿」當成自己的基準，
+  // 否則它下一次 edit 用舊草稿整頁回存，剛記的格數就沒了（Codex 第 3 輪 #2）
+  window.dispatchEvent(new CustomEvent(EXTERNAL_KEY_EVENT, { detail: { key } }))
+  return ok
+}
+
 /** Only this edit is applied to current storage; a failed local save keeps its draft. */
 export const useStoredEntry = <T,>(key: string, load: () => T, save: (value: T) => boolean) => {
   const [entry, setEntry] = useState<T>(() => (failedDrafts.get(draftId(key, getDataOwner())) as T | undefined) ?? load())
@@ -51,6 +82,9 @@ export const useStoredEntry = <T,>(key: string, load: () => T, save: (value: T) 
       setEntry(pending)
       return
     }
+    // 草稿 map 是唯一真相：別處（editStoredKey，例如番茄鐘完成）已經把草稿連同結果存進去，
+    // 這裡的 failed 旗標就不能再卡住 reload，否則下一次編輯會用舊草稿整頁回存
+    if (draft.current.key === current.key && draft.current.failed) draft.current.failed = false
     // An external update must not silently discard text which never reached storage.
     if (draft.current.key === current.key && draft.current.failed) return
     const value = current.load()
@@ -82,8 +116,12 @@ export const useStoredEntry = <T,>(key: string, load: () => T, save: (value: T) 
     const current = latest.current
     // A native editor or delayed callback may finish after the user navigated to a different key.
     if (current.key !== key) return false
-    const base = draft.current.key === current.key && draft.current.failed
-      ? draft.current.value : current.load()
+    // 共用的 failedDrafts 是唯一真相：別處（番茄鐘完成）可能已把含結果的草稿放進去，
+    // 這裡不能用自己手上那份舊草稿當基準
+    const pendingNow = failedDrafts.get(draftId(current.key, owner.current)) as T | undefined
+    const base = pendingNow !== undefined
+      ? pendingNow
+      : draft.current.key === current.key && draft.current.failed ? draft.current.value : current.load()
     const next = change(base)
     const ok = current.save(next)
     const id = draftId(current.key, owner.current)

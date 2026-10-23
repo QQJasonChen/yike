@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cloudEnabled, startAutoSync, stopAutoSync } from './cloud'
 import { changedFields, useStoredEntry } from './useStoredEntry'
+import { ENDED_KEY, TIMER_KEY, breakFrom, claimTimerCompletionDetailed, earliestFinish, isTimerCompleted, isTimerEnded, loadTimer, restoreTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from './focusSession'
+import { resolveTaskForToday } from './focusTask'
+import { editStoredKey, hasUnsavedDraftsFor } from './useStoredEntry'
 import { watchOwnerChange } from './ownerWatch'
 import { useCloudAuthStatus } from './useCloudAuthStatus'
 import DayView from './DayView'
@@ -22,10 +25,13 @@ import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from '.
 import {
   autoBackup,
   currentStreak,
+  getDataOwner,
+  loadDay,
   loadSettings,
   mondayOf,
   monthOf,
   quarterOf,
+  saveDay,
   saveSettings,
   setOnWriteError,
   toDateKey,
@@ -89,7 +95,17 @@ export default function App() {
   const [writeFailed, setWriteFailed] = useState(false)
   const [ownerChanged, setOwnerChanged] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
-  const [timer, setTimer] = useState<TimerState | null>(null)
+  const [timer, setTimer] = useState<TimerState | null>(restoreTimer) // 啟動還原（多一條：已認領的 focus 段不還原）
+  // 本地操作（開始／暫停／恢復／進休息／結束）走這個：版本 +1，讓同一段的落盤只准較新的贏。
+  // 從 storage 事件收進來的、owner 變更的清空走原本的 setTimer，不加版本。
+  // 本地剛結束（放棄／收工）的那段：落盤的刪除是非同步的，在它完成前別的分頁的舊寫入可能
+  // 透過 storage 事件把同一段送回來，畫面會重新顯示已放棄的計時（Codex 第 13 輪 #2）
+  const endedLocally = useRef<string | undefined>(undefined)
+  const setTimerLocal = (t: TimerState | null) => {
+    if (!t) endedLocally.current = timerRef.current?.id
+    else endedLocally.current = undefined
+    setTimer(t ? { ...t, rev: (t.rev ?? 0) + 1 } : null)
+  }
   const [showSettings, setShowSettings] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -108,6 +124,10 @@ export default function App() {
     window.addEventListener('yike:sync-status', onStatus)
     return () => window.removeEventListener('yike:sync-status', onStatus)
   }, [])
+  // startFocus 用的 owner 基準：跟 useStoredEntry 一樣在 mount 時記下、只在本地登入流程
+  // 發 local-owner-ready 時更新。換帳號途中（owner 已改、畫面還是上一個人的）按 ▶，
+  // 原本會把 A 的任務文字寫進 B 的今天、而且 timer.owner 記成 B 讓後面的守衛也放行（Codex #1）。
+  const ownerRef = useRef<string | null>(getDataOwner())
   useEffect(() => {
     const stop = () => {
       stopAutoSync()
@@ -116,7 +136,17 @@ export default function App() {
       setOwnerChanged(true)
     }
     const unwatch = watchOwnerChange(stop)
-    const ready = () => { setTimer(null); focusLock.stop() }
+    const ready = () => {
+      // 跟 useStoredEntry 同一條規則：上一個人還有存不進去的草稿時，畫面不接受新主人（它會保留舊畫面）。
+      // 這裡若無條件換成新主人，startFocus 的守衛就會放行，把舊畫面上的任務寫進新帳號（Codex 第 5 輪 #1）
+      if (hasUnsavedDraftsFor(ownerRef.current)) {
+        setOwnerChanged(true)
+        return
+      }
+      ownerRef.current = getDataOwner()
+      setTimer(null)
+      focusLock.stop()
+    }
     window.addEventListener('yike:owner-change-blocked', stop)
     window.addEventListener('yike:local-owner-ready', ready)
     return () => {
@@ -124,6 +154,23 @@ export default function App() {
       window.removeEventListener('yike:owner-change-blocked', stop)
       window.removeEventListener('yike:local-owner-ready', ready)
     }
+  }, [])
+  // 另一個分頁改了計時狀態（提前完成、暫停、放棄）→ 這邊跟著換，不要各算各的到點各記一次
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      // 墓碑多了一筆：我這段被別的分頁放棄／換掉了，就算 ppl:timer 沒有刪除事件（新段存失敗、
+      // 磁碟還留著舊的）也要停下來，不然到點會替已放棄的段塗格（Codex 第 22 輪 #2）
+      if (e.key === ENDED_KEY) {
+        if (timerRef.current?.id && isTimerEnded(timerRef.current.id)) setTimer(null)
+        return
+      }
+      if (e.key !== TIMER_KEY && e.key !== null) return
+      const disk = loadTimer()
+      if (!shouldAdoptDiskTimer(disk, e.oldValue, timerRef.current, endedLocally.current)) return
+      setTimer(disk)
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
   // widget 桌面「✏️ 寫下」→ 開到今天並聚焦最重要任務輸入框
@@ -229,11 +276,43 @@ export default function App() {
     localStorage.setItem('pp:onboarded', '1')
     setShowOnboarding(false)
   }
-  const sessionSink = useRef<((taskIndex: number, startMs: number, endMs: number) => void) | null>(null)
 
   // 浮窗讀「目前計時狀態」的即時來源（用 ref 避免每次 render 重註冊）
   const timerRef = useRef<TimerState | null>(timer)
   timerRef.current = timer
+  // 計時狀態落地：App 被殺（iOS 清記憶體、使用者滑掉）再開，計時器原本就消失了。
+  // 只存絕對時間戳，重開用現在時間重算。清成 null 時帶上「剛才那段的 id」，
+  // 磁碟上若已是別人（另一帳號／另一分頁）的新計時就不碰它。
+  // prevTimer＝這個分頁**最後一次確認在磁碟上**的狀態（written／noop 才前進），不是上一個畫面狀態：
+  // B 確認重新開始 T2 被拒（T1 已被 A 認領完成），B 再暫停 T2 時第二筆若帶 prev=T2 就繞過了
+  // 「要換掉的段已完成」的替換守衛，把 T1 立墓碑、A 的休息被拒（Codex 第 39 輪）。沒落盤就一直帶原本的 prev。
+  const prevTimer = useRef<TimerState | null>(timer)
+  const lastLocal = useRef<TimerState | null>(timer) // 清除前畫面上的狀態（給「休息是我們自己的」判斷用）
+  useEffect(() => {
+    const attempted = timer
+    const from = lastLocal.current
+    lastLocal.current = timer
+    void saveTimer(timer, prevTimer.current, { from }).then((r) => {
+      if (r === 'written' || r === 'noop') {
+        prevTimer.current = attempted
+        return
+      }
+      if (r !== 'rejected') return
+      // 鎖內判定磁碟上的狀態贏了（別的分頁提前完成、換了段、換了主人）：畫面不能繼續跑沒落盤的那段，
+      // 重開會還原磁碟上的。只在畫面還是當初那份時才改採磁碟，別蓋掉使用者之後的操作（Codex 第 23 輪 #2）
+      const cur = timerRef.current
+      const untouched = attempted ? cur?.id === attempted.id && (cur?.rev ?? 0) === (attempted.rev ?? 0) : cur === null
+      if (!untouched) return
+      const disk = loadTimer()
+      // 已認領完成卻還停在 focus 的段：不能顯示回來（會卡死），也不能留著畫面上沒落盤的新段一直倒數——
+      // 採它並替它推進休息（對方的休息還沒落盤；誰先寫都是同段 break，版本規則會收斂）（第 40／41 輪）
+      if (disk && disk.phase === 'focus' && isTimerCompleted(disk.id)) {
+        setTimer(breakFrom(disk, settings.breakMinutes))
+        return
+      }
+      if (JSON.stringify(disk) !== JSON.stringify(cur)) setTimer(disk)
+    })
+  }, [timer])
   useEffect(() => setPipTimerSource(() => timerRef.current), [])
   // 安全網：每次開 App 若沒有進行中的計時，確保專注鎖已解除（避免殘留鎖死）
   useEffect(() => {
@@ -245,12 +324,60 @@ export default function App() {
     editSettings((base) => ({ ...base, ...patch }))
   }
 
-  const startFocus = (taskIndex: number, taskText: string) => {
-    // 計時永遠記在「今天」的頁面上
+  const startFocus = (taskIndex: number, taskText: string, taskId?: string) => {
+    // 計時中又按播放：原本直接蓋掉，已經跑掉的時間無聲消失。要問過本人。
+    const running = timerRef.current
+    if (running) {
+      const same = running.taskIndex === taskIndex && running.taskText === taskText
+      const mins = Math.max(0, Math.round((Date.now() - running.startedAt) / 60_000))
+      if (
+        !confirm(
+          same
+            ? `這個任務正在計時（已過 ${mins} 分鐘）。重新開始會放棄這段時間，確定嗎？`
+            : `「${running.taskText}」正在計時（已過 ${mins} 分鐘）。改成計時「${taskText}」會放棄那一段，確定嗎？`
+        )
+      )
+        return
+      // 確認框開著時另一個分頁可能已經完成這段、開了新的一段——接受那個過期的確認會把
+      // 別人的新計時換掉（Codex 第 7 輪 #2）。磁碟上有更新的一段就不開始。
+      if (supersededOnDisk(running)) return
+    }
+    // 換帳號途中不准開始：畫面上的任務還是上一個人的
+    if (getDataOwner() !== ownerRef.current) {
+      window.dispatchEvent(new Event('yike:owner-change-blocked'))
+      return
+    }
+    // 日期要用「按下的當下」算：App 的 todayKey 是 render 時算的，23:59 開著不動、00:01 按 ▶，
+    // 閉包裡還是昨天，整段會記到昨天（Codex 第 4 輪 #1）
+    const todayKey = toDateKey(new Date())
+    // 計時永遠記在「今天」的頁面上——所以任務也必須在「今天」定位一次。
+    // 原本直接把畫面上的 index 帶進今天：在昨天的第 3 列按 ▶，完成後那 25 分鐘會塗到
+    // 今天的第 3 列（可能是完全不同的任務或空白列）。
+    // 寫入走 editStoredKey：跟畫面編輯同一套 owner 守衛與草稿基準。
+    // 解析要在 change 回呼裡依 base 做：base 可能是存不進去的草稿，先用 storage 舊版算好
+    // 再整個 tasks 覆蓋上去，會把別列的草稿丟掉（Codex 第 2 輪 #2）
+    const box: { r: ReturnType<typeof resolveTaskForToday> | null } = { r: null }
+    const written = editStoredKey(
+      `pp:day:${todayKey}`,
+      () => loadDay(todayKey),
+      (v) => saveDay(todayKey, v),
+      (base) => {
+        box.r = resolveTaskForToday(base, taskIndex, taskText, taskId)
+        return box.r.changed ? { ...base, tasks: box.r.tasks } : base
+      },
+      ownerRef.current
+    )
+    const r = box.r
+    if (!written || !r) return
+    taskIndex = r.index
     setDateKey(todayKey)
     const ms = settings.focusMinutes * 60_000
-    setTimer({
+    setTimerLocal({
+      id: newTimerId(),
+      dateKey: todayKey,
       taskIndex,
+      taskId: r.taskId,
+      owner: ownerRef.current,
       taskText,
       phase: 'focus',
       totalMs: ms,
@@ -262,15 +389,6 @@ export default function App() {
     if (pipSupported() && pipAutoEnabled()) openFloating()
   }
 
-  const registerSessionSink = useCallback((fn: (taskIndex: number, startMs: number, endMs: number) => void) => {
-    sessionSink.current = fn
-  }, [])
-
-  // 計時中放棄（✕）→ 種樹主題記一棵枯樹（管線同 sessionSink）
-  const abandonSink = useRef<((taskIndex: number) => void) | null>(null)
-  const registerAbandonSink = useCallback((fn: (taskIndex: number) => void) => {
-    abandonSink.current = fn
-  }, [])
 
   // 雲端登入狀態（頂欄 badge 用）
   const cloudIn = useCloudAuthStatus()
@@ -385,8 +503,6 @@ export default function App() {
           onStartFocus={startFocus}
           settings={settings}
           onSettingsChange={updateSettings}
-          registerSessionSink={registerSessionSink}
-          registerAbandonSink={registerAbandonSink}
           focusMitSignal={focusMitSignal}
         />
       )}
@@ -499,16 +615,62 @@ export default function App() {
       {timer && (
         <FocusTimer
           timer={timer}
-          onUpdate={setTimer}
+          onUpdate={setTimerLocal}
+          onAdoptDisk={setTimer}
           breakMinutes={settings.breakMinutes}
           focusMinutes={settings.focusMinutes}
           autoLoop={settings.autoLoop}
           lockApps={settings.focusLock}
+          renewSegment={(t) => renewSegmentForToday(t, toDateKey(new Date()))}
           onSessionDone={(ti, s, e) => {
-            sessionSink.current?.(ti, s, e)
-            celebrate(settings.focusStyle === 'tree' ? '🌲 種下一棵樹，繼續加油！' : '✓ 完成一段專注！')
+            // 直接寫進「這段計時所屬的那一天」，不經由 DayView 註冊的 callback。
+            // 使用者切到週/月分頁時 DayView 沒 mount，那個 callback 是 null——
+            // 鈴響了、慶祝了，一格都沒記到。
+            return (async () => {
+            // 等認領的這段時間，這段可能已經不在畫面上了（B 清空這台裝置、使用者換了段）：
+            // 有效性要在鎖內、寫入認領之前檢查——只取消日記寫入卻留下認領，新段會被「舊段已完成」守衛撤回
+            //（Codex 第 49／50 輪）。以 App 當下的計時狀態為準。
+            const claim = await claimTimerCompletionDetailed(timer.id, { unlessEnded: true, stillValid: () => timerRef.current?.id === timer.id })
+            if (claim === 'stale') return false
+            if (claim === 'unsaved') {
+              // 認領存不進去（配額滿）：不是別人記過了，是這台存不了。保留重試，別無聲停在 00:00（Codex 第 44 輪）
+              celebrate('⚠ 儲存空間滿了，這段專注還沒記下來——清點空間後會自動再試')
+              return 'retry'
+            }
+            if (claim === 'taken') return false // 另一個分頁已經記過／放棄了這一段：FocusTimer 不進休息
+            const out: { taskId?: string } = {}
+            const ok = recordFocusSession({
+              dateKey: timer.dateKey ?? toDateKey(new Date(timer.startedAt)),
+              taskIndex: ti,
+              taskId: timer.taskId,
+              owner: timer.owner,
+              taskText: timer.taskText,
+              startMs: s,
+              endMs: earliestFinish(timer.id, e), // 同段最早的完成請求（可能是別的分頁提前完成那一刻）
+              focusMinutes: settings.focusMinutes,
+            }, out)
+            if (!ok) celebrate('⚠ 這段專注沒存進去——請檢查儲存空間或登入狀態')
+            else celebrate(settings.focusStyle === 'tree' ? '🌲 種下一棵樹，繼續加油！' : '✓ 完成一段專注！')
+            return out.taskId ? { taskId: out.taskId } : true // 下一段帶實際記到的那列 id
+            })()
           }}
-          onAbandon={(ti) => abandonSink.current?.(ti)}
+          onAbandon={(ti) => {
+            return (async () => {
+              // 放棄也要認領：另一個分頁已經把這段完成（已認領）的話，不能再記一棵枯樹，也不准清掉它
+              // 現在放棄是先認領再清（第 26 輪），自己的墓碑不會搶在前面，所以也能查墓碑：
+              // B 重新開始替 T1 立了墓碑 → 這個過期的放棄不准認領（Codex 第 27 輪 #1）
+              const claim = await claimTimerCompletionDetailed(timer.id, { unlessEnded: true, kind: 'abandon', stillValid: () => timerRef.current?.id === timer.id }) // 認領為「放棄」：接著的清除不會被「已完成」守衛擋下；鎖內確認這段還在畫面上（第 49／50 輪）
+              if (claim === 'stale') return false
+              if (claim === 'unsaved') {
+                celebrate('⚠ 儲存空間滿了，放棄沒記下來——清點空間後再按一次')
+                return 'retry'
+              }
+              if (claim === 'taken') return false
+              if (!recordAbandon(timer.dateKey ?? toDateKey(new Date(timer.startedAt)), ti, timer.taskId, timer.owner, timer.taskText))
+                celebrate('⚠ 沒存進去——請檢查儲存空間或登入狀態')
+              return true
+            })()
+          }}
           treeStyle={settings.focusStyle === 'tree'}
         />
       )}
