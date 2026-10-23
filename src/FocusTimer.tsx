@@ -35,13 +35,15 @@ export interface TimerState {
   startedAt: number // 本段專注開始的 epoch ms（時間軸記錄用）
 }
 
+/** false＝沒認領到；{ taskId }＝記到了這一列（匯入備份後 id 可能換了，下一段改帶它）；void／true＝記了。 */
+export type DoneResult = void | boolean | { taskId?: string }
 interface Props {
   timer: TimerState
   onUpdate: (t: TimerState | null) => void
   /** 一段專注完成：任務 index ＋ 真實起訖（ms），用來塗圈＋寫進時間軸 */
   /** 回傳 false＝這段沒認領到（別的分頁已經完成或放棄了它）：不准推進休息，改採磁碟上的狀態。
    *  回傳 void／true＝照常進休息。 */
-  onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void | boolean | Promise<boolean | void>
+  onSessionDone: (taskIndex: number, startMs: number, endMs: number) => DoneResult | Promise<DoneResult>
   /** 計時中按 ✕ 放棄（focus 階段才算）：種樹主題記一棵枯樹 */
   /** 回傳 false＝這段沒認領到（別的分頁已經完成了它）：不准清掉，改採磁碟上的狀態。 */
   onAbandon: (taskIndex: number) => void | boolean | Promise<boolean | void>
@@ -124,8 +126,10 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       }
       // 從「現在」的狀態推進休息，不是認領前捕獲的那份：別的分頁可能暫停／恢復過（rev 更高），
       // 用舊快照寫會被版本守衛擋下、採回 focus，而這段已認領完成，永遠進不了休息（Codex 第 27 輪 #2）
+      const resolvedTaskId = ok && typeof ok === 'object' && ok.taskId ? ok.taskId : cur.taskId
       onUpdate({
         ...cur,
+        taskId: resolvedTaskId,
         phase: 'break',
         totalMs: breakMinutes * 60_000,
         endsAt: Date.now() + breakMinutes * 60_000,

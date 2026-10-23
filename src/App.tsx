@@ -613,6 +613,7 @@ export default function App() {
             // 鈴響了、慶祝了，一格都沒記到。
             return (async () => {
             if (!(await claimTimerCompletion(timer.id, { unlessEnded: true }))) return false // 另一個分頁已經記過／放棄了這一段：FocusTimer 不進休息
+            const out: { taskId?: string } = {}
             const ok = recordFocusSession({
               dateKey: timer.dateKey ?? toDateKey(new Date(timer.startedAt)),
               taskIndex: ti,
@@ -622,10 +623,10 @@ export default function App() {
               startMs: s,
               endMs: e,
               focusMinutes: settings.focusMinutes,
-            })
+            }, out)
             if (!ok) celebrate('⚠ 這段專注沒存進去——請檢查儲存空間或登入狀態')
             else celebrate(settings.focusStyle === 'tree' ? '🌲 種下一棵樹，繼續加油！' : '✓ 完成一段專注！')
-            return true
+            return out.taskId ? { taskId: out.taskId } : true // 下一段帶實際記到的那列 id
             })()
           }}
           onAbandon={(ti) => {

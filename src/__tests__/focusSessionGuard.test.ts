@@ -8,7 +8,7 @@ import { loadDay, saveDay, setDataOwner } from '../storage'
 const ALICE = 'aaaaaaaa-1111-1111-1111-111111111111'
 const BOB = 'bbbbbbbb-2222-2222-2222-222222222222'
 const day = (mit: string): DayEntry => ({ ...emptyDay(), tasks: [{ ...emptyTask(), text: mit }] })
-const session = (extra: Partial<Parameters<typeof recordFocusSession>[0]> = {}) => {
+const session = (extra: Partial<Parameters<typeof recordFocusSession>[0]> = {}, out?: { taskId?: string }) => {
   const start = Date.parse('2026-09-03T10:00:00')
   return recordFocusSession({
     dateKey: '2026-09-03',
@@ -18,7 +18,7 @@ const session = (extra: Partial<Parameters<typeof recordFocusSession>[0]> = {}) 
     endMs: start + 25 * 60_000,
     focusMinutes: 25,
     ...extra,
-  })
+  }, out)
 }
 
 beforeEach(() => {
@@ -807,5 +807,44 @@ describe('Codex 第 30 輪', () => {
     d = loadDay('2026-09-03')
     expect(d.tasks).toHaveLength(1)
     expect(d.tasks[0].done).toBe(2)
+  })
+})
+
+describe('Codex 第 31 輪', () => {
+  it('#1 認領跟落盤用同一把鎖（yike:timer），替換與完成認領互斥', async () => {
+    const nav = navigator as Navigator & { locks?: unknown }
+    const orig = nav.locks
+    const names: string[] = []
+    Object.defineProperty(nav, 'locks', {
+      configurable: true,
+      value: { request: async (n: string, cb: () => unknown) => { names.push(n); return cb() } },
+    })
+    try {
+      await claimTimerCompletion('T1')
+      await saveTimer(null, null)
+      expect(names).toEqual(['yike:timer', 'yike:timer'])
+    } finally {
+      Object.defineProperty(nav, 'locks', { configurable: true, value: orig })
+    }
+  })
+  it('#2 匯入備份後同列換了 id（x→y）：靠文字記到 y 列，回報 taskId=y', () => {
+    saveDay('2026-09-03', { ...emptyDay(), tasks: [{ ...emptyTask(), id: 'y', text: 'A' }] })
+    const out: { taskId?: string } = {}
+    expect(session({ taskId: 'x', taskText: 'A' }, out)).toBe(true)
+    expect(out.taskId).toBe('y')
+    expect(loadDay('2026-09-03').tasks[0].id).toBe('y') // 不會把 y 蓋成 x
+  })
+  it('#3 墓碑與認領歷史留 200 段：連做 21 段後 T1 還在', async () => {
+    const NOW = Date.now()
+    const mk = (id: string, i: number) => ({ id, owner: BOB, startedAt: NOW + i, phase: 'focus' as const, taskIndex: 0, taskText: 'x', endsAt: NOW + i + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000 })
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    saveTimer(mk('T1', 0)); saveTimer(null, mk('T1', 0))
+    for (let i = 2; i <= 60; i++) {
+      await claimTimerCompletion(`T${i}`)
+      saveTimer(mk(`T${i}`, i)); saveTimer(null, mk(`T${i}`, i))
+    }
+    expect(isTimerEnded('T1')).toBe(true)
+    expect(await claimTimerCompletion('T1')).toBe(false) // B 的過期放棄確認：認領不到
+    expect(supersededOnDisk(mk('T1', 0))).toBe(true)
   })
 })

@@ -208,3 +208,20 @@ describe('Codex 第 27 輪', () => {
     expect(onAdoptDisk.mock.calls[0][0]).toMatchObject({ id: 'T1', rev: 1 })
   })
 })
+
+describe('Codex 第 31 輪 #2：完成回報的 taskId 帶進下一段', () => {
+  it('onSessionDone 回 { taskId: y } → 進休息的狀態 taskId 變 y', async () => {
+    const onUpdate = vi.fn()
+    act(() =>
+      root!.render(
+        <FocusTimer timer={{ ...base('T1'), taskId: 'x' }} onUpdate={onUpdate} onSessionDone={() => Promise.resolve({ taskId: 'y' })} onAbandon={vi.fn()}
+          treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+      )
+    )
+    await act(async () => {
+      ;[...el.querySelectorAll('button')].find((b) => (b.title ?? '').includes('提前完成') || /提前完成/.test(b.textContent ?? ''))!.click()
+      await Promise.resolve()
+    })
+    expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break', taskId: 'y' })
+  })
+})

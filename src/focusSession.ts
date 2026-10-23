@@ -312,7 +312,7 @@ const ensureEnded = (ids: string[]) => {
 }
 const markEnded = (id: string): boolean => {
   try {
-    localStorage.setItem(ENDED_KEY, JSON.stringify([...endedIds(), id].slice(-20)))
+    localStorage.setItem(ENDED_KEY, JSON.stringify([...endedIds(), id].slice(-HISTORY_CAP)))
     return true
   } catch {
     return false // 配額滿：呼叫端決定要不要用更小的形式再試
@@ -320,6 +320,10 @@ const markEnded = (id: string): boolean => {
 }
 
 const DONE_KEY = 'ppl:timerDone'
+/** 墓碑與認領歷史各留幾段。20 段不夠：B 開著 T1 的放棄確認框、A 連做 21 段，T1 被淘汰，
+ *  磁碟空白、認領又成功，替已完成的 T1 多記一次枯樹（Codex 第 31 輪 #3）。200 段≈ 83 小時的番茄鐘，
+ *  每筆 id 約 14 字元，兩個 key 合計不到 6KB。 */
+const HISTORY_CAP = 200
 export const newTimerId = (): string => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
 
 /** 已認領（完成或放棄）的段。記最近 20 段，不是只記最後一段：T1 完成 → T2 完成 → T1 那個
@@ -336,7 +340,7 @@ const claimSync = (timerId: string): boolean => {
   try {
     const done = doneIds()
     if (done.includes(timerId)) return false
-    localStorage.setItem(DONE_KEY, JSON.stringify([...done, timerId].slice(-20)))
+    localStorage.setItem(DONE_KEY, JSON.stringify([...done, timerId].slice(-HISTORY_CAP)))
     return true
   } catch {
     return true // 存不進去就寧可記（重複總比不記好）
@@ -358,7 +362,9 @@ export const claimTimerCompletion = async (
     try {
       // 鎖內再查一次墓碑：等鎖的這段時間別的分頁可能剛用另一把鎖（yike:timer）把我這段立了墓碑
       //（Codex 第 23 輪 #1）
-      return await locks.request('yike:timer-done', () =>
+      // 跟 saveTimer 用同一把鎖：認領與替換（立墓碑＋寫新段）要互斥——B 在 yike:timer 鎖內讀到 T1 沒完成，
+      // A 同時在另一把鎖認領完成，B 接著立墓碑，A 的休息被拒（Codex 第 31 輪 #1）
+      return await locks.request('yike:timer', () =>
         opts.unlessEnded && isTimerEnded(timerId) ? false : claimSync(timerId)
       )
     } catch {
@@ -410,7 +416,9 @@ export const renewSegmentForToday = <T extends { dateKey?: string; taskIndex: nu
 const announceDay = (dateKey: string) =>
   window.dispatchEvent(new CustomEvent('yike:external-day-change', { detail: { date: dateKey } }))
 
-export const recordFocusSession = (s: FocusSession): boolean => {
+/** out.taskId＝實際記到哪一列的 id：匯入備份後同列換了 id（x→y），靠文字找到 y 列，
+ *  連續計時的下一段要改帶 y，否則該列中途改名後下一段會新增一列舊名稱（Codex 第 31 輪 #2）。 */
+export const recordFocusSession = (s: FocusSession, out: { taskId?: string } = {}): boolean => {
   const key = `pp:day:${s.dateKey}`
   const ok = editStoredKey<ReturnType<typeof loadDay>>(
     key,
@@ -424,6 +432,7 @@ export const recordFocusSession = (s: FocusSession): boolean => {
         const done = Math.min(t.done + 1, 16)
         tasks[at] = { ...t, done, actual: done, grove: syncGrove(t.grove, done, s.focusMinutes) }
         repinId(tasks, at, s.taskId)
+        out.taskId = tasks[at].id
       }
       // 真實起訖 → 分鐘（夾在時間軸 06:00–23:00 範圍內，最短 15 分鐘）
       const bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, toMin(s.startMs)))
