@@ -987,3 +987,30 @@ describe('Codex 第 41 輪', () => {
     expect(await saveTimer(b, mk('focus', 9))).toBe('written')
   })
 })
+
+describe('Codex 第 43 輪：認領存不進去不能回成功', () => {
+  const real = Storage.prototype.setItem
+  it('配額滿：歷史縮成只剩這一筆再試 → 成功且只剩一筆；連一筆都存不進去 → false，第二頁不會再記', async () => {
+    localStorage.setItem('ppl:timerDone', JSON.stringify(['old-1', 'old-2']))
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k === 'ppl:timerDone' && v.length > JSON.stringify(['T1#a']).length) throw new DOMException('quota', 'QuotaExceededError')
+      return real.call(this, k, v)
+    })
+    try {
+      expect(await claimTimerCompletion('T1', { kind: 'abandon' })).toBe(true)
+      expect(JSON.parse(localStorage.getItem('ppl:timerDone')!)).toEqual(['T1#a'])
+      expect(await claimTimerCompletion('T1', { kind: 'abandon' })).toBe(false) // 第二頁
+    } finally {
+      spy.mockRestore()
+    }
+    const spy2 = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k === 'ppl:timerDone') throw new DOMException('quota', 'QuotaExceededError')
+      return real.call(this, k, v)
+    })
+    try {
+      expect(await claimTimerCompletion('T9', { kind: 'abandon' })).toBe(false)
+    } finally {
+      spy2.mockRestore()
+    }
+  })
+})

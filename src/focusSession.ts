@@ -401,13 +401,20 @@ const doneEntries = (): string[] => {
 const doneIds = (): string[] => doneEntries().map((e) => (e.endsWith(ABANDON_MARK) ? e.slice(0, -ABANDON_MARK.length) : e))
 const completedIds = (): string[] => doneEntries().filter((e) => !e.endsWith(ABANDON_MARK))
 const claimSync = (timerId: string, kind: 'done' | 'abandon'): boolean => {
+  if (doneIds().includes(timerId)) return false
+  const entry = kind === 'abandon' ? timerId + ABANDON_MARK : timerId
   try {
-    if (doneIds().includes(timerId)) return false
-    const entry = kind === 'abandon' ? timerId + ABANDON_MARK : timerId
     localStorage.setItem(DONE_KEY, JSON.stringify([...doneEntries(), entry].slice(-HISTORY_CAP)))
     return true
   } catch {
-    return true // 存不進去就寧可記（重複總比不記好）
+    // 配額滿：認領沒有持久化就不能說成功——兩頁同時放棄、兩個認領都存失敗卻都回 true，
+    // 同一段枯樹記兩次（Codex 第 43 輪）。先把歷史縮成只剩這一筆（幾十 bytes）再試；還不行就放棄認領
+    try {
+      localStorage.setItem(DONE_KEY, JSON.stringify([entry]))
+      return true
+    } catch {
+      return false
+    }
   }
 }
 export const claimTimerCompletion = async (
