@@ -256,7 +256,7 @@ export const isTimerEnded = (id: string | undefined): boolean => !!id && endedId
 export const shouldAdoptDiskTimer = (
   disk: PersistedTimer | null,
   oldValueJson: string | null,
-  local: { id?: string; startedAt?: number; rev?: number } | null,
+  local: { id?: string; startedAt?: number; rev?: number; phase?: string } | null,
   endedLocally: string | undefined
 ): boolean => {
   if (disk) {
@@ -267,7 +267,14 @@ export const shouldAdoptDiskTimer = (
     // 比本地舊的事件不採用：B 剛開始 T2 還沒落盤，排隊中的舊事件（A 暫停 T1）會把畫面倒退回 T1，
     // 而自己的 T2 落盤不會對自己發事件，畫面就停在 T1（Codex 第 15 輪 #1）
     if (local?.id && disk.id !== local.id && typeof local.startedAt === 'number' && disk.startedAt < local.startedAt) return false
-    if (local?.id && disk.id === local.id && (disk.rev ?? 0) < (local.rev ?? 0)) return false
+    if (local?.id && disk.id === local.id) {
+      // 同一段：跟寫入端同一條規則——階段只准往前。磁碟已進休息就採用，不管 rev（B 暫停恢復多次
+      // rev 很高，A 完成寫的 break rev 較低，B 拒收就永遠停在暫停的專注、專注鎖也不解）（Codex 第 28 輪）；
+      // 磁碟還在 focus 而本地已 break 的舊事件不採用；同階段才比 rev
+      if (disk.phase === 'break' && local.phase === 'focus') return true
+      if (disk.phase === 'focus' && local.phase === 'break') return false
+      if ((disk.rev ?? 0) < (local.rev ?? 0)) return false
+    }
     return true
   }
   if (!local) return true

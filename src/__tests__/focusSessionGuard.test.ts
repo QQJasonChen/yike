@@ -746,3 +746,19 @@ describe('Codex 第 27 輪 #2：同一段階段只准往前', () => {
     expect(JSON.parse(localStorage.getItem('ppl:timer')!).phase).toBe('break')
   })
 })
+
+describe('Codex 第 28 輪：接收端同段也先看階段再比 rev', () => {
+  const NOW = Date.now()
+  const mk = (phase: 'focus' | 'break', rev: number) => ({
+    id: 'T1', owner: BOB, rev, startedAt: NOW - 60_000, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000,
+  })
+  it('本地 focus rev4（暫停中）→ 收到 break rev2 → 採用', () => {
+    expect(shouldAdoptDiskTimer(mk('break', 2), null, mk('focus', 4), undefined)).toBe(true)
+  })
+  it('本地 break → 收到舊的 focus 事件（rev 更高）→ 不採用；同階段仍比 rev', () => {
+    expect(shouldAdoptDiskTimer(mk('focus', 9), null, mk('break', 2), undefined)).toBe(false)
+    expect(shouldAdoptDiskTimer(mk('focus', 1), null, mk('focus', 3), undefined)).toBe(false)
+    expect(shouldAdoptDiskTimer(mk('focus', 4), null, mk('focus', 3), undefined)).toBe(true)
+  })
+})
