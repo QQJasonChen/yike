@@ -414,3 +414,29 @@ describe('Codex 第 47 輪：提前完成會把時間寫進共享的 ppl:timerFi
     expect(f.endMs).toBe(onSessionDone.mock.calls[0][2])
   })
 })
+
+describe('Codex 第 48 輪：卸載後重試不准再寫', () => {
+  it("'retry' 排入 10 秒重試 → 期間 FocusTimer 卸載（B 清空裝置）→ 重試不再呼叫 onSessionDone", async () => {
+    vi.useFakeTimers()
+    try {
+      const onSessionDone = vi.fn((_ti: number, _s: number, _e: number) => Promise.resolve('retry' as const))
+      act(() =>
+        root!.render(
+          <FocusTimer timer={base('T1')} onUpdate={vi.fn()} onSessionDone={onSessionDone} onAbandon={vi.fn()}
+            treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+        )
+      )
+      await act(async () => {
+        ;[...el.querySelectorAll('button')].find((b) => (b.title ?? '').includes('提前完成') || /提前完成/.test(b.textContent ?? ''))!.click()
+        await Promise.resolve()
+      })
+      expect(onSessionDone).toHaveBeenCalledTimes(1)
+      act(() => root!.unmount())
+      root = createRoot(el) // afterEach 會 unmount 這個新的
+      await act(async () => { vi.advanceTimersByTime(CLAIM_RETRY_MS + 100); await Promise.resolve() })
+      expect(onSessionDone).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

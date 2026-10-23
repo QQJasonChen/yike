@@ -105,6 +105,17 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
   // 這段唯一的「待完成請求」：第一次完成（提前或到點）的 endMs 固定下來，之後同段的任何完成請求
   // （重試、到點 effect）都用它——否則提前完成一直存不進去、09:25 到點請求搶先成功，20 分鐘記成 25（Codex 第 46 輪 #1）
   const pendingEnd = useRef<{ id: string | undefined; endMs: number } | null>(null)
+  // 卸載後舊的完成回呼／重試 timeout 不准再寫：B 清空這台裝置、A 的 FocusTimer 卸載了，10 秒後的重試
+  // 把已刪掉的任務文字、完成紀錄、時間塊整個寫回（Codex 第 48 輪）
+  const alive = useRef(true)
+  const retryTimer = useRef<number | null>(null)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+      if (retryTimer.current !== null) window.clearTimeout(retryTimer.current)
+    }
+  }, [])
   const adoptDisk = () => {
     const d = loadTimer() as TimerState | null
     const cur = latest.current
@@ -161,6 +172,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
     noteFinishRequest(me.id, fixedEnd) // 跨分頁也固定：別的分頁先認領到也要用這個時間（第 47 輪）
     void Promise.resolve(onSessionDone(me.taskIndex, me.startedAt, fixedEnd)).then((ok) => {
       if (inflight.current === me.id) inflight.current = null
+      if (!alive.current) return // 已卸載：不准再寫任何東西
       const cur = latest.current
       if (cur.id !== me.id) return // 等認領時這段已經換成別段：那段有自己的流程
       if (ok !== 'retry' && pendingEnd.current?.id === me.id) pendingEnd.current = null
@@ -168,8 +180,9 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
         // 認領存不進去：不進休息、不採磁碟（採回同段 firedRef 不會重設，會無聲停在 00:00）。
         // 過一會兒**重送同一次完成請求**（同一個 endMs）：提前完成在 09:20 按、重試只重設 firedRef 的話
         // remaining>0 不會再跑，拖到 09:25 用 endsAt 記成 25 分鐘（Codex 第 44／45 輪）
-        window.setTimeout(() => {
-          if (latest.current?.id !== me.id) return
+        retryTimer.current = window.setTimeout(() => {
+          retryTimer.current = null
+          if (!alive.current || latest.current?.id !== me.id) return
           complete(fixedEnd)
         }, CLAIM_RETRY_MS)
         return
@@ -288,6 +301,7 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       inflight.current = target.id
       void Promise.resolve(onAbandon(target.taskIndex)).then((ok) => {
         if (inflight.current === target.id) inflight.current = null
+        if (!alive.current) return // 已卸載
         if (latest.current?.id !== target.id) return // 等認領時已經換成別段（B 重新開始了 T2）：別清
         if (ok === 'retry') return // 認領存不進去：計時留著，使用者清空間後再按一次（第 44 輪）
         if (ok === false) adoptDisk()
