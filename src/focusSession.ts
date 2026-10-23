@@ -129,6 +129,9 @@ export const loadTimer = (): PersistedTimer | null => {
   if (t.pausedRemaining === null && Date.now() - t.endsAt > 3_600_000) return null
   // 進了墓碑的段不還原：T2 存失敗（配額滿）時磁碟留著被取代的 T1，重開不能把 T1 復活（Codex 第 17 輪）
   if (isTimerEnded(t.id)) return null
+  // 已認領完成、磁碟卻還停在 focus（提前完成後、休息落盤前 App 被殺）：這段的格已經記了，
+  // 還原成 focus 會卡死——完成／放棄都認領不到、重新開始又被 done 檢查擋（Codex 第 33 輪）。當作沒有。
+  if (t.phase === 'focus' && t.id && doneIds().includes(t.id)) return null
   return t
 }
 /** 落盤的結果：written＝寫了；noop＝磁碟本來就一樣或沒東西好刪；

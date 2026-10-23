@@ -848,3 +848,23 @@ describe('Codex 第 31 輪', () => {
     expect(supersededOnDisk(mk('T1', 0))).toBe(true)
   })
 })
+
+describe('Codex 第 33 輪：已認領完成、磁碟還停在 focus 的段不還原', () => {
+  const NOW = Date.now()
+  const mk = (id: string, extra: Partial<{ pausedRemaining: number | null; phase: 'focus' | 'break' }> = {}) => ({
+    id, owner: BOB, startedAt: NOW - 60_000, phase: 'focus' as const, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000, ...extra,
+  })
+  it('暫停中的 T1 提前完成、認領成功、休息沒落盤就被殺 → 重開不還原 T1，可以開新段', async () => {
+    saveTimer(mk('T1', { pausedRemaining: 600_000 }))
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    expect(loadTimer()).toBeNull()
+    expect(await saveTimer(mk('T2'))).toBe('written')
+    expect(isTimerEnded('T1')).toBe(true)
+  })
+  it('已認領但磁碟已是 break（正常流程）→ 照常還原', async () => {
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    saveTimer(mk('T1', { phase: 'break' }))
+    expect(loadTimer()?.phase).toBe('break')
+  })
+})
