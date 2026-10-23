@@ -138,7 +138,9 @@ export const loadTimer = (): PersistedTimer | null => {
  *  會提交空狀態 → saveTimer(null, T1) 刪掉 T1 立墓碑 → A 的休息被拒（Codex 第 34 輪）。 */
 export const restoreTimer = (): PersistedTimer | null => {
   const t = loadTimer()
-  if (t && t.phase === 'focus' && t.id && completedIds().includes(t.id)) return null
+  // 啟動還原排除**兩種**認領（完成與放棄）：放棄認領寫入後、清除落盤前 App 被殺，重開還原 T1，
+  // 兩種認領都被去重拒絕、FocusTimer 又採回同一段，閉環（Codex 第 36 輪）。清除／替換守衛仍只看完成。
+  if (t && t.phase === 'focus' && t.id && doneIds().includes(t.id)) return null
   return t
 }
 /** 落盤的結果：written＝寫了；noop＝磁碟本來就一樣或沒東西好刪；

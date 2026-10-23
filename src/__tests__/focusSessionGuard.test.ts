@@ -913,9 +913,10 @@ describe('Codex 第 35 輪：認領要分「完成」與「放棄」', () => {
     expect(await claimTimerCompletion('T2', { kind: 'abandon' })).toBe(true)
     expect(await claimTimerCompletion('T2')).toBe(false)
   })
-  it('放棄認領的段不會被 restoreTimer 當成「已完成卡住」丟掉（磁碟若還留著 focus 就照還原）', async () => {
+  it('放棄認領寫入後、清除落盤前被殺 → 重開不還原 T1（第 36 輪：兩種認領都不還原）', async () => {
     saveTimer(mk())
     expect(await claimTimerCompletion('T1', { kind: 'abandon' })).toBe(true)
-    expect(restoreTimer()?.id).toBe('T1')
+    expect(restoreTimer()).toBeNull()
+    expect(loadTimer()?.id).toBe('T1') // 執行中讀磁碟仍不過濾
   })
 })
