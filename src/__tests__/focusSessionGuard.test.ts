@@ -1044,3 +1044,30 @@ describe('Codex 第 47 輪：同段最早的完成請求跨分頁共享', () => 
     expect(earliestFinish('T1', t0 + 10 * 60_000)).toBe(t0 + 10 * 60_000) // 自己更早就用自己的
   })
 })
+
+describe('Codex 第 50 輪：有效性在鎖內、寫入認領前檢查', () => {
+  it('stillValid 回 false → stale，不寫認領；之後新段帶 prev=T1 照寫', async () => {
+    const NOW = Date.now()
+    const mk = (id: string, offset: number) => ({ id, owner: BOB, startedAt: NOW + offset, phase: 'focus' as const, taskIndex: 0, taskText: 'x', endsAt: NOW + offset + 25 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000 })
+    saveTimer(mk('T1', -60_000))
+    expect(await claimTimerCompletionDetailed('T1', { stillValid: () => false })).toBe('stale')
+    expect(localStorage.getItem('ppl:timerDone')).toBeNull()
+    expect(await saveTimer(mk('T2', 0), mk('T1', -60_000))).toBe('written')
+    expect(await claimTimerCompletionDetailed('T2', { stillValid: () => true })).toBe('claimed')
+  })
+  it('鎖內才檢查：等鎖期間變成無效 → stale', async () => {
+    const nav = navigator as Navigator & { locks?: unknown }
+    const orig = nav.locks
+    let valid = true
+    Object.defineProperty(nav, 'locks', {
+      configurable: true,
+      value: { request: async (_n: string, cb: () => unknown) => { valid = false; return cb() } },
+    })
+    try {
+      expect(await claimTimerCompletionDetailed('T1', { stillValid: () => valid })).toBe('stale')
+      expect(localStorage.getItem('ppl:timerDone')).toBeNull()
+    } finally {
+      Object.defineProperty(nav, 'locks', { configurable: true, value: orig })
+    }
+  })
+})
