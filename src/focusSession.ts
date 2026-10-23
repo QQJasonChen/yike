@@ -102,6 +102,10 @@ const readDiskTimer = (): PersistedTimer | null => {
     // 舊版存的沒有 id：給一個由 startedAt 決定的（同一段在每個分頁算出來都一樣），
     // 否則 prevId 永遠是 undefined、清不掉，claim(undefined) 又永遠成功 → 同段放棄兩次（Codex 第 11 輪 #1）
     if (!t.id) t.id = `legacy-${t.startedAt}`
+    // 舊版存的沒有 owner：還原時就釘死成「現在的主人」（含 null），不留 undefined 讓它隨換帳號漂移——
+    // A 還原舊計時、開著放棄確認框，另一分頁換成 B，A 確認時 expected(undefined) 取到 B，
+    // 主人檢查變成 B===B，B 的任務被記一次枯萎（Codex 第 29 輪）
+    if (t.owner === undefined) t.owner = getDataOwner()
     // 過期（跑著的、endsAt 超過一小時）的段**這裡不過濾**：它還在磁碟上、它的分頁可能還開著確認框，
     // 蓋掉它時要留得到墓碑；過期只是畫面不還原的理由（見 loadTimer）（Codex 第 25 輪 #2）
     return t

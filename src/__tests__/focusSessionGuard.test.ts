@@ -762,3 +762,23 @@ describe('Codex 第 28 輪：接收端同段也先看階段再比 rev', () => {
     expect(shouldAdoptDiskTimer(mk('focus', 4), null, mk('focus', 3), undefined)).toBe(true)
   })
 })
+
+describe('Codex 第 29 輪：舊格式計時還原時釘死主人', () => {
+  const NOW = Date.now()
+  const legacy = { taskIndex: 0, taskText: '舊的', phase: 'focus', endsAt: NOW + 10 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000, startedAt: NOW - 60_000 }
+  it('還原時 owner 釘成當時主人；之後換帳號，用那個 owner 記放棄會被擋', () => {
+    setDataOwner(ALICE)
+    localStorage.setItem('ppl:timer', JSON.stringify(legacy))
+    const t = loadTimer()!
+    expect(t.owner).toBe(ALICE)
+    setDataOwner(BOB)
+    saveDay('2026-09-03', day('Bob 的任務'))
+    expect(recordAbandon('2026-09-03', 0, t.taskId, t.owner, t.taskText)).toBe(false)
+    expect(loadDay('2026-09-03').tasks[0].withered ?? 0).toBe(0)
+  })
+  it('沒登入（主人 null）也釘成 null，不是 undefined', () => {
+    localStorage.removeItem('ppl:owner')
+    localStorage.setItem('ppl:timer', JSON.stringify(legacy))
+    expect(loadTimer()!.owner).toBeNull()
+  })
+})
