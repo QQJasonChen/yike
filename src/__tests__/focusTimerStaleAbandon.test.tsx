@@ -225,3 +225,27 @@ describe('Codex 第 31 輪 #2：完成回報的 taskId 帶進下一段', () => {
     expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break', taskId: 'y' })
   })
 })
+
+describe('Codex 第 32 輪：同一段的完成只准一次 in-flight', () => {
+  const finishBtn = () => [...el.querySelectorAll('button')].find((b) => (b.title ?? '').includes('提前完成') || /提前完成/.test(b.textContent ?? ''))!
+  it('認領還沒回來又按提前完成 → 只認領一次、只排入一次 break', async () => {
+    const onUpdate = vi.fn()
+    let resolve!: (v: boolean) => void
+    const onSessionDone = vi.fn(() => new Promise<boolean>((r) => { resolve = r }))
+    act(() =>
+      root!.render(
+        <FocusTimer timer={base('T1')} onUpdate={onUpdate} onSessionDone={onSessionDone} onAbandon={vi.fn()}
+          treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+      )
+    )
+    act(() => finishBtn().click())
+    act(() => finishBtn().click())
+    expect(onSessionDone).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      resolve(true)
+      await Promise.resolve()
+    })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0]).toMatchObject({ phase: 'break' })
+  })
+})

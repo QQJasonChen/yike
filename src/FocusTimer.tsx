@@ -95,7 +95,17 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
   // 回呼回來要核對還是不是當初那段，不然舊放棄會把新段清掉（Codex 第 27 輪 #1）
   const latest = useRef(timer)
   latest.current = timer
-  const adoptDisk = () => (onAdoptDisk ?? onUpdate)(loadTimer() as TimerState | null)
+  // 認領進行中的那段：第一次認領還沒回來又按「提前完成」（或手動完成跟到點回呼重疊），第二次認領
+  // 失敗的回呼會把磁碟上還是 focus 的狀態採回來、跟第一次排入的 break 合併提交，break 從沒落盤，
+  // 這段已認領卻永遠停在專注（Codex 第 32 輪）。同一段只准一次 in-flight。
+  const inflight = useRef<string | null | undefined>(null)
+  const adoptDisk = () => {
+    const d = loadTimer() as TimerState | null
+    const cur = latest.current
+    // 階段不准往回：磁碟還停在 focus、畫面已排入 break（同一段）就不採用
+    if (d && cur && d.id === cur.id && d.phase === 'focus' && cur.phase === 'break') return
+    ;(onAdoptDisk ?? onUpdate)(d)
+  }
   const [, force] = useState(0)
   const [zen, setZen] = useState(false) // 預設底部小列；點列或 ⤢ 展開全螢幕
   const firedRef = useRef(false)
@@ -117,7 +127,10 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
    *  autoLoop 還會自己開下一段（Codex 第 25 輪 #1）。失敗就改採磁碟上的狀態。 */
   const complete = (endMs: number) => {
     const me = timer
+    if (inflight.current === me.id) return
+    inflight.current = me.id
     void Promise.resolve(onSessionDone(me.taskIndex, me.startedAt, endMs)).then((ok) => {
+      if (inflight.current === me.id) inflight.current = null
       const cur = latest.current
       if (cur.id !== me.id) return // 等認領時這段已經換成別段：那段有自己的流程
       if (ok === false) {
@@ -237,7 +250,10 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       // 放棄也要等認領結果：A 提前完成、認領成功但休息還沒落盤，B 這時確認放棄——磁碟還是 focus，
       // supersededOnDisk 放行，但認領會失敗；無條件清掉會把 A 已完成的段刪了、休息倒數中斷
       //（Codex 第 26 輪）。認領失敗就改採磁碟上的狀態。
+      if (inflight.current === target.id) return // 這段的完成／放棄認領還在路上
+      inflight.current = target.id
       void Promise.resolve(onAbandon(target.taskIndex)).then((ok) => {
+        if (inflight.current === target.id) inflight.current = null
         if (latest.current?.id !== target.id) return // 等認領時已經換成別段（B 重新開始了 T2）：別清
         if (ok === false) adoptDisk()
         else onUpdate(null)
