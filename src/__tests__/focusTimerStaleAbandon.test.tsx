@@ -44,7 +44,7 @@ const stopButton = () =>
   [...el.querySelectorAll('button')].find((b) => /✕|放棄|結束/.test(b.textContent ?? '') || b.title?.includes('放棄') || b.getAttribute('aria-label')?.includes('放棄'))
 
 describe('FocusTimer 放棄', () => {
-  it('confirm 期間這段被換成新的一段 → 不記枯樹、不清掉新計時', () => {
+  it('confirm 期間這段被換成新的一段 → 不記枯樹、不清掉新計時', async () => {
     const onUpdate = vi.fn()
     const onAbandon = vi.fn()
     render(base('T1'), onUpdate, onAbandon)
@@ -56,28 +56,37 @@ describe('FocusTimer 放棄', () => {
       localStorage.setItem('ppl:timer', JSON.stringify({ ...base('T3'), startedAt: Date.now() }))
       return true
     })
-    act(() => btn!.click())
+    await act(async () => {
+      btn!.click()
+      await Promise.resolve()
+    })
     expect(onAbandon).not.toHaveBeenCalled()
     expect(onUpdate).not.toHaveBeenCalledWith(null)
   })
 
-  it('配額滿、ppl:timer 根本沒存成 → 還是能放棄（第 7 輪 #1）', () => {
+  it('配額滿、ppl:timer 根本沒存成 → 還是能放棄（第 7 輪 #1）', async () => {
     const onUpdate = vi.fn()
     const onAbandon = vi.fn()
     render(base('T1'), onUpdate, onAbandon) // 不寫 ppl:timer
     vi.spyOn(window, 'confirm').mockImplementation(() => true)
-    act(() => stopButton()!.click())
+    await act(async () => {
+      stopButton()!.click()
+      await Promise.resolve()
+    })
     expect(onAbandon).toHaveBeenCalledWith(0)
     expect(onUpdate).toHaveBeenCalledWith(null)
   })
 
-  it('沒被換掉 → 照常放棄', () => {
+  it('沒被換掉 → 照常放棄', async () => {
     const onUpdate = vi.fn()
     const onAbandon = vi.fn()
     localStorage.setItem('ppl:timer', JSON.stringify(base('T1')))
     render(base('T1'), onUpdate, onAbandon)
     vi.spyOn(window, 'confirm').mockImplementation(() => true)
-    act(() => stopButton()!.click())
+    await act(async () => {
+      stopButton()!.click()
+      await Promise.resolve()
+    })
     expect(onAbandon).toHaveBeenCalledWith(0)
     expect(onUpdate).toHaveBeenCalledWith(null)
   })
@@ -117,5 +126,29 @@ describe('FocusTimer 完成（Codex 第 25 輪 #1）', () => {
     })
     expect(onUpdate).toHaveBeenCalledTimes(1)
     expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'break' })
+  })
+})
+
+describe('FocusTimer 放棄要等認領結果（Codex 第 26 輪）', () => {
+  it('認領失敗（別的分頁剛完成、休息還沒落盤）→ 不清掉，改採磁碟上的狀態', async () => {
+    const onUpdate = vi.fn()
+    const t = base('T1')
+    localStorage.setItem('ppl:owner', 'u1')
+    // 磁碟還是 focus（A 的休息還沒落盤）→ supersededOnDisk 放行；只有認領會說「已經被完成了」
+    localStorage.setItem('ppl:timer', JSON.stringify({ ...t, owner: 'u1', rev: 1 }))
+    act(() =>
+      root!.render(
+        <FocusTimer timer={t} onUpdate={onUpdate} onSessionDone={vi.fn()} onAbandon={() => Promise.resolve(false)}
+          treeStyle={false} breakMinutes={5} focusMinutes={25} autoLoop={false} lockApps={false} />
+      )
+    )
+    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+    await act(async () => {
+      stopButton()!.click()
+      await Promise.resolve()
+    })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate).not.toHaveBeenCalledWith(null)
+    expect(onUpdate.mock.calls[0][0]).toMatchObject({ id: 'T1', phase: 'focus', rev: 1 })
   })
 })

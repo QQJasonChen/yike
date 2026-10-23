@@ -43,7 +43,8 @@ interface Props {
    *  回傳 void／true＝照常進休息。 */
   onSessionDone: (taskIndex: number, startMs: number, endMs: number) => void | boolean | Promise<boolean | void>
   /** 計時中按 ✕ 放棄（focus 階段才算）：種樹主題記一棵枯樹 */
-  onAbandon: (taskIndex: number) => void
+  /** 回傳 false＝這段沒認領到（別的分頁已經完成了它）：不准清掉，改採磁碟上的狀態。 */
+  onAbandon: (taskIndex: number) => void | boolean | Promise<boolean | void>
   /** 種樹主題開著（放棄 confirm 的文案用） */
   treeStyle: boolean
   breakMinutes: number
@@ -217,7 +218,13 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       // 要讀磁碟上的 ppl:timer 當真相（Codex 第 6 輪 #1）。但磁碟上沒有／比較舊不算被取代，
       // 否則配額滿時開始的專注再也放棄不了（第 7 輪 #1）
       if (supersededOnDisk(target)) return // 這段已經不是當初要放棄的那段
-      onAbandon(target.taskIndex)
+      // 放棄也要等認領結果：A 提前完成、認領成功但休息還沒落盤，B 這時確認放棄——磁碟還是 focus，
+      // supersededOnDisk 放行，但認領會失敗；無條件清掉會把 A 已完成的段刪了、休息倒數中斷
+      //（Codex 第 26 輪）。認領失敗就改採磁碟上的狀態。
+      void Promise.resolve(onAbandon(target.taskIndex)).then((ok) => {
+        onUpdate(ok === false ? (loadTimer() as TimerState | null) : null)
+      })
+      return
     }
     onUpdate(null)
   }

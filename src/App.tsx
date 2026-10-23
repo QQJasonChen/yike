@@ -628,11 +628,12 @@ export default function App() {
             })()
           }}
           onAbandon={(ti) => {
-            void (async () => {
-              // 放棄也要認領：另一個分頁已經把這段完成（已認領）的話，不能再記一棵枯樹
-              if (!(await claimTimerCompletion(timer.id))) return
+            return (async () => {
+              // 放棄也要認領：另一個分頁已經把這段完成（已認領）的話，不能再記一棵枯樹，也不准清掉它
+              if (!(await claimTimerCompletion(timer.id))) return false
               if (!recordAbandon(timer.dateKey ?? toDateKey(new Date(timer.startedAt)), ti, timer.taskId, timer.owner, timer.taskText))
                 celebrate('⚠ 沒存進去——請檢查儲存空間或登入狀態')
+              return true
             })()
           }}
           treeStyle={settings.focusStyle === 'tree'}
