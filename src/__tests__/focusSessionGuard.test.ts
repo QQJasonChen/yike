@@ -920,3 +920,20 @@ describe('Codex 第 35 輪：認領要分「完成」與「放棄」', () => {
     expect(loadTimer()?.id).toBe('T1') // 執行中讀磁碟仍不過濾
   })
 })
+
+describe('Codex 第 39 輪：第二筆本地操作不能繞過「舊段已完成」的替換守衛', () => {
+  const NOW = Date.now()
+  const mk = (id: string, phase: 'focus' | 'break', rev: number, offset = -60_000, extra: Partial<{ pausedRemaining: number | null }> = {}) => ({
+    id, owner: BOB, rev, startedAt: NOW + offset, phase, taskIndex: 0, taskText: 'x',
+    endsAt: NOW + 20 * 60_000, pausedRemaining: null, totalMs: 25 * 60_000, ...extra,
+  })
+  it('T1 已認領完成；B 寫 T2（prev=T1）被拒，再暫停 T2——不管 prev 帶 T1 還是 T2 都被拒；A 的休息照常落盤', async () => {
+    saveTimer(mk('T1', 'focus', 1))
+    expect(await claimTimerCompletion('T1')).toBe(true)
+    expect(await saveTimer(mk('T2', 'focus', 1, 0), mk('T1', 'focus', 1))).toBe('rejected')
+    expect(await saveTimer(mk('T2', 'focus', 2, 0, { pausedRemaining: 5000 }), mk('T1', 'focus', 1))).toBe('rejected')
+    expect(await saveTimer(mk('T2', 'focus', 2, 0, { pausedRemaining: 5000 }), mk('T2', 'focus', 1, 0))).toBe('rejected')
+    expect(isTimerEnded('T1')).toBe(false)
+    expect(await saveTimer(mk('T1', 'break', 2))).toBe('written')
+  })
+})

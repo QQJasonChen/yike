@@ -186,6 +186,10 @@ const writeTimerSync = (t: PersistedTimer | null, prev?: PersistedTimer | null):
       // 我的較新）——都先替它留墓碑：否則那段的分頁等確認框回來時磁碟已空、它沒進墓碑，
       // supersededOnDisk 放行，多記一次放棄（Codex 第 24 輪）。
       // 墓碑立不起來（配額滿）就先把要換掉的那段刪了騰空間再立（Codex 第 21 輪）
+      // 這個分頁知道有上一段（prev 非空）時，磁碟上那段還在 focus 卻已被認領完成（對方的休息正要落盤）
+      // 就不准蓋——第二筆本地操作帶著沒落盤的 prev 繞過上面的替換守衛時，這裡擋最後一道（Codex 第 39 輪）。
+      // prev 為空＝App 剛啟動（restoreTimer 已把這種卡死的段當作沒有），開新段要能把它蓋掉（第 33 輪）
+      if (prev && disk0?.id && disk0.id !== t.id && disk0.phase === 'focus' && completedIds().includes(disk0.id)) return 'rejected'
       if (disk0?.id && disk0.id !== t.id) {
         if (!markEnded(disk0.id)) {
           localStorage.removeItem(TIMER_KEY)

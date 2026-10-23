@@ -283,10 +283,17 @@ export default function App() {
   // 計時狀態落地：App 被殺（iOS 清記憶體、使用者滑掉）再開，計時器原本就消失了。
   // 只存絕對時間戳，重開用現在時間重算。清成 null 時帶上「剛才那段的 id」，
   // 磁碟上若已是別人（另一帳號／另一分頁）的新計時就不碰它。
+  // prevTimer＝這個分頁**最後一次確認在磁碟上**的狀態（written／noop 才前進），不是上一個畫面狀態：
+  // B 確認重新開始 T2 被拒（T1 已被 A 認領完成），B 再暫停 T2 時第二筆若帶 prev=T2 就繞過了
+  // 「要換掉的段已完成」的替換守衛，把 T1 立墓碑、A 的休息被拒（Codex 第 39 輪）。沒落盤就一直帶原本的 prev。
   const prevTimer = useRef<TimerState | null>(timer)
   useEffect(() => {
     const attempted = timer
     void saveTimer(timer, prevTimer.current).then((r) => {
+      if (r === 'written' || r === 'noop') {
+        prevTimer.current = attempted
+        return
+      }
       if (r !== 'rejected') return
       // 鎖內判定磁碟上的狀態贏了（別的分頁提前完成、換了段、換了主人）：畫面不能繼續跑沒落盤的那段，
       // 重開會還原磁碟上的。只在畫面還是當初那份時才改採磁碟，別蓋掉使用者之後的操作（Codex 第 23 輪 #2）
@@ -296,7 +303,6 @@ export default function App() {
       const disk = loadTimer()
       if (JSON.stringify(disk) !== JSON.stringify(cur)) setTimer(disk)
     })
-    prevTimer.current = timer
   }, [timer])
   useEffect(() => setPipTimerSource(() => timerRef.current), [])
   // 安全網：每次開 App 若沒有進行中的計時，確保專注鎖已解除（避免殘留鎖死）
