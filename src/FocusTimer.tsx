@@ -158,11 +158,11 @@ export default function FocusTimer({ timer, onUpdate, onSessionDone, onAbandon, 
       if (cur.id !== me.id) return // 等認領時這段已經換成別段：那段有自己的流程
       if (ok === 'retry') {
         // 認領存不進去：不進休息、不採磁碟（採回同段 firedRef 不會重設，會無聲停在 00:00）。
-        // 過一會兒重設 firedRef 讓到點 effect 再跑一次，仍用原本的 endsAt 記錄（Codex 第 44 輪）
+        // 過一會兒**重送同一次完成請求**（同一個 endMs）：提前完成在 09:20 按、重試只重設 firedRef 的話
+        // remaining>0 不會再跑，拖到 09:25 用 endsAt 記成 25 分鐘（Codex 第 44／45 輪）
         window.setTimeout(() => {
           if (latest.current?.id !== me.id) return
-          firedRef.current = false
-          force((n) => n + 1)
+          complete(endMs)
         }, CLAIM_RETRY_MS)
         return
       }
