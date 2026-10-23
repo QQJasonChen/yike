@@ -302,6 +302,9 @@ export const isTimerCompleted = (id: string | undefined): boolean => !!id && com
  *  也不能採回會卡死的 focus——改採 T1 並替它進休息（Codex 第 41 輪 #1）。 */
 export const breakFrom = <T extends PersistedTimer>(t: T, breakMinutes: number): T => ({
   ...t,
+  // 下一段要帶「現在」對應的列 id（匯入備份可能把 x 換成 y；格已由對方記到 y），否則該列改名後
+  // autoLoop 下一段會追加一列舊名稱、原列少記一段（Codex 第 42 輪）。跟 FocusTimer.adoptDisk 同一條
+  taskId: resolveTaskId(t),
   phase: 'break',
   totalMs: breakMinutes * 60_000,
   endsAt: Date.now() + breakMinutes * 60_000,

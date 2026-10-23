@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { breakFrom, claimTimerCompletion, isTimerEnded, loadTimer, newTimerId, recordAbandon, recordFocusSession, renewSegmentForToday, restoreTimer, saveTimer, shouldAdoptDiskTimer, supersededOnDisk } from '../focusSession'
 import { clearUnsavedDrafts, editStoredKey, hasUnsavedDrafts, hasUnsavedDraftsFor } from '../useStoredEntry'
 import { DayEntry, emptyDay, emptyTask } from '../types'
-import { loadDay, saveDay, setDataOwner } from '../storage'
+import { loadDay, saveDay, setDataOwner, toDateKey } from '../storage'
 
 const ALICE = 'aaaaaaaa-1111-1111-1111-111111111111'
 const BOB = 'bbbbbbbb-2222-2222-2222-222222222222'
@@ -976,11 +976,13 @@ describe('Codex 第 41 輪', () => {
     saveTimer(mk('break', 2))
     expect(await saveTimer(null, mk('focus', 1), { from: mk('focus', 1) })).toBe('rejected')
   })
-  it('#1 breakFrom：已完成的 focus 推進休息，之後落盤走「同段往前」規則', async () => {
-    saveTimer(mk('focus', 9))
+  it('#1 breakFrom：已完成的 focus 推進休息，之後落盤走「同段往前」規則；taskId 解析成現在那列（第 42 輪）', async () => {
+    saveDay(toDateKey(new Date(NOW - 60_000)), { ...emptyDay(), tasks: [{ ...emptyTask(), id: 'y', text: 'x' }] })
+    saveTimer({ ...mk('focus', 9), taskId: 'x-old' })
     expect(await claimTimerCompletion('T1')).toBe(true)
     const b = breakFrom(loadTimer()!, 5)
     expect(b.phase).toBe('break')
+    expect(b.taskId).toBe('y')
     expect(b.totalMs).toBe(5 * 60_000)
     expect(await saveTimer(b, mk('focus', 9))).toBe('written')
   })
