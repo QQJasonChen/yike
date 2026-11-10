@@ -41,8 +41,21 @@ let clientPromise: Promise<SupabaseClient> | null = null
 // storage key（auth/同步未定義行為）。記 Promise 可保證全程只建立一個 client。
 export const supa = (): Promise<SupabaseClient> => {
   if (!clientPromise) {
-    clientPromise = import('@supabase/supabase-js').then(({ createClient }) =>
-      createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    clientPromise = Promise.all([import('@supabase/supabase-js'), import('./authStorage')]).then(
+      ([{ createClient }, { authStorage }]) =>
+        createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: {
+            // localStorage 塞滿時仍能保存登入（見 authStorage.ts；2026-11-10 用戶無法登入事故）
+            storage: authStorage,
+            persistSession: true,
+            autoRefreshToken: true,
+            // 主程式不接受網址帶進來的 session：本站沒有任何 magic link／OAuth 回跳主頁，
+            // 開著只會讓別人用一條連結把你登進「他的」帳號（session fixation），
+            // 你接著寫的日記就同步到對方雲端。密碼重設走獨立的 recover.html。
+            detectSessionInUrl: false,
+            flowType: 'pkce',
+          },
+        })
     )
   }
   return clientPromise
