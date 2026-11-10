@@ -1,5 +1,9 @@
 // deno test supabase/functions/agent-api/logic_test.ts
-import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts'
+// 不從網路載入 assert：CI 以 --deny-net 跑全部 Deno 測試（資安審核 #12：原本 CI 漏跑這支）。
+const assertEquals = (actual: unknown, expected: unknown, msg?: string) => {
+  const a = JSON.stringify(actual), e = JSON.stringify(expected)
+  if (a !== e) throw new Error(`${msg ? msg + ': ' : ''}expected ${e}, got ${a}`)
+}
 import { PAGE, bearerOf, isDateKey, isReadableKey, paginate, parseRoute, sha256Hex } from './logic.ts'
 
 const u = (s: string) => new URL(`https://x.supabase.co/functions/v1/agent-api${s}`)
@@ -43,8 +47,8 @@ Deno.test('路由', () => {
 })
 
 Deno.test('Bearer 解析', () => {
-  assertEquals(bearerOf('Bearer yk_abcdefghijklmnopqrstuvwxyz0123'), 'yk_abcdefghijklmnopqrstuvwxyz0123')
-  assertEquals(bearerOf('bearer yk_abcdefghijklmnopqrstuvwxyz0123'), null) // 大小寫要對
+  assertEquals(bearerOf('Bearer yk_fake_abcdefghijklmnopqrstuvwxyz'), 'yk_fake_abcdefghijklmnopqrstuvwxyz')
+  assertEquals(bearerOf('bearer yk_fake_abcdefghijklmnopqrstuvwxyz'), null) // 大小寫要對
   assertEquals(bearerOf('Bearer eyJhbGciOi.xxx.yyy'), null) // 拿 Supabase JWT 來打也不行
   assertEquals(bearerOf('Bearer yk_short'), null)
   assertEquals(bearerOf(null), null)

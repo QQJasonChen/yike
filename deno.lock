@@ -52,6 +52,7 @@
         "npm:eslint-plugin-react-hooks@^5.2.0",
         "npm:eslint-plugin-react-refresh@~0.4.26",
         "npm:eslint@^9.39.4",
+        "npm:fake-indexeddb@^6.2.8",
         "npm:globals@^15.15.0",
         "npm:jsdom@^25.0.1",
         "npm:react-dom@^18.3.1",

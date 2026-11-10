@@ -76,7 +76,13 @@ function setup(options: Options) {
       if (state.rpcCalls === 1 && options.grantFault === 'after-commit') throw new TypeError(PRIVATE)
       return json({ ok: true, new_redemption: fresh })
     }
-    if (/\/admin\/users\//.test(url)) state.deletes++
+    if (/\/admin\/users\//.test(url)) {
+      state.deletes++
+      eq((init as { method?: string }).method, 'DELETE')
+      eq(url, `https://database.example.invalid/auth/v1/admin/users/${UID}`)
+      state.authExists = false
+      return json({})
+    }
     throw new Error('Unexpected route: real network is forbidden')
   }
   return state
@@ -107,9 +113,13 @@ for (const user of [{ id: OTHER, email: 'different@example.invalid' }, { id: UID
   Deno.test('password proof missing/mismatched user cannot become a grant UID', () => withState({ existing: true, signinUser: user }, async (s) => { await call(503); eq(s.rpcCalls, 0); eq(s.deletes, 0) }))
 for (const options of [{ existing: true, signinFault: true }, { createFault: true }, { existing: true, missingAnon: true }])
   Deno.test('Auth network/configuration failures are503 with no grant or destructive compensation', () => withState(options, async (s) => { await call(503); eq(s.rpcCalls, 0); eq(s.increments, 0); eq(s.deletes, 0) }))
-Deno.test('cap refusal grants no new entitlement and deletes neither new nor existing Auth account', () => withState({ cap: true }, async (s) => {
-  await call(403); eq(s.authExists, true); eq(s.ledger, false); eq(s.entitlement, false); eq(s.increments, 0); eq(s.deletes, 0)
-  await call(403); eq(s.proofs, 1); eq(s.entitlement, false); eq(s.deletes, 0)
+// 資安審核 #01：本次新建的帳號在額度用完時回收，真買家之後才不會被 409 鎖死。
+Deno.test('cap refusal rolls back only the Auth account this request created', () => withState({ cap: true }, async (s) => {
+  await call(403); eq(s.authExists, false); eq(s.ledger, false); eq(s.entitlement, false); eq(s.increments, 0); eq(s.deletes, 1)
+  await call(403); eq(s.proofs, 0); eq(s.entitlement, false); eq(s.deletes, 2); eq(s.authExists, false)
+}))
+Deno.test('cap refusal never deletes an existing (password-proven) Auth account', () => withState({ cap: true, existing: true }, async (s) => {
+  await call(403); eq(s.proofs, 1); eq(s.authExists, true); eq(s.entitlement, false); eq(s.deletes, 0)
 }))
 for (const reply of [null, [], {}, { ok: true }, { ok: 'true', new_redemption: false }, { ok: true, new_redemption: 'false' }, { ok: false, new_redemption: true }, { ok: false, new_redemption: false, reason: 'owner-mismatch' }])
   Deno.test('malformed/failed RPC contract is not reported as successful activation', () => withState({ grantReply: reply }, async (s) => { await call(503); eq(s.increments, 0); eq(s.deletes, 0) }))

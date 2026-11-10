@@ -166,6 +166,22 @@ export const setOnDataWrite = (fn: ((key: string) => void) | null) => {
 
 export const loadMeta = (): Record<string, number> => read<Record<string, number>>(META_KEY) ?? {}
 
+// 上次同步時看到的「伺服器原始時間字串」（Postgres 微秒精度）。
+// 為什麼需要：meta 只有毫秒，判不出「雲端還是我上次看到的那一版」還是「同一毫秒內的另一版」。
+// 舊做法在 ts===meta 時改比內容，但本機 dirty 時內容本來就不同 → 每編輯一次就把
+// 自己上一版存成一份假衝突副本，越積越多、還會塞爆 localStorage（資安審核 #04）。
+// 有了原始字串就能精確判斷：字串相同＝同一版，不是衝突。
+const META_RAW_KEY = LOCAL_ONLY_PREFIX + 'metaRaw'
+export const loadMetaRaw = (): Record<string, string> => read<Record<string, string>>(META_RAW_KEY) ?? {}
+const rememberRaw = (updates: Record<string, string>): void => {
+  if (Object.keys(updates).length === 0) return
+  try {
+    localStorage.setItem(META_RAW_KEY, JSON.stringify({ ...loadMetaRaw(), ...updates }))
+  } catch {
+    /* 存不下只會退回舊的比對方式（可能多一份副本），不影響資料 */
+  }
+}
+
 /** 從「比時間戳」升級到「髒標記」的一次性搬遷：
  *  既有裝置沒有 pp:dirty，若直接改用髒標記，還沒推上去的本機改動會永遠不再上傳。
  *  所以第一次跑到這裡時，用舊規則（本機 meta 比伺服器新）補標一次。 */
@@ -242,6 +258,7 @@ export const markSynced = (
 ): void => {
   const d = loadDirty()
   const m = loadMeta()
+  const raw: Record<string, string> = {}
   // 只清「推送期間沒再被改過」的 key。版號對不上代表使用者在等回應時又編輯了，
   // 那筆更新的內容還沒上去，標記必須留著讓下次同步帶走。
   const clear = (k: string) => {
@@ -264,10 +281,14 @@ export const markSynced = (
     const sent = sentClientRev[r.key]
     if (sent !== undefined && r.client_rev != null && Number(r.client_rev) !== sent) continue
     clear(r.key)
-    if (d[r.key] === undefined) m[r.key] = new Date(r.updated_at).getTime()
+    if (d[r.key] === undefined) {
+      m[r.key] = new Date(r.updated_at).getTime()
+      raw[r.key] = r.updated_at
+    }
   }
   localStorage.setItem(DIRTY_KEY, JSON.stringify(d))
   localStorage.setItem(META_KEY, JSON.stringify(m))
+  rememberRaw(raw)
 }
 
 // 本機編輯只做一件事：標記「這個 key 改過了」。
@@ -356,7 +377,7 @@ const write = (key: string, value: unknown): boolean => {
 }
 
 /** 雲端拉下來的資料直接落地（不觸發 push 迴圈），並記下伺服器時間戳 */
-export const writeFromCloud = (key: string, value: unknown, serverTs: number) => {
+export const writeFromCloud = (key: string, value: unknown, serverTs: number, serverTsRaw?: string) => {
   if (!isSyncDataKey(key) || !isSyncDataValue(key, value) ||
       !Number.isSafeInteger(serverTs) || Math.abs(serverTs) > 8640000000000000)
     throw new Error('cloud-data-not-allowed')
@@ -366,6 +387,7 @@ export const writeFromCloud = (key: string, value: unknown, serverTs: number) =>
   const m = loadMeta()
   m[key] = serverTs
   localStorage.setItem(META_KEY, JSON.stringify(m))
+  if (serverTsRaw && isSyncTimestamp(serverTsRaw)) rememberRaw({ [key]: serverTsRaw })
   // 剛用雲端版本覆蓋本機，這個 key 就不再是「本機有未上傳的改動」
   const d = loadDirty()
   if (d[key]) {
@@ -742,7 +764,9 @@ export const clearCloudSessionArtifacts = (): void => {
   localStorage.removeItem(CLOUD_BOUND_KEY)
 }
 
-export const clearAllLocalData = () => {
+/** 同步清掉 localStorage；回傳的 Promise 在 IndexedDB（封存快照、token 備援）也清完才完成。
+ *  呼叫端接著要 reload 時務必 await，否則 IndexedDB 可能還沒清掉頁面就換了。 */
+export const clearAllLocalData = (): Promise<void> => {
   const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)
@@ -755,10 +779,11 @@ export const clearAllLocalData = () => {
   gatedKeys.clear()
   // 「清空這台裝置」原本就會刪掉 pp:bk:* 的本機快照；快照搬到 IndexedDB 後也要一起清，
   // 否則下一個用這台裝置的人仍可能從封存區讀到上一個人的日記。
-  if (idbAvailable()) {
-    void idbClear(STORE_BACKUPS).catch(() => {})
-    void idbClear(STORE_AUTH).catch(() => {})
-  }
+  if (!idbAvailable()) return Promise.resolve()
+  return Promise.all([
+    idbClear(STORE_BACKUPS).catch(() => {}),
+    idbClear(STORE_AUTH).catch(() => {}),
+  ]).then(() => {})
 }
 
 /** Actual app writers: user records/preferences plus harmless legacy fixed flags.
@@ -1525,6 +1550,21 @@ export const dailyBackupToArchive = async (todayKey: string): Promise<boolean> =
   }
 }
 
+/** 本機 localStorage 用量（估算）。瀏覽器上限多為約 500 萬字元（各家不同），
+ *  所以回傳的是「約略比例」，用來在快滿之前提醒，而不是等存檔失敗才發現。 */
+export const LOCAL_SOFT_LIMIT_CHARS = 5_000_000
+export const localUsage = (): { chars: number; ratio: number } => {
+  let chars = 0
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (!k) continue
+      chars += k.length + (localStorage.getItem(k)?.length ?? 0)
+    }
+  } catch { /* 讀不到就當 0，不影響使用 */ }
+  return { chars, ratio: chars / LOCAL_SOFT_LIMIT_CHARS }
+}
+
 /** 請瀏覽器把這個網站的儲存標為「持久」，降低系統清理空間時把日記／備份一起清掉的機率。 */
 export const requestPersistentStorage = async (): Promise<boolean> => {
   try {
@@ -1568,6 +1608,7 @@ export const discardLocalForNewOwner = (uid: string): void => {
     throw new Error('backup-failed-before-discard')
   for (const k of allDataKeys()) localStorage.removeItem(k)
   localStorage.removeItem(META_KEY)
+  localStorage.removeItem(META_RAW_KEY)
   // dirty 也要清。沒清的話：pull 會因為「這個 key 是髒的」而跳過新帳號的雲端版本，
   // push 又因為本機檔案已刪而排除它——那些 key 從此兩邊都拉不到也推不上。
   localStorage.removeItem(DIRTY_KEY)

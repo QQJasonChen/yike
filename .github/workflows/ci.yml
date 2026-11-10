@@ -50,7 +50,7 @@ jobs:
       - name: Static page CSP checks
         run: node scripts/static-csp.mjs --check
       - name: Deployed activation handler regression (no network or secrets)
-        run: deno test --no-prompt --deny-net --deny-env --deny-read --deny-write --deny-run supabase/functions/tests/
+        run: deno test --no-prompt --deny-net --deny-env --deny-read --deny-write --deny-run supabase/functions/tests/ supabase/functions/agent-api/logic_test.ts
       - name: TypeScript and production build
         run: npm run build
       - name: Upload verified Pages artifact

@@ -185,7 +185,8 @@ async function activate(req: Request, budget: AbortSignal): Promise<Response> {
     return unavailable()
 
   // Existing accounts are repaired only after the supplied original password proves ownership.
-  // No password reset, receipt-only UID lookup or destructive Auth compensation.
+  // No password reset or receipt-only UID lookup. The only Auth compensation is deleting an
+  // account this very request created when the grant is definitively refused (cap-reached).
   const created = await createUser(url, srk, email, password, budget)
   if (!created.ok || !created.userId) return created.response
 
@@ -209,10 +210,17 @@ async function activate(req: Request, budget: AbortSignal): Promise<Response> {
   if (typeof grant.ok !== 'boolean' || typeof grant.new_redemption !== 'boolean' ||
       (!grant.ok && grant.new_redemption)) return activationUnconfirmed()
   if (!grant.ok) {
-    if (grant.reason === 'cap-reached') return json(403, {
+    if (grant.reason === 'cap-reached') {
+      // 資安審核 #01：這次請求「剛建立」的帳號在額度用完時必須回收。留著的話，
+      // 真正的買家之後會被 409「此 Email 已有帳號」鎖死，而且這個帳號仍能登入同步。
+      // 只回收「本次新建」的帳號（既有帳號是用原密碼證明身分的，一律不動）；
+      // 結果不確定（網路、5xx）時不刪，寧可留給客服處理也不誤刪。
+      if (created.fresh) await rollbackFreshUser(url, srk, created.userId, budget)
+      return json(403, {
       code: 'activation-cap-reached',
       error: '此序號的兌換額度已用完，請回覆購買信讓客服核對；不必重新購買。',
-    })
+      })
+    }
     return activationUnconfirmed()
   }
 
@@ -244,9 +252,23 @@ const accountId = (value: Record<string, unknown>, email: string): string | null
   typeof value.id === 'string' && UUID.test(value.id) && typeof value.email === 'string' &&
     value.email.trim().toLowerCase() === email ? value.id : null
 
+/** 刪除本次請求剛建立、但沒有取得授權的帳號。失敗只記錄，不改變回應（客服可人工處理）。 */
+async function rollbackFreshUser(url: string, srk: string, userId: string, budget: AbortSignal): Promise<void> {
+  if (!UUID.test(userId)) return
+  try {
+    const res = await activationUpstream(`${url}/auth/v1/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: { apikey: srk, Authorization: `Bearer ${srk}` },
+    }, budget)
+    if (!res.ok) console.error('回收未授權的新帳號失敗', res.status)
+  } catch {
+    console.error('回收未授權的新帳號失敗：逾時或網路失敗')
+  }
+}
+
 async function createUser(
   url: string, srk: string, email: string, password: string, budget: AbortSignal
-): Promise<{ ok: boolean; response: Response; userId?: string }> {
+): Promise<{ ok: boolean; response: Response; userId?: string; fresh?: boolean }> {
   const fetch = (target: string, init: RequestInit) => activationUpstream(target, init, budget)
   let createRes: Response
   try {
@@ -259,7 +281,7 @@ async function createUser(
   const created = record(await createRes.json().catch(() => null))
   const id = accountId(created, email)
   if (createRes.ok) return id
-    ? { ok: true, response: json(200, { ok: true }), userId: id }
+    ? { ok: true, response: json(200, { ok: true }), userId: id, fresh: true }
     : { ok: false, response: activationUnconfirmed() }
 
   // HTTP422 and msg do not identify an existing account. Use official REST code fields.

@@ -26,7 +26,7 @@ import { OPENAI_KEY_HELP_URL, verifyKeyAndPickModel } from './ai'
 import { TextArea, TextField } from './fields'
 import { focusLock } from './focusLock'
 import IapPanel from './IapPanel'
-import { notify } from './notify'
+import { cancelAllNotifications, notify } from './notify'
 import { clearWidgetSnapshot } from './widgetSync'
 import { PlantLegend } from './plantGlyphs'
 import {
@@ -39,6 +39,7 @@ import {
   exportBackupAsFile,
   exportArchivedBackupAsFile,
   listAllBackups,
+  localUsage,
   restoreArchivedBackup,
   getOpenAIKey,
   localDataCount,
@@ -294,9 +295,14 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                             )
                           )
                             return
-                          clearSupabaseTokens()
-                          clearUnsavedDrafts(); clearAllLocalData()
-                          location.reload()
+                          void (async () => {
+                            clearSupabaseTokens()
+                            clearUnsavedDrafts()
+                            await clearAllLocalData()
+                            await cancelAllNotifications() // 鎖定畫面不能再跳出這台前一個人的行程
+                            await clearWidgetSnapshot()
+                            location.reload()
+                          })()
                         }}
                       >
                         這台不是你的、或想清空回空白？
@@ -342,6 +348,7 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                             await signOut()
                             stopAutoSync()
                             clearForLogout()
+                            await cancelAllNotifications() // 通知內容含行程文字：登出後不能在鎖定畫面出現
                             await clearWidgetSnapshot() // 主畫面 widget 也是出口，不能留上一個人的任務
                             location.reload() // 回到全空白狀態
                           })
@@ -366,7 +373,10 @@ export default function SettingsPanel({ settings, onSettingsChange, onClose }: P
                           cloudAct(async () => {
                             await deleteAccount()
                             stopAutoSync()
-                            clearUnsavedDrafts(); clearAllLocalData()
+                            clearUnsavedDrafts()
+                            await clearAllLocalData()
+                            await cancelAllNotifications()
+                            await clearWidgetSnapshot()
                             location.reload()
                           })
                         }}
@@ -845,6 +855,7 @@ async function syncAfterLogin(email: string): Promise<SyncResult> {
     if (merge) claimDeviceFor(uid)
     else {
       discardLocalForNewOwner(uid)
+      await cancelAllNotifications() // 上一個人排的行程通知
       await clearWidgetSnapshot() // 同登出：主畫面 widget 不能留上一個人的任務
     }
     return await syncNow()
@@ -928,6 +939,16 @@ function BackupSettings() {
         清瀏覽器資料、換手機、系統清理儲存空間，備份會跟資料一起消失。
         真的重要的話，用「存成檔案」把它帶離這台裝置。
       </p>
+      {(() => {
+        const u = localUsage()
+        const pct = Math.min(100, Math.round(u.ratio * 100))
+        return (
+          <p className={pct >= 80 ? 'hint' : 'sync-help'} style={{ marginTop: 6 }}>
+            這台裝置的本機空間：約已使用 {pct}%
+            {pct >= 80 && '——快滿了。手寫佔最多空間；請先用「存成檔案」帶走一份備份，並確認雲端同步正常。'}
+          </p>
+        )
+      })()}
       {stale === null && items.length > 0 && (
         <p className="hint" style={{ marginTop: 6 }}>
           ⚠️ 你還沒把任何備份存出去過。備份跟資料放在同一個地方，不算備份。
