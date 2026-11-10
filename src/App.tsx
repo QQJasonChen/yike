@@ -24,6 +24,10 @@ import { focusLock } from './focusLock'
 import { openFloating, pipAutoEnabled, pipSupported, setPipTimerSource } from './pip'
 import {
   autoBackup,
+  archiveLocalBackups,
+  claimArchivedBackups,
+  dailyBackupToArchive,
+  requestPersistentStorage,
   currentStreak,
   getDataOwner,
   loadDay,
@@ -191,8 +195,19 @@ export default function App() {
   }, [searchSel])
 
   // 每日本機備份（安全網）：開站快照一次今天的資料，保留最近 7 份
+  // 優先直接寫進 IndexedDB 封存區（不佔 localStorage 的 5MB），不支援時退回原本的本機快照；
+  // 之後把留在 localStorage 的舊快照搬過去，騰出空間給日記與登入 token。
   useEffect(() => {
-    if (!autoBackup(toDateKey(new Date()))) setWriteFailed(true)
+    let alive = true
+    void (async () => {
+      const today = toDateKey(new Date())
+      await claimArchivedBackups()
+      const ok = (await dailyBackupToArchive(today)) || autoBackup(today)
+      await archiveLocalBackups().catch(() => 0)
+      if (!ok && alive) setWriteFailed(true)
+      void requestPersistentStorage()
+    })()
+    return () => { alive = false }
   }, [])
 
   // ⌘K / Ctrl+K 開搜尋；Esc 關掉「最上層」的浮層（搜尋 → 設定 → 更多）

@@ -37,6 +37,9 @@ import {
   daysSinceExport,
   discardLocalForNewOwner,
   exportBackupAsFile,
+  exportArchivedBackupAsFile,
+  listAllBackups,
+  restoreArchivedBackup,
   getOpenAIKey,
   localDataCount,
   claimDeviceFor,
@@ -853,8 +856,15 @@ function BackupSettings() {
   const [items, setItems] = useState<BackupMeta[]>(() => listBackups())
   const [conflicts, setConflicts] = useState(() => listConflicts())
   const owner = useRef(getDataOwner())
+  // 本機（同步可得）先顯示，IndexedDB 封存區的快照讀到後再併入
+  const reloadItems = () => {
+    setItems(listBackups())
+    const forOwner = getDataOwner()
+    void listAllBackups().then((all) => { if (getDataOwner() === forOwner) setItems(all) })
+  }
   useEffect(() => {
-    const refresh = () => { setItems(listBackups()); setConflicts(listConflicts()) }
+    reloadItems()
+    const refresh = () => { reloadItems(); setConflicts(listConflicts()) }
     const ready = (event: Event) => {
       const next = (event as CustomEvent<{ owner: string | null }>).detail?.owner
       if (next === undefined || next !== getDataOwner()) return
@@ -876,10 +886,11 @@ function BackupSettings() {
   // 靜默失敗，那種「按了說成功、其實什麼都沒存」比不給按更糟——
   // 所以原生一律走剪貼簿，並如實告訴使用者東西在哪。
   const takeOffDevice = async (id: string) => {
-    const date = items.find((b) => b.id === id)?.date ?? id.split('#')[0]
+    const item = items.find((b) => b.id === id)
+    const date = item?.date ?? id.split('#')[0]
     let text: string
     try {
-      text = exportBackupAsFile(id)
+      text = item?.archived ? await exportArchivedBackupAsFile(id) : exportBackupAsFile(id)
     } catch (e) {
       setMsg(`✗ ${e instanceof Error ? e.message : '匯出失敗'}`)
       return
@@ -911,7 +922,7 @@ function BackupSettings() {
 
   return (
     <div className="data-actions backup-box" style={{ marginTop: 18, display: 'block' }}>
-      <div className="label">資料備份（本機自動，每天一份，留最近 7 份）</div>
+      <div className="label">資料備份（本機自動，每天一份，留最近 30 份）</div>
       <p className="sync-help">
         同步出錯或資料被清掉時的安全網。這些備份<b>只存在這台裝置</b>——
         清瀏覽器資料、換手機、系統清理儲存空間，備份會跟資料一起消失。
@@ -950,10 +961,20 @@ function BackupSettings() {
                   try {
                     if (getDataOwner() !== owner.current) throw new Error('帳號已變更，請重新載入')
                     if (hasUnsavedDrafts()) throw new Error('請先複製並保存尚未儲存的草稿')
-                    const n = restoreBackup(b.id)
-                    setItems(listBackups()); setConflicts(listConflicts())
-                    refreshRestoredViews()
-                    setMsg(`✓ 已還原 ${n} 筆（${b.date}），畫面已更新；其他記錄保留`)
+                    const done = (n: number) => {
+                      reloadItems(); setConflicts(listConflicts())
+                      refreshRestoredViews()
+                      setMsg(`✓ 已還原 ${n} 筆（${b.date}），畫面已更新；其他記錄保留`)
+                    }
+                    if (b.archived) {
+                      const expectOwner = owner.current
+                      void restoreArchivedBackup(b.id).then((n) => {
+                        if (getDataOwner() !== expectOwner) throw new Error('帳號已變更，請重新載入')
+                        done(n)
+                      }).catch((error) => setMsg(`✗ 還原失敗：${error instanceof Error ? error.message : '請重試'}`))
+                      return
+                    }
+                    done(restoreBackup(b.id))
                   } catch (error) {
                     setMsg(`✗ 還原失敗：${error instanceof Error ? error.message : '請重試'}`)
                   }

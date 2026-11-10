@@ -17,6 +17,7 @@ import {
   emptyWeek,
   emptyYear,
 } from './types'
+import { STORE_AUTH, STORE_BACKUPS, idbAvailable, idbClear, idbDelete, idbGet, idbKeys, idbSet } from './idb'
 
 const DAY_PREFIX = 'pp:day:'
 const WEEK_PREFIX = 'pp:week:'
@@ -52,7 +53,19 @@ const supabaseTokenKeys = (): string[] => {
 /** 這台是否殘留任何雲端登入痕跡（標記或 Supabase token） */
 export const hasCloudArtifact = (): boolean => isCloudBound() || supabaseTokenKeys().length > 0
 /** 清掉殘留的 Supabase session token（登出/孤兒清除時，連 token 一起清，避免重整迴圈） */
-export const clearSupabaseTokens = () => supabaseTokenKeys().forEach((k) => localStorage.removeItem(k))
+export const clearSupabaseTokens = () => {
+  supabaseTokenKeys().forEach((k) => localStorage.removeItem(k))
+  // localStorage 滿時 token 會落到 IndexedDB 備援區（authStorage.ts），登出／清除時一併清掉，
+  // 不能讓下一個用這台裝置的人從 IndexedDB 撿到上一個人的 refresh token。
+  void clearAuthFallback()
+}
+/** 清掉 IndexedDB 裡的 Supabase token 備援（失敗靜默：沒有 IndexedDB 就本來沒東西） */
+export const clearAuthFallback = async (): Promise<void> => {
+  if (!idbAvailable()) return
+  try {
+    for (const k of await idbKeys(STORE_AUTH)) await idbDelete(STORE_AUTH, k)
+  } catch { /* 無 IndexedDB／被拒：沒有可清的 */ }
+}
 
 // ---- 日期工具（一律使用本地時區） ----
 
@@ -326,6 +339,8 @@ const write = (key: string, value: unknown): boolean => {
   } catch (e) {
     console.error('本機儲存失敗', key, e)
     onWriteError?.(key)
+    // 多半是配額滿：把本機快照搬去 IndexedDB 騰出空間，使用者再按一次儲存就進得去。
+    void archiveLocalBackups().catch(() => {})
     return false // 呼叫端的畫面照舊（草稿還在），但使用者必須被告知「這次沒存進去」
   }
   if (key !== SYNC_KEY && key !== META_KEY) {
@@ -738,6 +753,12 @@ export const clearAllLocalData = () => {
   }
   for (const k of keys) localStorage.removeItem(k)
   gatedKeys.clear()
+  // 「清空這台裝置」原本就會刪掉 pp:bk:* 的本機快照；快照搬到 IndexedDB 後也要一起清，
+  // 否則下一個用這台裝置的人仍可能從封存區讀到上一個人的日記。
+  if (idbAvailable()) {
+    void idbClear(STORE_BACKUPS).catch(() => {})
+    void idbClear(STORE_AUTH).catch(() => {})
+  }
 }
 
 /** Actual app writers: user records/preferences plus harmless legacy fixed flags.
@@ -1036,6 +1057,8 @@ export interface BackupMeta {
   pre: boolean
   keys: number // 快照了幾個 key
   bytes: number // 快照大小
+  /** 已從 localStorage 搬到 IndexedDB 封存區（不佔 5MB 配額） */
+  archived?: boolean
 }
 
 /** 破壞性操作（還原備份、從檔案匯入）之前的安全快照，key 後綴 ~pre。
@@ -1208,6 +1231,43 @@ const pruneBackups = (owner: string | null) => {
   }
 }
 
+/** 組出一張快照：所有資料 key 的原始 JSON，加上「這張快照主人」的衝突副本。全空回 null。 */
+const buildBackupBlob = (owner: string | null): BackupBlob | null => {
+  const data: Record<string, string> = {}
+  let has = false
+  for (const k of allDataKeys()) {
+    const raw = localStorage.getItem(k)
+    if (raw) {
+      data[k] = raw // 存原始 JSON 字串，還原時精確還原
+      has = true
+    }
+  }
+  // 衝突副本不在 allDataKeys() 裡（ppl: 前綴結構性排除同步），但它是「另一台裝置
+  // 那個版本」的唯一一份。換帳號時先備份再刪副本＝那個版本永久消失，
+  // 而備份裡救不回來（Codex 互審第 7 輪 P0-3）。所以快照要一起收。
+  //
+  // 只收「這張快照的主人」的。副本刻意活過登出，所以 Bob 建快照時 Alice 的副本
+  // 還在同一個 localStorage 裡；不比對內層 owner 的話，Bob 按「存成檔案」
+  // 就把 Alice 的私密內容帶出裝置——而他的衝突清單是空的，完全看不出來
+  //（Codex 互審第 8 輪 P0-1，這是我上一輪修出來的洞）。
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (!k?.startsWith(CONFLICT_PREFIX)) continue
+    const raw = localStorage.getItem(k)
+    if (!raw) continue
+    try {
+      const parsed = parseConflict(raw)
+      if (parsed.owner === undefined || parsed.owner !== owner) continue
+    } catch {
+      continue // 解不開的副本不進快照（寧可不收，也不要收到別人的）
+    }
+    data[k] = raw
+    has = true
+  }
+  if (!has) return null
+  return { __yike: 2, owner, data }
+}
+
 /** 每天自動快照一次本機所有資料到 pp:bk:<today>，保留最近 7 份。純本機、不同步、不匯出。
  *  寫入型操作、不碰既有資料；空資料不備份。配額/序列化失敗一律靜默。 */
 export const autoBackup = (
@@ -1225,39 +1285,8 @@ export const autoBackup = (
     const ownerTag = owner ?? '_local'
     const last = read<Record<string, string>>(LAST_BACKUP_KEY) ?? {}
     if (!pre && !force && last[ownerTag] === todayKey) return true
-    const data: Record<string, string> = {}
-    let has = false
-    for (const k of allDataKeys()) {
-      const raw = localStorage.getItem(k)
-      if (raw) {
-        data[k] = raw // 存原始 JSON 字串，還原時精確還原
-        has = true
-      }
-    }
-    // 衝突副本不在 allDataKeys() 裡（ppl: 前綴結構性排除同步），但它是「另一台裝置
-    // 那個版本」的唯一一份。換帳號時先備份再刪副本＝那個版本永久消失，
-    // 而備份裡救不回來（Codex 互審第 7 輪 P0-3）。所以快照要一起收。
-    //
-    // 只收「這張快照的主人」的。副本刻意活過登出，所以 Bob 建快照時 Alice 的副本
-    // 還在同一個 localStorage 裡；不比對內層 owner 的話，Bob 按「存成檔案」
-    // 就把 Alice 的私密內容帶出裝置——而他的衝突清單是空的，完全看不出來
-    //（Codex 互審第 8 輪 P0-1，這是我上一輪修出來的洞）。
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)
-      if (!k?.startsWith(CONFLICT_PREFIX)) continue
-      const raw = localStorage.getItem(k)
-      if (!raw) continue
-      try {
-        const parsed = parseConflict(raw)
-        if (parsed.owner === undefined || parsed.owner !== owner) continue
-      } catch {
-        continue // 解不開的副本不進快照（寧可不收，也不要收到別人的）
-      }
-      data[k] = raw
-      has = true
-    }
-    if (!has) return true // 全空（新裝置同步前/已清空）：沒東西可備份，不算失敗
-    const blob: BackupBlob = { __yike: 2, owner, data }
+    const blob = buildBackupBlob(owner)
+    if (!blob) return true // 全空（新裝置同步前/已清空）：沒東西可備份，不算失敗
     let id = backupId(todayKey, owner) + (pre ? PRE_SUFFIX : '')
     // 同日的舊無主快照必須原封保留；新的匿名快照另取 id，不覆蓋隔離原檔。
     const existing = localStorage.getItem(BACKUP_PREFIX + id)
@@ -1294,6 +1323,219 @@ export const listBackups = (): BackupMeta[] => {
     })
   }
   return out.sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+}
+
+// ---- 備份封存區（IndexedDB）----
+//
+// 為什麼要搬：每日快照是「整包資料」的副本，最多 7 份＋安全快照，全放 localStorage（約 5MB）。
+// 手寫塗鴉一多，光快照就把配額吃光，接著：日記存不進去、Supabase 登入 token 也存不進去
+// ——用戶看到 "sb-…-auth-token exceeded the quota"，重設密碼後也登不進來（2026-11-10 回報）。
+//
+// 做法：快照仍先「同步」寫進 localStorage（換帳號／還原／匯入前的安全快照必須同步保證有照到），
+// 之後非同步搬到 IndexedDB。搬遷一律「先寫入 → 讀回比對 → 本機那份沒被改過才刪」，
+// 任何一步失敗，localStorage 那份原封不動——寧可佔空間，也不能讓備份消失。
+interface ArchivedBackup {
+  raw: string // 跟 pp:bk:* 完全相同的原始 JSON 字串
+  owner: string | null // legacy 無 owner 時為 null，並以 legacy 標記
+  legacy: boolean
+  keys: number
+  bytes: number
+  at: number // 封存時間
+}
+const ARCHIVE_KEEP_DAILY = 30 // 封存區不佔 localStorage 配額，可以多留一些（原本只留 7 天）
+const ARCHIVE_KEEP_PRE = 3
+const ARCHIVE_CLAIM_PENDING = 'ppl:archiveClaimPending'
+export const BACKUP_CHANGE_EVENT = 'yike:backup-change'
+
+const isArchivedBackup = (v: unknown): v is ArchivedBackup =>
+  !!v && typeof v === 'object' && typeof (v as ArchivedBackup).raw === 'string'
+
+const notifyBackupChange = () => {
+  try { window.dispatchEvent(new Event(BACKUP_CHANGE_EVENT)) } catch { /* 非瀏覽器環境 */ }
+}
+
+const pruneArchive = async (): Promise<void> => {
+  const groups = new Map<string, { daily: string[]; pre: string[] }>()
+  for (const id of await idbKeys(STORE_BACKUPS)) {
+    const rec = await idbGet<ArchivedBackup>(STORE_BACKUPS, id)
+    if (!isArchivedBackup(rec) || rec.legacy) continue // 無主 legacy 快照屬於隔離區，永不自動刪
+    const g = groups.get(String(rec.owner)) ?? { daily: [], pre: [] }
+    ;(id.endsWith(PRE_SUFFIX) ? g.pre : g.daily).push(id)
+    groups.set(String(rec.owner), g)
+  }
+  for (const g of groups.values()) {
+    const byDateDesc = (a: string, b: string) => (idDate(a) < idDate(b) ? 1 : idDate(a) > idDate(b) ? -1 : a < b ? 1 : -1)
+    g.daily.sort(byDateDesc)
+    g.pre.sort(byDateDesc)
+    for (const id of g.daily.slice(ARCHIVE_KEEP_DAILY)) await idbDelete(STORE_BACKUPS, id)
+    for (const id of g.pre.slice(ARCHIVE_KEEP_PRE)) await idbDelete(STORE_BACKUPS, id)
+  }
+}
+
+let archiving: Promise<number> | null = null
+
+/** 把 localStorage 裡的快照搬到 IndexedDB，釋放配額。回傳搬了幾份。
+ *  不會刪掉任何沒被驗證寫入封存區的快照；同時只跑一個。 */
+export const archiveLocalBackups = (): Promise<number> => {
+  if (archiving) return archiving
+  archiving = (async () => {
+    if (!idbAvailable()) return 0
+    const keys: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k?.startsWith(BACKUP_PREFIX)) keys.push(k)
+    }
+    // 有 owner 但還沒蓋過章的 legacy 快照先留在本機，等 stampLegacyBackupOwners 蓋完章再搬；
+    // 否則搬進封存區後就永遠停在「無主」狀態，主人自己也看不到。
+    const legacyReady = getDataOwner() === null || localStorage.getItem(BACKUP_OWNER_MIGRATED) === '1'
+    let moved = 0
+    for (const k of keys) {
+      try {
+        const raw = localStorage.getItem(k)
+        if (!raw) continue
+        const parsed = parseBackup(raw)
+        if (!parsed) continue // 解不開的不動（保留原檔給人工救援）
+        const legacy = parsed.owner === undefined
+        if (legacy && !legacyReady) continue
+        let id = k.slice(BACKUP_PREFIX.length)
+        const existing = await idbGet<ArchivedBackup>(STORE_BACKUPS, id)
+        // 同 id 的封存若是 legacy 原檔（隔離區），新快照另取 id，不覆蓋原檔
+        if (isArchivedBackup(existing) && existing.legacy && !legacy) {
+          const pre = id.endsWith(PRE_SUFFIX)
+          id = `${id.replace(/~pre$/, '')}#a${Date.now()}${pre ? PRE_SUFFIX : ''}`
+        }
+        const rec: ArchivedBackup = {
+          raw,
+          owner: legacy ? null : (parsed.owner as string | null),
+          legacy,
+          keys: Object.keys(parsed.data).length,
+          bytes: raw.length,
+          at: Date.now(),
+        }
+        await idbSet(STORE_BACKUPS, id, rec)
+        const back = await idbGet<ArchivedBackup>(STORE_BACKUPS, id)
+        if (!isArchivedBackup(back) || back.raw !== raw) continue // 讀回不一致：本機那份留著
+        // 搬遷期間若同一個 key 又被重照（例如換帳號前的安全快照），不能刪掉新的那份
+        if (localStorage.getItem(k) === raw) {
+          localStorage.removeItem(k)
+          moved++
+        }
+      } catch {
+        /* IndexedDB 寫入失敗（配額、私密模式）：這份留在 localStorage，下次再試 */
+      }
+    }
+    try { await pruneArchive() } catch { /* 輪替失敗不影響資料 */ }
+    if (moved) notifyBackupChange()
+    return moved
+  })().finally(() => { archiving = null })
+  return archiving
+}
+
+/** 把封存區裡「無主（純本機）」的快照轉給剛認領裝置的帳號。
+ *  claimDeviceFor 會先記下待辦，App 啟動時也會重跑，避免中途被殺而讓快照永遠看不到。 */
+export const claimArchivedBackups = async (): Promise<void> => {
+  const uid = localStorage.getItem(ARCHIVE_CLAIM_PENDING)
+  if (!uid) return
+  if (getDataOwner() !== uid || !idbAvailable()) {
+    if (getDataOwner() !== uid) localStorage.removeItem(ARCHIVE_CLAIM_PENDING) // 已換人：不能轉給別人
+    return
+  }
+  try {
+    for (const id of await idbKeys(STORE_BACKUPS)) {
+      const rec = await idbGet<ArchivedBackup>(STORE_BACKUPS, id)
+      if (!isArchivedBackup(rec) || rec.legacy || rec.owner !== null) continue
+      const parsed = parseBackup(rec.raw)
+      if (!parsed || parsed.owner !== null) continue
+      const raw = JSON.stringify({ __yike: 2, owner: uid, data: parsed.data })
+      await idbSet(STORE_BACKUPS, id, { ...rec, raw, owner: uid, bytes: raw.length })
+    }
+    localStorage.removeItem(ARCHIVE_CLAIM_PENDING)
+    notifyBackupChange()
+  } catch { /* 待辦旗標留著，下次啟動再試 */ }
+}
+
+/** 列出封存區中屬於目前使用者的快照（新→舊）。 */
+export const listArchivedBackups = async (): Promise<BackupMeta[]> => {
+  if (!idbAvailable()) return []
+  const out: BackupMeta[] = []
+  try {
+    for (const id of await idbKeys(STORE_BACKUPS)) {
+      const rec = await idbGet<ArchivedBackup>(STORE_BACKUPS, id)
+      if (!isArchivedBackup(rec)) continue
+      if (!backupIsMine(rec.legacy ? undefined : rec.owner)) continue // 別人的快照不列給你看
+      out.push({ id, date: idDate(id), pre: id.endsWith(PRE_SUFFIX), keys: rec.keys, bytes: rec.bytes, archived: true })
+    }
+  } catch {
+    return []
+  }
+  return out.sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+}
+
+/** 本機＋封存區的所有快照（同 id 以本機那份為準），新→舊。 */
+export const listAllBackups = async (): Promise<BackupMeta[]> => {
+  const local = listBackups()
+  const seen = new Set(local.map((b) => b.id))
+  const merged = [...local, ...(await listArchivedBackups()).filter((b) => !seen.has(b.id))]
+  return merged.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? 1 : -1))
+}
+
+const archivedRaw = async (id: string): Promise<string> => {
+  const rec = await idbGet<ArchivedBackup>(STORE_BACKUPS, id)
+  if (!isArchivedBackup(rec)) throw new Error('找不到該備份')
+  return rec.raw
+}
+
+/** 匯出封存區的快照（格式與 exportBackupAsFile 相同，owner 檢查相同）。 */
+export const exportArchivedBackupAsFile = async (id: string): Promise<string> =>
+  exportBackupRaw(await archivedRaw(id), id)
+
+/** 還原封存區的快照（規則與 restoreBackup 相同：先照安全快照，照不成就不動）。 */
+export const restoreArchivedBackup = async (id: string): Promise<number> =>
+  restoreBackupRaw(await archivedRaw(id))
+
+/** 每日快照的非同步版本：直接寫進 IndexedDB，完全不經過 localStorage。
+ *  資料本身接近 localStorage 一半大小時，同步版連一份快照都放不下；這條路不受影響。
+ *  回傳 false 代表沒照成（呼叫端可退回同步版）。 */
+export const dailyBackupToArchive = async (todayKey: string): Promise<boolean> => {
+  if (!idbAvailable()) return false
+  try {
+    const owner = getDataOwner()
+    const ownerTag = owner ?? '_local'
+    const last = read<Record<string, string>>(LAST_BACKUP_KEY) ?? {}
+    if (last[ownerTag] === todayKey) return true
+    const blob = buildBackupBlob(owner)
+    if (!blob) return true // 沒資料可備份
+    const raw = JSON.stringify(blob)
+    let id = backupId(todayKey, owner)
+    const existing = await idbGet<ArchivedBackup>(STORE_BACKUPS, id)
+    if (isArchivedBackup(existing) && existing.legacy) id = backupId(todayKey + '#local', owner)
+    const rec: ArchivedBackup = { raw, owner, legacy: false, keys: Object.keys(blob.data).length, bytes: raw.length, at: Date.now() }
+    await idbSet(STORE_BACKUPS, id, rec)
+    const back = await idbGet<ArchivedBackup>(STORE_BACKUPS, id)
+    if (!isArchivedBackup(back) || back.raw !== raw) return false
+    // 換人了（另一個分頁登入別的帳號）：這份快照仍記在拍攝當下的 owner 名下，不更新新人的 lastBackup
+    if (getDataOwner() !== owner) return true
+    last[ownerTag] = todayKey
+    try { localStorage.setItem(LAST_BACKUP_KEY, JSON.stringify(last)) } catch { /* 下次多照一份而已 */ }
+    try { await pruneArchive() } catch { /* 輪替失敗不影響資料 */ }
+    notifyBackupChange()
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** 請瀏覽器把這個網站的儲存標為「持久」，降低系統清理空間時把日記／備份一起清掉的機率。 */
+export const requestPersistentStorage = async (): Promise<boolean> => {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.storage?.persist) return false
+    if (await navigator.storage.persisted?.()) return true
+    // Firefox 會跳出權限詢問框；其他瀏覽器（Safari／Chrome／iOS WebView）靜默判斷。不打擾使用者。
+    if (/firefox/i.test(navigator.userAgent)) return false
+    return await navigator.storage.persist()
+  } catch {
+    return false
+  }
 }
 
 const OWNER_KEY = 'ppl:owner' // 這台裝置的本機資料屬於哪個雲端帳號（uid）
@@ -1351,6 +1593,9 @@ export const claimDeviceFor = (uid: string): void => {
   if (before !== null && before !== uid) clearPreviousAccountIntegrations()
   setDataOwner(uid)
   if (before !== null) return
+  // 已搬到 IndexedDB 的純本機快照也要跟著轉給這個帳號（非同步；中斷時下次啟動重跑）
+  try { localStorage.setItem(ARCHIVE_CLAIM_PENDING, uid) } catch { /* 配額滿：封存快照暫時看不到，但不會遺失 */ }
+  void claimArchivedBackups()
   const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)
@@ -1436,6 +1681,10 @@ export const getOpenAIModel = (): string =>
 export const exportBackupAsFile = (id: string): string => {
   const raw = localStorage.getItem(BACKUP_PREFIX + id)
   if (!raw) throw new Error('找不到該備份')
+  return exportBackupRaw(raw, id)
+}
+
+const exportBackupRaw = (raw: string, id: string): string => {
   const parsed = parseBackup(raw)
   if (!parsed) throw new Error('備份已損毀')
   if (!backupIsMine(parsed.owner)) throw new Error('這份備份不屬於目前登入的帳號')
@@ -1470,6 +1719,10 @@ export const daysSinceExport = (): number | null => {
 export const restoreBackup = (id: string): number => {
   const raw = localStorage.getItem(BACKUP_PREFIX + id)
   if (!raw) throw new Error('找不到該備份')
+  return restoreBackupRaw(raw)
+}
+
+const restoreBackupRaw = (raw: string): number => {
   const parsed = parseBackup(raw)
   if (!parsed) throw new Error('備份已損毀')
   // 還原會把內容標成 dirty 推上目前登入的雲端帳號。不是自己的快照還原下去，
