@@ -215,7 +215,7 @@ async function activate(req: Request, budget: AbortSignal): Promise<Response> {
       // 真正的買家之後會被 409「此 Email 已有帳號」鎖死，而且這個帳號仍能登入同步。
       // 只回收「本次新建」的帳號（既有帳號是用原密碼證明身分的，一律不動）；
       // 結果不確定（網路、5xx）時不刪，寧可留給客服處理也不誤刪。
-      if (created.fresh) await rollbackFreshUser(url, srk, created.userId, budget)
+      if (created.fresh) await rollbackFreshUser(url, srk, created.userId, email, budget)
       return json(403, {
       code: 'activation-cap-reached',
       error: '此序號的兌換額度已用完，請回覆購買信讓客服核對；不必重新購買。',
@@ -253,12 +253,28 @@ const accountId = (value: Record<string, unknown>, email: string): string | null
     value.email.trim().toLowerCase() === email ? value.id : null
 
 /** 刪除本次請求剛建立、但沒有取得授權的帳號。失敗只記錄，不改變回應（客服可人工處理）。 */
-async function rollbackFreshUser(url: string, srk: string, userId: string, budget: AbortSignal): Promise<void> {
+async function rollbackFreshUser(
+  url: string, srk: string, userId: string, email: string, budget: AbortSignal
+): Promise<void> {
   if (!UUID.test(userId)) return
+  const H = { apikey: srk, Authorization: `Bearer ${srk}` }
+  // 這個 Email 名下已有任何兌換紀錄或付費資格（同時用另一組序號開通成功、客服手動開通等）
+  // 就不刪：帳號可能已被合法使用。查不到結果（網路／5xx）也不刪——寧可留給客服，不誤刪。
+  try {
+    const q = encodeURIComponent(email)
+    for (const table of ['license_redemptions', 'entitlements']) {
+      const res = await activationUpstream(`${url}/rest/v1/${table}?email=eq.${q}&select=email&limit=1`, { headers: H }, budget)
+      if (!res.ok) return
+      const rows: unknown = await res.json().catch(() => null)
+      if (!Array.isArray(rows) || rows.length > 0) return
+    }
+  } catch {
+    return
+  }
   try {
     const res = await activationUpstream(`${url}/auth/v1/admin/users/${userId}`, {
       method: 'DELETE',
-      headers: { apikey: srk, Authorization: `Bearer ${srk}` },
+      headers: H,
     }, budget)
     if (!res.ok) console.error('回收未授權的新帳號失敗', res.status)
   } catch {

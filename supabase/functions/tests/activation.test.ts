@@ -349,6 +349,7 @@ let capDeletes: string[] = []
 test('permanent cap rejection returns403, grants nothing, and rolls back the freshly created Auth user', baseEnv,
   async (url, init) => {
     if ((init as { method?: string } | undefined)?.method === 'DELETE') { capDeletes.push(url); return json({}) }
+    if (/\/rest\/v1\/(license_redemptions|entitlements)\?email=eq\./.test(url)) return json([])
     if (url.endsWith('/rpc/rate_limit_bump')) return json(true)
     if (url === 'https://api.gumroad.com/v2/licenses/verify') {
       equal(new URLSearchParams(init?.body as URLSearchParams).get('increment_uses_count'), 'false')

@@ -17,7 +17,7 @@ type Options = {
   existing?: boolean; passwordRejected?: boolean; signinFault?: boolean; signinUser?: unknown; missingAnon?: boolean;
   createFault?: boolean; grantFault?: 'before-commit' | 'after-commit' | 'http500'; cap?: boolean;
   grantReply?: unknown; uses?: unknown; omitUses?: boolean; providerStatus?: number; providerSuccess?: boolean;
-  counterFault?: boolean; limiterFault?: boolean;
+  counterFault?: boolean; limiterFault?: boolean; otherGrant?: boolean;
 }
 async function withState(options: Options, task: (state: ReturnType<typeof setup>) => Promise<void>) {
   const oldGet = Deno.env.get, oldFetch = globalThis.fetch, oldError = console.error
@@ -30,7 +30,7 @@ async function withState(options: Options, task: (state: ReturnType<typeof setup
 function setup(options: Options) {
   const state = {
     authExists: !!options.existing, ledger: false, entitlement: false, calls: [] as string[], proofs: 0,
-    rpcCalls: 0, increments: 0, deletes: 0, logs: [] as unknown[][],
+    rpcCalls: 0, increments: 0, deletes: 0, rollbackChecks: 0, logs: [] as unknown[][],
     fetcher: null! as typeof fetch,
   }
   state.fetcher = async (input, init) => {
@@ -76,6 +76,10 @@ function setup(options: Options) {
       if (state.rpcCalls === 1 && options.grantFault === 'after-commit') throw new TypeError(PRIVATE)
       return json({ ok: true, new_redemption: fresh })
     }
+    if (/\/rest\/v1\/(license_redemptions|entitlements)\?email=eq\./.test(url)) {
+      state.rollbackChecks++
+      return json(options.otherGrant && url.includes('/entitlements?') ? [{ email: EMAIL }] : [])
+    }
     if (/\/admin\/users\//.test(url)) {
       state.deletes++
       eq((init as { method?: string }).method, 'DELETE')
@@ -117,6 +121,9 @@ for (const options of [{ existing: true, signinFault: true }, { createFault: tru
 Deno.test('cap refusal rolls back only the Auth account this request created', () => withState({ cap: true }, async (s) => {
   await call(403); eq(s.authExists, false); eq(s.ledger, false); eq(s.entitlement, false); eq(s.increments, 0); eq(s.deletes, 1)
   await call(403); eq(s.proofs, 0); eq(s.entitlement, false); eq(s.deletes, 2); eq(s.authExists, false)
+}))
+Deno.test('cap refusal keeps a fresh account when the email already holds another grant', () => withState({ cap: true, otherGrant: true }, async (s) => {
+  await call(403); eq(s.authExists, true); eq(s.deletes, 0); eq(s.rollbackChecks, 2)
 }))
 Deno.test('cap refusal never deletes an existing (password-proven) Auth account', () => withState({ cap: true, existing: true }, async (s) => {
   await call(403); eq(s.proofs, 1); eq(s.authExists, true); eq(s.entitlement, false); eq(s.deletes, 0)
