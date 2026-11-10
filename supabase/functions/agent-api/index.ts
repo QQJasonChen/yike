@@ -39,6 +39,24 @@ Deno.serve(async (req) => {
   if (!url || !srk) return json(500, { error: '伺服器設定不完整' })
   const H = { apikey: srk, Authorization: `Bearer ${srk}` }
 
+  // ── 節流：每個 IP 每小時 600（在查 token 之前，假 token 也算次數）、每個 token 每小時 300；
+  //    計數器壞掉就擋。IP 節流原本排在查 DB 之後，亂猜 token 完全不受限（資安審核 #07）。
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim().slice(0, 200) || 'unknown'
+  const bump = async (k: string, cap: number) => {
+    try {
+      const r = await fetch(`${url}/rest/v1/rpc/rate_limit_bump`, {
+        method: 'POST',
+        headers: { ...H, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ k, cap, window_seconds: 3600 }),
+      })
+      return r.ok && (await r.json()) === true
+    } catch {
+      return false
+    }
+  }
+  if (!(await bump(`agent:ip:${ip}`, 600)))
+    return json(429, { error: '太頻繁了，請稍後再試' })
+
   // ── 驗 token ──────────────────────────────────────────────
   const tok = bearerOf(req.headers.get('authorization'))
   if (!tok) return json(401, { error: '要帶 Authorization: Bearer yk_…（在 app 設定頁產生）' })
@@ -59,21 +77,7 @@ Deno.serve(async (req) => {
   if (!t) return json(401, { error: 'token 無效或已撤銷' })
   if (t.scope !== 'read') return json(403, { error: '這個 token 沒有讀取權限' })
 
-  // ── 節流：每個 token 每小時 300、每個 IP 每小時 600；計數器壞掉就擋 ──
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const bump = async (k: string, cap: number) => {
-    try {
-      const r = await fetch(`${url}/rest/v1/rpc/rate_limit_bump`, {
-        method: 'POST',
-        headers: { ...H, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ k, cap, window_seconds: 3600 }),
-      })
-      return r.ok && (await r.json()) === true
-    } catch {
-      return false
-    }
-  }
-  if (!(await bump(`agent:tok:${t.id}`, 300)) || !(await bump(`agent:ip:${ip}`, 600)))
+  if (!(await bump(`agent:tok:${t.id}`, 300)))
     return json(429, { error: '太頻繁了：每個 token 每小時最多 300 次' })
 
   // 更新「最後使用」。不等它，失敗也不影響回應。

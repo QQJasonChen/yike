@@ -545,8 +545,12 @@ export const recordFocusSession = (s: FocusSession, out: { taskId?: string } = {
         out.taskId = tasks[at].id
       }
       // 真實起訖 → 分鐘（夾在時間軸 06:00–23:00 範圍內，最短 15 分鐘）
-      const bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, toMin(s.startMs)))
-      const bEnd = Math.max(bStart + 15, Math.min(23 * 60, toMin(s.endMs)))
+      // 結束時間以「開始那天的分鐘數＋實際經過時間」計算：23:45 開始、隔天 00:10 結束時，
+      // 直接取結束的時分會變成 10 分鐘，時段就被記錯（資安審核 #03）。
+      const startMin = toMin(s.startMs)
+      const endMin = startMin + Math.max(0, Math.round((s.endMs - s.startMs) / 60000))
+      const bStart = Math.max(6 * 60, Math.min(23 * 60 - 15, startMin))
+      const bEnd = Math.max(bStart + 15, Math.min(23 * 60, endMin))
       const blocks = prev.blocks.slice()
       // 同任務、上一塊結尾相距 ≤6 分鐘 → 直接接長（連續番茄變一條）
       const tail = blocks.filter((b) => b.taskIndex === at).sort((x, y) => y.end - x.end)[0]

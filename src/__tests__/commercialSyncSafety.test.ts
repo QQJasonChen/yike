@@ -192,6 +192,17 @@ describe('CAS、確認版號與衝突副本', () => {
     const files = listConflicts().map((c) => JSON.parse(exportConflictAsFile(c.id)))
     expect(files.some((file) => file.data[KEY].tasks[0].text === 'other device')).toBe(true)
   })
+  it('單機反覆「編輯→同步」不產生假衝突副本（資安審核 #04）', async () => {
+    seed('base'); await syncNow()
+    for (const text of ['edit 1', 'edit 2', 'edit 3']) {
+      saveDay(DATE, day(text))
+      // 推送前先 pull 一次：雲端仍是自己上一次推的版本（同一個原始時間字串）
+      const result = await syncNow()
+      expect(result).toMatchObject({ conflicts: 0 })
+    }
+    expect(listConflicts()).toHaveLength(0)
+    expect(server.get(KEY)!.value).toEqual(day('edit 3'))
+  })
   it('副本存不下，不覆蓋remote且回報held，dirty仍保留', async () => {
     seed('base'); await syncNow(); saveDay(DATE, day('pending'))
     seed('remote new', '2026-09-01T10:00:00.123900+00:00')

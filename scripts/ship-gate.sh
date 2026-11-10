@@ -83,8 +83,8 @@ leak=""
 # a) 明確格式的密鑰
 # 測試用的假金鑰一律 `sk-fake-` 開頭。把約定變成機械的：不是 sk-fake- 的就擋。
 # （不整個排除 src/__tests__/——真實邀請碼被寫進公開 repo 的測試檔正是發生過的事。）
-hard=$(git grep -nIE 'sk-[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]{8,}|YK[0-9A-F]{8}' -- \
-  ':!*.md' ':!package-lock.json' ':!scripts/ship-gate.sh' 2>/dev/null | grep -v 'sk-fake-' || true)
+hard=$(git grep -nIE 'sk-[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]{8,}|YK[0-9A-F]{8}|yk_[A-Za-z0-9_-]{20,}|secret_[A-Za-z0-9_-]{20,}|ntn_[A-Za-z0-9]{20,}' -- \
+  ':!*.md' ':!package-lock.json' ':!scripts/ship-gate.sh' 2>/dev/null | grep -v 'sk-fake-' | grep -v 'yk_fake_' || true)
 [ -n "$hard" ] && leak="$hard"
 
 # b) JWT：解 payload 看 role。anon 放行，其他一律擋。

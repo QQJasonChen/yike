@@ -220,3 +220,13 @@ describe('帳號邊界', () => {
     })
   })
 })
+
+describe('本機空間用量', () => {
+  it('localUsage 反映實際字元數', async () => {
+    const { localUsage, LOCAL_SOFT_LIMIT_CHARS } = await import('../storage')
+    localStorage.setItem('pp:day:2026-01-01', 'x'.repeat(1_000_000))
+    const u = localUsage()
+    expect(u.chars).toBeGreaterThanOrEqual(1_000_000)
+    expect(u.ratio).toBeCloseTo(u.chars / LOCAL_SOFT_LIMIT_CHARS)
+  })
+})

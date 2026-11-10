@@ -21,6 +21,7 @@ import {
   hasCloudArtifact,
   loadDirty,
   loadMeta,
+  loadMetaRaw,
   pendingGatedKeys,
   localDataCount,
   markSynced,
@@ -317,6 +318,7 @@ const syncNowInner = async (opts?: {
   )
   const dirtyBefore = loadDirty()
   const meta = loadMeta()
+  const metaRaw = loadMetaRaw()
   // 存不下衝突副本的 key：這一輪不准推，寧可少推一次也不要把雲端那份弄不見。
   const holdBack = new Set<string>()
   for (const r of rows) {
@@ -334,8 +336,15 @@ const syncNowInner = async (opts?: {
       //（Codex 互審第 5 輪 P0-3）。判不出誰對，就兩份都留著。
       // Different PostgreSQL microsecond versions may share the same JS millisecond.
       // Keep a distinct remote value before replacing it with the local pending edit.
-      if (ts > (meta[r.key] ?? 0) ||
-          (ts === (meta[r.key] ?? 0) && JSON.stringify(r.value) !== localStorage.getItem(r.key))) {
+      // 同一毫秒時用原始微秒字串判斷：字串跟上次同步看到的一樣＝雲端沒變，本機不同只是
+      // 本機尚未上傳的編輯，不是衝突（資安審核 #04：原本每編輯一次就多一份假副本）。
+      // 沒有紀錄（升級前的舊資料）才退回比內容。
+      const lastRaw = metaRaw[r.key]
+      const sameMs = ts === (meta[r.key] ?? 0)
+      const distinctSameMs = lastRaw !== undefined
+        ? r.updated_at !== lastRaw
+        : JSON.stringify(r.value) !== localStorage.getItem(r.key)
+      if (ts > (meta[r.key] ?? 0) || (sameMs && distinctSameMs)) {
         if (saveConflictCopy(r.key, r.value, ts)) conflicts++
         else holdBack.add(r.key) // 副本沒存成 → 這一輪不覆蓋雲端
       }
@@ -345,7 +354,7 @@ const syncNowInner = async (opts?: {
     const localRaw = localStorage.getItem(r.key)
     const unchangedWhileWaiting = localRaw === (beforePull.get(r.key) ?? null)
     if (ts > localTs || (ts === localTs && unchangedWhileWaiting && JSON.stringify(r.value) !== localRaw)) {
-      writeFromCloud(r.key, r.value, ts)
+      writeFromCloud(r.key, r.value, ts, r.updated_at)
       pulled++
       // 畫面上開著的那一天必須跟著換。只寫 localStorage 而不通知 React，
       // 使用者接下來打一個字就會用畫面上的舊 state 整包覆蓋剛拉下來的新版

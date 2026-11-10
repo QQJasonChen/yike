@@ -28,6 +28,7 @@ import {
   claimArchivedBackups,
   dailyBackupToArchive,
   requestPersistentStorage,
+  localUsage,
   currentStreak,
   getDataOwner,
   loadDay,
@@ -97,6 +98,7 @@ export default function App() {
   const [yearNum, setYearNum] = useState(() => Number(todayKey.slice(0, 4)))
   const { entry: settings, edit: editSettings } = useStoredEntry<Settings>('pp:settings', loadSettings, saveSettings)
   const [writeFailed, setWriteFailed] = useState(false)
+  const [spaceLow, setSpaceLow] = useState(false)
   const [ownerChanged, setOwnerChanged] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
   const [timer, setTimer] = useState<TimerState | null>(restoreTimer) // 啟動還原（多一條：已認領的 focus 段不還原）
@@ -205,6 +207,8 @@ export default function App() {
       const ok = (await dailyBackupToArchive(today)) || autoBackup(today)
       await archiveLocalBackups().catch(() => 0)
       if (!ok && alive) setWriteFailed(true)
+      // 備份都搬走之後仍超過 85%：在真的存不進去之前先提醒（2026-11-10 事故的教訓）
+      if (alive && localUsage().ratio >= 0.85) setSpaceLow(true)
       void requestPersistentStorage()
     })()
     return () => { alive = false }
@@ -432,6 +436,10 @@ export default function App() {
       {writeFailed && <div className="hint" role="alert">
         本次儲存沒有完成。請先複製畫面上的草稿，再檢查裝置儲存空間；此草稿可能尚未進入備份或雲端。
         <button onClick={() => setWriteFailed(false)}>我知道了</button>
+      </div>}
+      {spaceLow && !writeFailed && <div className="hint" role="status">
+        這台裝置的本機空間快滿了（手寫佔最多）。請到「設定 → 資料備份」把備份存成檔案，並確認雲端同步正常。
+        <button onClick={() => setSpaceLow(false)}>我知道了</button>
       </div>}
       {syncMessage && <p className="hint" role="status">{syncMessage}</p>}
       <div className="topbar">

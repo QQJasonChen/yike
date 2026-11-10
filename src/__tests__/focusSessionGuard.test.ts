@@ -1071,3 +1071,14 @@ describe('Codex 第 50 輪：有效性在鎖內、寫入認領前檢查', () => 
     }
   })
 })
+
+describe('跨午夜的專注時段（資安審核 #03）', () => {
+  it('22:40 開始、隔天 00:05 結束：時段延伸到時間軸盡頭，不會被截成 15 分鐘', () => {
+    saveDay('2026-09-03', day('今天的任務'))
+    const start = Date.parse('2026-09-03T22:40:00')
+    expect(session({ startMs: start, endMs: Date.parse('2026-09-04T00:05:00') })).toBe(true)
+    const b = loadDay('2026-09-03').blocks[0]
+    expect(b.start).toBe(22 * 60 + 40)
+    expect(b.end).toBe(23 * 60)
+  })
+})

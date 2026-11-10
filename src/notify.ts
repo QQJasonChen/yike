@@ -101,3 +101,20 @@ export const syncBlockReminders = async (
     /* 權限或排程失敗：靜默略過 */
   }
 }
+
+/** 取消這台裝置上一刻手帳排過的所有本地通知（含已送達、還留在通知中心的）。
+ *  登出／刪帳／清空裝置／換帳號時一定要呼叫：通知內容含時間塊文字，
+ *  不清的話上一個人的私人行程會在共用裝置的鎖定畫面跳出來（資安審核 #02）。非 iOS no-op。 */
+export const cancelAllNotifications = async (): Promise<void> => {
+  dayBlockIds.clear()
+  if (!notifyAvailable()) return
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    const pending = await LocalNotifications.getPending()
+    if (pending.notifications.length)
+      await LocalNotifications.cancel({ notifications: pending.notifications.map((n) => ({ id: n.id })) })
+    await LocalNotifications.removeAllDeliveredNotifications()
+  } catch {
+    /* 通知權限未開等：沒有可取消的 */
+  }
+}
