@@ -1,7 +1,27 @@
 // 通用甘特引擎：任意欄數（週=7天、月=31天、年=12月）。
 // 選取模型 = 格子集合 cells[]，支援不連續（1,3,5）與多段；連續格子自動併成一條橫條。
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { GanttTone } from './ganttTone'
+
+/** 名稱欄「展開全文」狀態，每張甘特（以 title 區分）各自記住。localStorage 不可用時退回預設收合。 */
+const EXPAND_KEY = (title: string) => `yike.gantt.labelsExpanded.${title}`
+const readExpanded = (title: string): boolean => {
+  try {
+    return localStorage.getItem(EXPAND_KEY(title)) === '1'
+  } catch {
+    return false
+  }
+}
+const writeExpanded = (title: string, v: boolean) => {
+  try {
+    if (v) localStorage.setItem(EXPAND_KEY(title), '1')
+    else localStorage.removeItem(EXPAND_KEY(title))
+  } catch {
+    /* 存不了就只在這次畫面有效 */
+  }
+}
+/** 兩次點擊／輕觸間隔多短算雙擊 */
+const DOUBLE_TAP_MS = 300
 
 export interface GanttRow {
   i: number
@@ -55,7 +75,45 @@ export default function Gantt({
   const [open, setOpen] = useState(collapsible ? defaultOpen : true)
   const [drag, setDrag] = useState<{ row: number; a: number; b: number; moved: boolean } | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
+  const [expanded, setExpanded] = useState(() => readExpanded(title))
+  const [truncated, setTruncated] = useState(false)
+  const lastTap = useRef(Number.NEGATIVE_INFINITY)
   const n = cols.length
+
+  // 有任何名稱被「…」截斷時才顯示「雙擊名稱看全文」提示
+  useLayoutEffect(() => {
+    const grid = gridRef.current
+    if (!grid || expanded) {
+      setTruncated(false)
+      return
+    }
+    const labels = grid.querySelectorAll<HTMLElement>('.g-row:not(.g-head) .g-label')
+    setTruncated([...labels].some((el) => el.scrollWidth > el.clientWidth + 1))
+  }, [expanded, open, rows, labelWidth])
+
+  const toggleExpanded = () =>
+    setExpanded((v) => {
+      writeExpanded(title, !v)
+      return !v
+    })
+
+  // 名稱欄：雙擊（滑鼠）或兩下輕觸（手機）→ 整張甘特的名稱一起展開／收合。
+  // 統一用 pointerup 計時，不靠 dblclick（iOS 觸控不會送 dblclick，部分 Android 會，兩條路並用會重複切換）。
+  const labelDown = (e: React.PointerEvent) => {
+    // 不讓點名稱冒泡成「點第一格」或開始拖曳
+    e.stopPropagation()
+  }
+  const labelUp = (e: React.PointerEvent) => {
+    e.stopPropagation()
+    const now = e.timeStamp || Date.now()
+    if (now - lastTap.current <= DOUBLE_TAP_MS) {
+      lastTap.current = Number.NEGATIVE_INFINITY
+      e.preventDefault()
+      toggleExpanded()
+    } else {
+      lastTap.current = now
+    }
+  }
   const template = {
     gridTemplateColumns: `var(--g-label-w, ${labelWidth}px) repeat(${n}, 1fr)`,
   } as React.CSSProperties
@@ -132,6 +190,9 @@ export default function Gantt({
         {open && (rows.length ? hint : emptyHint) && (
           <span className="hint">{rows.length ? hint : emptyHint}</span>
         )}
+        {open && rows.length > 0 && (truncated || expanded) && (
+          <span className="hint g-expand-hint">{expanded ? '雙擊名稱收合' : '名稱被截斷？雙擊名稱看全文'}</span>
+        )}
       </div>
       {!open ? null : rows.length === 0 ? (
         <div className="gantt g-empty">
@@ -140,7 +201,7 @@ export default function Gantt({
         </div>
       ) : (
         <div
-          className={`gantt ${dense ? 'dense' : ''}`}
+          className={`gantt ${dense ? 'dense' : ''} ${expanded ? 'g-expanded' : ''}`}
           ref={gridRef}
           onPointerMove={move}
           onPointerUp={up}
@@ -165,7 +226,14 @@ export default function Gantt({
             const dHi = drag ? Math.max(drag.a, drag.b) : 0
             return (
               <div key={t.i} className="g-row" style={template} onPointerDown={down(t.i)}>
-                <div className={`g-label ${t.done ? 'done' : ''}`}>{t.text}</div>
+                <div
+                  className={`g-label ${t.done ? 'done' : ''}`}
+                  title={expanded ? undefined : `${t.text}（雙擊名稱展開全部）`}
+                  onPointerDown={labelDown}
+                  onPointerUp={labelUp}
+                >
+                  {t.text}
+                </div>
                 {cols.map((c, d) => (
                   <div key={d} className={`g-cell ${c.today ? 'today' : ''} ${c.active ? 'active' : ''}`} />
                 ))}
