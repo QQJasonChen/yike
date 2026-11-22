@@ -4296,6 +4296,22 @@ button.mc-month:disabled { cursor: default; }
 
 .g-label.done { text-decoration: line-through; color: var(--ink-faint); }
 
+/* 名稱欄可雙擊展開全文：不觸發瀏覽器雙擊放大、不選取文字 */
+.g-row:not(.g-head) .g-label {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.gantt.g-expanded .g-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+.g-expand-hint { color: var(--gold-deep); }
+
 .g-cell { border-right: 1px dotted var(--rule); cursor: crosshair; }
 .g-cell:last-child { border-right: none; }
 .g-cell.active { background: rgba(184, 146, 62, 0.05); }
